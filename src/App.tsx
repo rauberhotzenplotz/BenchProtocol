@@ -3,6 +3,7 @@ import { AppShell } from './components/AppShell'
 import { LoginPage } from './auth/LoginPage'
 import { RequireAuth } from './auth/RequireAuth'
 import { ActivePlanProvider } from './features/plans/ActivePlanContext'
+import { RestTimerProvider } from './features/training/RestTimerProvider'
 import { CockpitPage } from './features/cockpit/CockpitPage'
 import { TrainingPage } from './features/training/TrainingPage'
 import { BenchPage } from './features/bench/BenchPage'
@@ -18,7 +19,9 @@ export default function App() {
         element={
           <RequireAuth>
             <ActivePlanProvider>
-              <AppShell />
+              <RestTimerProvider>
+                <AppShell />
+              </RestTimerProvider>
             </ActivePlanProvider>
           </RequireAuth>
         }

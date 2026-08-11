@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { useIsMutating } from '@tanstack/react-query'
 import { Nav } from './Nav'
 import { UpdateBanner } from './UpdateBanner'
+import { RestTimerBar } from './RestTimerBar'
 import { useAuth } from '../auth/auth-context'
 
 function useClock() {
@@ -64,6 +65,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <RestTimerBar />
     </div>
   )
 }

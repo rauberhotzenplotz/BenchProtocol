@@ -11,6 +11,8 @@ import {
   useUpsertSet,
 } from './queries'
 import { setsOf, tonnageOf, wochenLabel } from './calc'
+import { pauseSekunden, autoPauseAn } from './pause'
+import { useRestTimer } from './rest-timer-context'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -238,6 +240,8 @@ function ExerciseBlock({
                 key={s.id}
                 set={s}
                 laeuft={laeuft}
+                exerciseName={exercise.name}
+                restSeconds={pauseSekunden(exercise.rest)}
                 onChange={patch => upsertSet.mutate({ exercise_id: exercise.id, week, position: s.position, ...patch })}
                 onDelete={() => deleteSetM.mutate(s.id)}
               />
@@ -290,17 +294,22 @@ function ExerciseBlock({
 function SetRow({
   set,
   laeuft,
+  exerciseName,
+  restSeconds,
   onChange,
   onDelete,
 }: {
   set: LoggedSet
   laeuft: boolean
+  exerciseName: string
+  restSeconds: number
   onChange: (patch: { kg?: number | null; reps?: number | null; rpe?: number | null; done?: boolean }) => void
   onDelete: () => void
 }) {
   const [kg, setKg] = useState(set.kg?.toString() ?? '')
   const [reps, setReps] = useState(set.reps?.toString() ?? '')
   const [rpe, setRpe] = useState(set.rpe?.toString() ?? '')
+  const restTimer = useRestTimer()
 
   const commit = () => {
     onChange({
@@ -308,6 +317,12 @@ function SetRow({
       reps: reps.trim() ? parseInt(reps, 10) : null,
       rpe: rpe.trim() ? parseFloat(rpe.replace(',', '.')) : null,
     })
+  }
+
+  const haken = () => {
+    const wirdErledigt = !set.done
+    onChange({ done: wirdErledigt })
+    if (wirdErledigt && autoPauseAn() && restSeconds > 0) restTimer.start(restSeconds, exerciseName)
   }
 
   return (
@@ -335,7 +350,7 @@ function SetRow({
         aria-pressed={set.done}
         disabled={!laeuft}
         title={laeuft ? 'Satz erledigt' : 'Erst das Training starten'}
-        onClick={() => onChange({ done: !set.done })}
+        onClick={haken}
       >
         ✓
       </button>

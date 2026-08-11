@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/auth-context'
 import { supabase } from '../../lib/supabase'
 import { cssVars } from '../../lib/style'
 import { useActivePlan } from '../plans/active-plan-context'
+import { autoPauseAn, setAutoPauseAn } from '../training/pause'
 
 export function SettingsPage() {
   const { user } = useAuth()
@@ -11,6 +12,7 @@ export function SettingsPage() {
   const qc = useQueryClient()
   const [busy, setBusy] = useState(false)
   const [bestaetigen, setBestaetigen] = useState(false)
+  const [autoPause, setAutoPause] = useState(autoPauseAn())
 
   const alleDatenLoeschen = async () => {
     setBusy(true)
@@ -45,6 +47,39 @@ export function SettingsPage() {
       </div>
 
       <div className="card" style={{ ...cssVars({ '--i': 2 }), marginTop: 14 }}>
+        <h3>
+          <span className="tick" />
+          Training
+        </h3>
+        <div className="setzeile">
+          <div className="txt">
+            <b>Satzpause automatisch starten</b>
+            <small>Sobald ein Satz abgehakt wird, läuft die Pause der Übung von selbst los.</small>
+          </div>
+          <div className="pills" role="group" aria-label="Satzpause automatisch starten">
+            <button
+              className={'pill' + (autoPause ? ' on' : '')}
+              onClick={() => {
+                setAutoPause(true)
+                setAutoPauseAn(true)
+              }}
+            >
+              An
+            </button>
+            <button
+              className={'pill' + (!autoPause ? ' on' : '')}
+              onClick={() => {
+                setAutoPause(false)
+                setAutoPauseAn(false)
+              }}
+            >
+              Aus
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ ...cssVars({ '--i': 3 }), marginTop: 14 }}>
         <h3>
           <span className="tick" />
           Daten
