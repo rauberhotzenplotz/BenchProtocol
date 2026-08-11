@@ -43,12 +43,16 @@ Umgesetzt: Auth (E-Mail/Passwort + Magic Link), Trainingspläne verwalten,
 Training-Tab (Tage, Übungen, Sätze loggen, Einheiten starten/beenden),
 Cockpit (unterschiedliche Widgets je nach Plan-Typ „Bankfokus“/„Standard“),
 Bank-Tab (Ausgangsdaten, 4-Wochen-Progression, 1RM-Rechner, Ziel), Rekorde,
-Wochenvolumen-Kontrollblatt, PWA-Installierbarkeit.
+Wochenvolumen-Kontrollblatt, PWA-Installierbarkeit, Satzpausen-Timer
+(automatisch + Gym-Modus), Kalender, Anleitung-Tab, Backup-Export/Import,
+Excel-Import (.xlsx mit „Tag N“-Blättern, Bankdrücken-Block, Wochenvolumen —
+liest über `read-excel-file`, bewusst nicht über das npm-Paket `xlsx`/SheetJS,
+das bekannte ungepatchte Schwachstellen hat, siehe `src/features/import`).
 
-Bewusst noch nicht übernommen (siehe Übergabe-Notiz im Chat für Details):
-Excel/CSV-Import, Gym-Modus (Vollbild-Workout), eigenständiges
-Trainingsfenster, Satzpausen-Countdown-Timer, Kalender/Verlaufs-Heatmap,
-Backup-Export.
+Bewusst noch nicht übernommen: AlphaProgression-CSV-Import (Verlauf,
+Trigramm-Namensabgleich — sehr produktspezifisch, geringer Nutzen für andere
+Nutzer), eigenständiges Trainingsfenster (separates Browser-Fenster für eine
+laufende Einheit), Partikel-Ambiente.
 
 ## Deploy (Vercel)
 

@@ -9,6 +9,7 @@ import {
   IconSettings,
   IconCalendar,
   IconGuide,
+  IconImport,
 } from './icons'
 
 /* Drei Bereiche haben einen eigenen Knopf, der Rest liegt hinter "Mehr" —
@@ -24,6 +25,7 @@ const MEHR_ITEMS = [
   { to: '/rekorde', label: 'Rekorde', sub: 'Bestleistung je Wiederholungszahl', Icon: IconRecords },
   { to: '/volumen', label: 'Volumen', sub: 'Arbeitssätze je Muskelgruppe', Icon: IconVolume },
   { to: '/kalender', label: 'Kalender', sub: 'Trainierte Tage im Überblick', Icon: IconCalendar },
+  { to: '/import', label: 'Import', sub: 'Plan aus Excel einlesen', Icon: IconImport },
   { to: '/anleitung', label: 'Anleitung', sub: 'Progression, Technik, Bedienung', Icon: IconGuide },
   { to: '/einstellungen', label: 'Einstellungen', sub: 'Konto, Training, Speicher', Icon: IconSettings },
 ]

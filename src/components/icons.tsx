@@ -27,6 +27,9 @@ export function IconCalendar() {
     </>
   )
 }
+export function IconImport() {
+  return <path d="M12 3v11M8 10.5 12 14.5l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+}
 export function IconGuide() {
   return (
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 5.5V20.5M8 8h7M8 12h5" />

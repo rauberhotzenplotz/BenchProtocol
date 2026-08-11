@@ -12,6 +12,7 @@ import { VolumePage } from './features/volume/VolumePage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { CalendarPage } from './features/calendar/CalendarPage'
 import { GuidePage } from './features/guide/GuidePage'
+import { ImportPage } from './features/import/ImportPage'
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/rekorde" element={<RecordsPage />} />
         <Route path="/volumen" element={<VolumePage />} />
         <Route path="/kalender" element={<CalendarPage />} />
+        <Route path="/import" element={<ImportPage />} />
         <Route path="/anleitung" element={<GuidePage />} />
         <Route path="/einstellungen" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/cockpit" replace />} />
