@@ -23,7 +23,7 @@ export function RestTimerBar() {
         bottom: 14,
         maxWidth: 420,
         margin: '0 auto',
-        zIndex: 80,
+        zIndex: 130, // über dem Gym-Modus (.gym, z-index 120)
         borderColor: fertig ? 'var(--good)' : 'var(--line)',
         boxShadow: '0 12px 30px -12px rgba(0,0,0,.85)',
       }}

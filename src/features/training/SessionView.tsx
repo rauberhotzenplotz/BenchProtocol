@@ -13,6 +13,7 @@ import {
 import { setsOf, tonnageOf, wochenLabel } from './calc'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
+import { GymMode } from './GymMode'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -31,6 +32,7 @@ export function SessionView({ plan, day, week, setsByExercise, session, onBack }
 
   const laeuft = !!session && !session.ended_at
   const [neueUebung, setNeueUebung] = useState(false)
+  const [gymOffen, setGymOffen] = useState(false)
 
   const gesamtTonnage = day.exercises.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
   const gesamtGeplant = day.exercises.reduce((a, ex) => a + setsOf(ex.scheme), 0)
@@ -76,12 +78,22 @@ export function SessionView({ plan, day, week, setsByExercise, session, onBack }
         </div>
         <span className="spacer" />
         {laeuft ? (
-          <button
-            className="btn"
-            onClick={() => session && void endSession.mutateAsync({ id: session.id, startedAt: session.started_at })}
-          >
-            Beenden
-          </button>
+          <>
+            {day.exercises.length > 0 && (
+              <button className="btn" onClick={() => setGymOffen(true)}>
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 8v8M19 8v8M2 10v4M22 10v4M5 12h14" />
+                </svg>
+                Gym
+              </button>
+            )}
+            <button
+              className="btn"
+              onClick={() => session && void endSession.mutateAsync({ id: session.id, startedAt: session.started_at })}
+            >
+              Beenden
+            </button>
+          </>
         ) : (
           <button className="btn primary" onClick={() => void startSession.mutateAsync({ dayId: day.id, week })}>
             {session ? 'Erneut starten' : 'Training starten'}
@@ -124,6 +136,10 @@ export function SessionView({ plan, day, week, setsByExercise, session, onBack }
           </button>
         )}
       </div>
+
+      {gymOffen && day.exercises.length > 0 && (
+        <GymMode day={day} week={week} setsByExercise={setsByExercise} onClose={() => setGymOffen(false)} />
+      )}
     </section>
   )
 }
