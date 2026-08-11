@@ -38,7 +38,11 @@ export function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password: passwort })
         if (error) throw error
       } else {
-        const { error } = await supabase.auth.signUp({ email, password: passwort })
+        const { error } = await supabase.auth.signUp({
+          email,
+          password: passwort,
+          options: { emailRedirectTo: window.location.origin },
+        })
         if (error) throw error
         setMeldung({ art: 'ok', text: 'Konto angelegt — E-Mail zur Bestätigung prüfen.' })
       }
