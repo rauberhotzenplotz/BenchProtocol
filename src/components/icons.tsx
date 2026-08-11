@@ -19,6 +19,19 @@ export function IconRecords() {
     <path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M9 20h6M12 14v6" />
   )
 }
+export function IconCalendar() {
+  return (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </>
+  )
+}
+export function IconGuide() {
+  return (
+    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 5.5V20.5M8 8h7M8 12h5" />
+  )
+}
 export function IconSettings() {
   return (
     <>

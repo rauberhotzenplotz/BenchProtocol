@@ -10,6 +10,8 @@ import { BenchPage } from './features/bench/BenchPage'
 import { RecordsPage } from './features/records/RecordsPage'
 import { VolumePage } from './features/volume/VolumePage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { CalendarPage } from './features/calendar/CalendarPage'
+import { GuidePage } from './features/guide/GuidePage'
 
 export default function App() {
   return (
@@ -32,6 +34,8 @@ export default function App() {
         <Route path="/bank" element={<BenchPage />} />
         <Route path="/rekorde" element={<RecordsPage />} />
         <Route path="/volumen" element={<VolumePage />} />
+        <Route path="/kalender" element={<CalendarPage />} />
+        <Route path="/anleitung" element={<GuidePage />} />
         <Route path="/einstellungen" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/cockpit" replace />} />
       </Route>
