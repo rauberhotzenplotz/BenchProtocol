@@ -203,6 +203,7 @@ function ExerciseBlock({
   laeuft: boolean
 }) {
   const [auf, setAuf] = useState(false)
+  const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
   const updateExercise = useUpdateExercise(planId)
   const deleteExercise = useDeleteExercise(planId)
   const upsertSet = useUpsertSet()
@@ -225,18 +226,29 @@ function ExerciseBlock({
           </div>
         </div>
         {fertig && <span className="chip ok">fertig</span>}
-        <button
-          className="rowbtn del"
-          title="Übung löschen"
-          onClick={e => {
-            e.stopPropagation()
-            if (confirm(`„${exercise.name}“ löschen?`)) deleteExercise.mutate(exercise.id)
-          }}
-        >
-          <svg viewBox="0 0 24 24">
-            <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
-          </svg>
-        </button>
+        {loeschenBestaetigen ? (
+          <div className="row" style={{ gap: 6 }} onClick={e => e.stopPropagation()}>
+            <button className="btn ghost sm" onClick={() => setLoeschenBestaetigen(false)}>
+              Abbrechen
+            </button>
+            <button className="btn sm danger" onClick={() => deleteExercise.mutate(exercise.id)}>
+              Löschen
+            </button>
+          </div>
+        ) : (
+          <button
+            className="rowbtn del"
+            title="Übung löschen"
+            onClick={e => {
+              e.stopPropagation()
+              setLoeschenBestaetigen(true)
+            }}
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {auf && (

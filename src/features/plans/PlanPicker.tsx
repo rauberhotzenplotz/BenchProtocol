@@ -35,6 +35,7 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
   const [umbenennenId, setUmbenennenId] = useState<string | null>(null)
   const [umbenennenName, setUmbenennenName] = useState('')
+  const [loeschenId, setLoeschenId] = useState<string | null>(null)
 
   const anlegen = async () => {
     const trimmed = name.trim()
@@ -53,8 +54,8 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
 
   const loeschen = async (id: string) => {
     if (plans.length <= 1) return
-    if (!confirm('Diesen Plan wirklich löschen? Alle Tage, Übungen und geloggten Sätze gehen verloren.')) return
     await deletePlan.mutateAsync(id)
+    setLoeschenId(null)
     if (activePlan?.id === id) {
       const rest = plans.find(p => p.id !== id)
       if (rest) setActivePlanId(rest.id)
@@ -70,7 +71,20 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
         <div className="planliste">
           {plans.map(p => (
             <div key={p.id} className={'planzeile' + (p.id === activePlan?.id ? ' aktiv' : '')}>
-              {umbenennenId === p.id ? (
+              {loeschenId === p.id ? (
+                <div className="row" style={{ flex: 1, gap: 8, alignItems: 'center' }}>
+                  <span className="txt" style={{ flex: 1 }}>
+                    <b>„{p.name}“ wirklich löschen?</b>
+                    <small>Alle Tage, Übungen und geloggten Sätze gehen verloren.</small>
+                  </span>
+                  <button className="btn ghost sm" onClick={() => setLoeschenId(null)}>
+                    Abbrechen
+                  </button>
+                  <button className="btn sm danger" onClick={() => void loeschen(p.id)}>
+                    Löschen
+                  </button>
+                </div>
+              ) : umbenennenId === p.id ? (
                 <input
                   className="inp"
                   autoFocus
@@ -97,30 +111,34 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
                   </span>
                 </button>
               )}
-              <button
-                className="rowbtn"
-                title="Umbenennen"
-                aria-label={`${p.name} umbenennen`}
-                onClick={() => {
-                  setUmbenennenId(p.id)
-                  setUmbenennenName(p.name)
-                }}
-              >
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
-              </button>
-              <button
-                className="rowbtn del"
-                title="Löschen"
-                aria-label={`${p.name} löschen`}
-                disabled={plans.length <= 1}
-                onClick={() => void loeschen(p.id)}
-              >
-                <svg viewBox="0 0 24 24">
-                  <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
-                </svg>
-              </button>
+              {loeschenId !== p.id && (
+                <>
+                  <button
+                    className="rowbtn"
+                    title="Umbenennen"
+                    aria-label={`${p.name} umbenennen`}
+                    onClick={() => {
+                      setUmbenennenId(p.id)
+                      setUmbenennenName(p.name)
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                  </button>
+                  <button
+                    className="rowbtn del"
+                    title="Löschen"
+                    aria-label={`${p.name} löschen`}
+                    disabled={plans.length <= 1}
+                    onClick={() => setLoeschenId(p.id)}
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
+                    </svg>
+                  </button>
+                </>
+              )}
             </div>
           ))}
         </div>

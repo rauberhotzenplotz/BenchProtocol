@@ -5,6 +5,17 @@ import { supabase } from '../../lib/supabase'
 import { cssVars } from '../../lib/style'
 import { useActivePlan } from '../plans/active-plan-context'
 import { autoPauseAn, setAutoPauseAn } from '../training/pause'
+import { baueBackup, backupHerunterladen, backupEinspielen } from './backup'
+
+/** Supabase-Fehler sind nicht immer `instanceof Error` (Klassenidentität
+    kann über Modulgrenzen hinweg auseinanderfallen) — .message reicht als
+    Prüfung, auch bei einem einfachen Objekt. */
+function fehlertext(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string' && err.message) {
+    return err.message
+  }
+  return fallback
+}
 
 export function SettingsPage() {
   const { user } = useAuth()
@@ -13,6 +24,43 @@ export function SettingsPage() {
   const [busy, setBusy] = useState(false)
   const [bestaetigen, setBestaetigen] = useState(false)
   const [autoPause, setAutoPause] = useState(autoPauseAn())
+  const [backupMeldung, setBackupMeldung] = useState<{ art: 'ok' | 'err'; text: string } | null>(null)
+  const [backupBusy, setBackupBusy] = useState(false)
+
+  const alleQueriesNeuLaden = () =>
+    qc.invalidateQueries({
+      predicate: q => ['plans', 'days', 'sets', 'sets-all', 'session', 'sessions', 'sessions-all', 'bench-progression', 'volume-rows'].includes(
+        String(q.queryKey[0]),
+      ),
+    })
+
+  const exportieren = async () => {
+    setBackupBusy(true)
+    setBackupMeldung(null)
+    try {
+      const backup = await baueBackup()
+      backupHerunterladen(backup)
+      setBackupMeldung({ art: 'ok', text: `Sicherung geladen (${backup.plans.length} Pläne).` })
+    } catch (err) {
+      setBackupMeldung({ art: 'err', text: fehlertext(err, 'Export fehlgeschlagen.') })
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const importieren = async (datei: File) => {
+    setBackupBusy(true)
+    setBackupMeldung(null)
+    try {
+      const backup = await backupEinspielen(datei)
+      await alleQueriesNeuLaden()
+      setBackupMeldung({ art: 'ok', text: `Sicherung eingespielt (${backup.plans.length} Pläne).` })
+    } catch (err) {
+      setBackupMeldung({ art: 'err', text: fehlertext(err, 'Import fehlgeschlagen.') })
+    } finally {
+      setBackupBusy(false)
+    }
+  }
 
   const alleDatenLoeschen = async () => {
     setBusy(true)
@@ -22,6 +70,7 @@ export function SettingsPage() {
       const { error } = await supabase.from('plans').delete().neq('id', '00000000-0000-0000-0000-000000000000')
       if (error) throw error
       await qc.invalidateQueries({ queryKey: ['plans', user?.id] })
+      await alleQueriesNeuLaden()
       setBestaetigen(false)
     } finally {
       setBusy(false)
@@ -80,6 +129,43 @@ export function SettingsPage() {
       </div>
 
       <div className="card" style={{ ...cssVars({ '--i': 3 }), marginTop: 14 }}>
+        <h3>
+          <span className="tick" />
+          Sicherung
+        </h3>
+        <div className="setzeile" style={{ marginTop: 6 }}>
+          <div className="txt">
+            <b>Sicherung herunterladen</b>
+            <small>Alle deine Trainingspläne, Tage, Übungen und geloggten Sätze als JSON-Datei.</small>
+          </div>
+          <button className="btn sm ghost" onClick={() => void exportieren()} disabled={backupBusy || !plans.length}>
+            Herunterladen
+          </button>
+        </div>
+        <div className="setzeile" style={{ marginTop: 10 }}>
+          <div className="txt">
+            <b>Sicherung einspielen</b>
+            <small>Aus einer zuvor heruntergeladenen JSON-Datei wiederherstellen. Vorhandene Pläne bleiben erhalten.</small>
+          </div>
+          <label className="btn sm ghost" style={{ cursor: 'pointer' }}>
+            Datei wählen
+            <input
+              type="file"
+              accept="application/json"
+              hidden
+              disabled={backupBusy}
+              onChange={e => {
+                const datei = e.target.files?.[0]
+                e.target.value = ''
+                if (datei) void importieren(datei)
+              }}
+            />
+          </label>
+        </div>
+        {backupMeldung && <p className={'auth-msg ' + backupMeldung.art} style={{ marginTop: 8 }}>{backupMeldung.text}</p>}
+      </div>
+
+      <div className="card" style={{ ...cssVars({ '--i': 4 }), marginTop: 14 }}>
         <h3>
           <span className="tick" />
           Daten
