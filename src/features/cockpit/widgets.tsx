@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { DayWithExercises } from '../training/queries'
-import { tagFortschritt, type TagFortschritt } from '../training/calc'
+import { tagFortschritt, type TagFortschritt, type UebungsDauerSchnitt } from '../training/calc'
 import type { LoggedSet, TrainingSession } from '../../types/db'
 import { Sparkline } from '../../components/Sparkline'
 
@@ -100,6 +100,48 @@ export function ProgressCard({
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+export function UebungsdauerCard({ eintraege }: { eintraege: UebungsDauerSchnitt[] }) {
+  if (!eintraege.length) {
+    return (
+      <div className="card">
+        <h3>
+          <span className="tick" />Ø Dauer je Übung
+        </h3>
+        <p className="muted tiny" style={{ padding: '22px 0', textAlign: 'center', margin: 0 }}>
+          Sobald du Sätze mit Haken abschließt, steht hier, wie lange jede Übung im Schnitt dauert.
+        </p>
+      </div>
+    )
+  }
+  const liste = eintraege.slice(0, 8)
+  const max = Math.max(...liste.map(e => e.minuten))
+  return (
+    <div className="card">
+      <h3>
+        <span className="tick" />Ø Dauer je Übung
+      </h3>
+      <div className="stack">
+        {liste.map(e => (
+          <div key={e.id} className="bar-row" style={{ gridTemplateColumns: '1fr 56px' }}>
+            <div>
+              <div className="nm" style={{ marginBottom: 5 }}>
+                {e.name}
+              </div>
+              <div className="bar-track">
+                <div
+                  className="bar-fill"
+                  style={{ width: `${max > 0 ? (e.minuten / max) * 100 : 0}%`, background: 'linear-gradient(90deg,var(--violet),var(--neon))' }}
+                />
+              </div>
+            </div>
+            <div className="vv">{e.minuten < 10 ? e.minuten.toFixed(1) : Math.round(e.minuten)} min</div>
+          </div>
+        ))}
       </div>
     </div>
   )

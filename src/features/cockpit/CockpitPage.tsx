@@ -37,7 +37,14 @@ export function CockpitPage() {
   return (
     <section className="view on frisch">
       {activePlan.typ === 'bench' ? (
-        <BenchCockpit plan={activePlan} days={days} week={week} setsByExercise={setsByExercise} sessions={sessions ?? []} />
+        <BenchCockpit
+          plan={activePlan}
+          days={days}
+          week={week}
+          setsByExercise={setsByExercise}
+          allSets={alleSaetze ?? []}
+          sessions={sessions ?? []}
+        />
       ) : (
         <GeneralCockpit
           plan={activePlan}

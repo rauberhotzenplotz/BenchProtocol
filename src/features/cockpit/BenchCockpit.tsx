@@ -1,9 +1,9 @@
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { tagFortschritt, tonnageOf, wochenLabel } from '../training/calc'
+import { tagFortschritt, tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
 import { naechsterTag, frequenzDaten, trainingszeitDaten } from './calc'
-import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, ProgressCard, KpiCard } from './widgets'
+import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, ProgressCard, UebungsdauerCard, KpiCard } from './widgets'
 import { useBenchProgression, benchRowsFor } from '../bench/queries'
 import { useVolumeRows, totalSetsOf } from '../volume/queries'
 import { baseE1RM, benchLoad } from '../bench/calc'
@@ -14,10 +14,11 @@ interface Props {
   days: DayWithExercises[]
   week: number
   setsByExercise: Map<string, LoggedSet[]>
+  allSets: LoggedSet[]
   sessions: TrainingSession[]
 }
 
-export function BenchCockpit({ plan, days, week, setsByExercise, sessions }: Props) {
+export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessions }: Props) {
   const { data: progression } = useBenchProgression(plan.id)
   const { data: volumeRows } = useVolumeRows(plan.id)
 
@@ -25,6 +26,7 @@ export function BenchCockpit({ plan, days, week, setsByExercise, sessions }: Pro
   const fortschritt = tag ? tagFortschritt(tag.exercises, setsByExercise) : null
   const f = frequenzDaten(sessions)
   const t = trainingszeitDaten(sessions)
+  const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
 
   const e1 = baseE1RM(plan)
   const rowsD1 = progression ? benchRowsFor(progression, 'd1') : []
@@ -86,6 +88,10 @@ export function BenchCockpit({ plan, days, week, setsByExercise, sessions }: Pro
             <li>Schaffst du Woche 3 nicht in allen Sätzen, wiederholt sich der Block mit unverändertem Ausgangsgewicht.</li>
           </ul>
         </div>
+      </div>
+
+      <div style={{ ...cssVars({ '--i': 4 }), marginTop: 14 }}>
+        <UebungsdauerCard eintraege={dauerJeUebung} />
       </div>
     </>
   )

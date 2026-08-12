@@ -1,9 +1,9 @@
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { tonnageOf, wochenLabel, tagFortschritt } from '../training/calc'
+import { tonnageOf, wochenLabel, tagFortschritt, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
 import { naechsterTag, frequenzDaten, trainingszeitDaten } from './calc'
-import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, ProgressCard, LetzteEinheitenCard, KpiCard } from './widgets'
+import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, ProgressCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard } from './widgets'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -20,6 +20,7 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
   const fortschritt = tag ? tagFortschritt(tag.exercises, setsByExercise) : null
   const f = frequenzDaten(sessions)
   const t = trainingszeitDaten(sessions)
+  const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
 
   // Tonnage der zuletzt beendeten Einheit + eine kurze Reihe davor als Trend.
   const letzte = sessions.slice(0, 8)
@@ -62,6 +63,10 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
       <div className="grid g-21" style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
         <ProgressCard wocheLabel={wochenLabel(week, plan)} days={days} setsByExercise={setsByExercise} />
         <LetzteEinheitenCard sessions={sessions} dayNameOf={id => days.find(d => d.id === id)?.name ?? '—'} />
+      </div>
+
+      <div style={cssVars({ '--i': 3 })}>
+        <UebungsdauerCard eintraege={dauerJeUebung} />
       </div>
     </>
   )

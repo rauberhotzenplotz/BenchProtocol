@@ -1,4 +1,5 @@
-import type { Exercise, LoggedSet, Plan } from '../../types/db'
+import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
+import type { DayWithExercises } from './queries'
 
 export function mround(n: number, step: number): number {
   return Math.round(n / step) * step
@@ -83,6 +84,48 @@ export function uebungsDauer(exercises: Exercise[], saetze: LoggedSet[], session
   })
 
   return dauer
+}
+
+export interface UebungsDauerSchnitt {
+  id: string
+  name: string
+  minuten: number
+}
+
+/** Durchschnittliche Übungsdauer über alle beendeten Einheiten hinweg,
+    absteigend sortiert — Grundlage für das Balkendiagramm im Cockpit.
+    Übungen ohne einen einzigen erledigten Satz mit Zeitstempel tauchen
+    gar nicht auf, statt mit 0 min verzerrend mitgezählt zu werden. */
+export function durchschnittsDauerJeUebung(
+  days: DayWithExercises[],
+  alleSessionen: TrainingSession[],
+  alleSaetze: LoggedSet[],
+): UebungsDauerSchnitt[] {
+  const summeMs = new Map<string, number>()
+  const anzahl = new Map<string, number>()
+  const nameVon = new Map<string, string>()
+
+  alleSessionen.forEach(session => {
+    const tag = days.find(d => d.id === session.day_id)
+    if (!tag) return
+    const saetzeDerWoche = alleSaetze.filter(s => s.week === session.week && tag.exercises.some(ex => ex.id === s.exercise_id))
+    const dauerJeUebung = uebungsDauer(tag.exercises, saetzeDerWoche, session.started_at)
+    tag.exercises.forEach(ex => {
+      const dauer = dauerJeUebung.get(ex.id)
+      if (dauer == null) return
+      summeMs.set(ex.id, (summeMs.get(ex.id) ?? 0) + dauer)
+      anzahl.set(ex.id, (anzahl.get(ex.id) ?? 0) + 1)
+      nameVon.set(ex.id, ex.name)
+    })
+  })
+
+  return [...summeMs.entries()]
+    .map(([id, ms]) => ({
+      id,
+      name: nameVon.get(id) ?? '—',
+      minuten: Math.round((ms / (anzahl.get(id) ?? 1) / 60000) * 10) / 10,
+    }))
+    .sort((a, b) => b.minuten - a.minuten)
 }
 
 /** "3:45" — für kurze Dauern (Sätze, Übungen), nicht ganze Einheiten. */

@@ -1704,15 +1704,19 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .gym-wzeile.arbeit .pct { color: var(--neon); }
 .gym-wzeile.arbeit .kg { color: var(--neon); }
 
-/* Pause: derselbe Timer, nur im Vollbild. */
+/* Pause: derselbe Timer, nur im Vollbild. Beim Erscheinen (jeder neue
+   Satz startet die Pause neu, die Sektion wird also jedes Mal frisch
+   gerendert) fährt die ganze Anzeige mit Fade + Scale hoch. */
 .gym-pause { flex: 1; min-height: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 8px; }
+  align-items: center; justify-content: center; gap: 8px;
+  animation: gymPauseRein .5s cubic-bezier(.22,1,.36,1) both; }
 .gym-pause { --ring: min(70vw, 40vh); }
+@keyframes gymPauseRein { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: scale(1); } }
 .gym-ring { width: var(--ring); height: var(--ring); overflow: visible; }
 .gym-ring circle { fill: none; transform: rotate(-90deg); transform-origin: 50% 50%; stroke-linecap: round; }
 .gym-ring .bg { stroke: rgba(255,255,255,.07); stroke-width: 4; }
-.gym-ring .fg { stroke: var(--neon); stroke-width: 4.5; transition: stroke .3s; }
-.gym-ring .halo { stroke: var(--neon); stroke-width: 12; opacity: .14; transition: stroke .3s; }
+.gym-ring .fg { stroke: var(--neon); stroke-width: 4.5; transition: stroke .3s, stroke-dashoffset .3s linear; }
+.gym-ring .halo { stroke: var(--neon); stroke-width: 12; opacity: .14; transition: stroke .3s, stroke-dashoffset .3s linear; }
 .gym-ring.warn .fg, .gym-ring.warn .halo { stroke: var(--warn); }
 .gym-ring.crit .fg, .gym-ring.crit .halo { stroke: var(--crit); }
 /* Die Zahl misst sich am Ring, nicht am Fenster: 24 % des Durchmessers
