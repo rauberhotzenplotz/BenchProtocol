@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { BenchSlot, Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import {
@@ -149,18 +150,28 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
         )}
       </div>
 
-      {gymOffen && day.exercises.length > 0 && (
-        <GymMode
-          plan={plan}
-          day={day}
-          week={week}
-          setsByExercise={setsByExercise}
-          alleSaetzeJemals={alleSaetzeJemals}
-          alleSaetzeJemalsBereit={alleSaetzeJemalsBereit}
-          session={session}
-          onClose={() => setGymOffen(false)}
-        />
-      )}
+      {gymOffen &&
+        day.exercises.length > 0 &&
+        createPortal(
+          // Portal statt normalem Kind-Render: der Gym-Modus ist ein
+          // position:fixed-Vollbild, aber die umgebende <section> hier trägt
+          // die "frisch"-Eintrittsanimation (transform-Keyframes). Ein
+          // animiertes Elternelement wird für fixed-Nachfahren zum
+          // Containing Block — ohne Portal würde der Gym-Modus dadurch auf
+          // die Größe der Section zusammengequetscht statt den Bildschirm
+          // zu füllen (Aufwärmen/Sätze wirken dann verschoben/überlappend).
+          <GymMode
+            plan={plan}
+            day={day}
+            week={week}
+            setsByExercise={setsByExercise}
+            alleSaetzeJemals={alleSaetzeJemals}
+            alleSaetzeJemalsBereit={alleSaetzeJemalsBereit}
+            session={session}
+            onClose={() => setGymOffen(false)}
+          />,
+          document.body,
+        )}
     </section>
   )
 }
