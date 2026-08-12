@@ -1,5 +1,9 @@
 import type { Exercise, LoggedSet, Plan } from '../../types/db'
 
+export function mround(n: number, step: number): number {
+  return Math.round(n / step) * step
+}
+
 const WEEK_LABELS = ['Woche 1', 'Woche 2', 'Woche 3', 'Woche 4 · Deload']
 
 /** Bankfokus-Pläne laufen in festen 4-Wochen-Blöcken mit Deload,
@@ -87,6 +91,47 @@ export function dauerKurz(ms: number): string {
   const m = Math.floor(gesamtSek / 60)
   const s = gesamtSek % 60
   return `${m}:${String(s).padStart(2, '0')}`
+}
+
+export interface AufwaermSatz {
+  label: string
+  kg: number
+  wdh: number
+}
+
+const AUFWAERM_STANGE = 20 // leere Langhantel
+const AUFWAERM_SCHWER_AB = 40 // ab hier lohnt eine Rampe auch ohne Bank-Zuordnung
+
+/** Ob eine Übung die volle Bankdrücken-Aufwärmleiter (mit leerer Stange)
+    bekommt: entweder explizit über die Bank-Zuordnung markiert, oder der
+    Name verrät es schon — damit muss niemand erst die Bank-Zuordnung
+    setzen, nur damit beim Bankdrücken die Stange in der Aufwärmleiter
+    auftaucht. */
+export function istBankdruecken(exercise: Pick<Exercise, 'bench_slot' | 'name'>): boolean {
+  return exercise.bench_slot != null || /bankdr[üu]ck|bench\s*press/i.test(exercise.name)
+}
+
+/** Aufwärmleiter vor dem Arbeitssatz — fürs Bankdrücken die volle Leiter
+    aus der Anleitung (leere Stange, 50/65/75 %), für andere schwere
+    Übungen (≥ 40 kg) eine kurze Rampe, für die erste Übung der Einheit
+    unabhängig vom Gewicht eine minimale Aufwärmung — man ist noch kalt.
+    Leichte, spätere Isolationsübungen bekommen keine. */
+export function aufwaermPlan(mitStange: boolean, kgRoh: number, istErste: boolean, plate: number): AufwaermSatz[] {
+  if (!(kgRoh > 0)) return []
+  const auf = (pct: number, wdh: number, label: string): AufwaermSatz => ({
+    label,
+    wdh,
+    kg: Math.max(plate, mround(kgRoh * pct, plate)),
+  })
+
+  if (mitStange) {
+    return [{ label: 'Leere Stange', kg: AUFWAERM_STANGE, wdh: 10 }].concat(
+      [auf(0.5, 5, '50 %'), auf(0.65, 3, '65 %'), auf(0.75, 1, '75 %')].filter(s => s.kg > AUFWAERM_STANGE),
+    )
+  }
+  if (kgRoh >= AUFWAERM_SCHWER_AB) return [auf(0.5, 5, '50 %'), auf(0.7, 3, '70 %')]
+  if (istErste) return [auf(0.5, 8, '50 %')]
+  return []
 }
 
 export function gruppeSetsByExercise(sets: LoggedSet[]): Map<string, LoggedSet[]> {

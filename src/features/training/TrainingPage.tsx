@@ -46,6 +46,7 @@ export function TrainingPage() {
         week={week}
         setsByExercise={gruppeSetsByExercise(alleSaetze ?? [])}
         alleSaetzeJemals={saetzeJemals ?? []}
+        alleSaetzeJemalsBereit={saetzeJemals !== undefined}
         session={session}
         onBack={() => setOffenerTag(null)}
       />

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { LoggedSet, Plan } from '../../types/db'
+import type { Exercise, LoggedSet, Plan } from '../../types/db'
 import type { DayWithExercises } from './queries'
-import { setsOf, letzterSatz } from './calc'
+import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken } from './calc'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
 import { useUpsertSet } from './queries'
-import { baseE1RM, mround } from '../bench/calc'
+import { useBenchProgression, benchRowsFor } from '../bench/queries'
+import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
 
 function zielWdh(scheme: string | null | undefined): number {
@@ -13,25 +14,20 @@ function zielWdh(scheme: string | null | undefined): number {
   return m ? +m[1] : 8
 }
 
-const AUFWAERM_STUFEN = [
-  { label: 'Leere Stange', anteil: 0, reps: 10 },
-  { label: '50 %', anteil: 0.5, reps: 5 },
-  { label: '65 %', anteil: 0.65, reps: 3 },
-  { label: '75 %', anteil: 0.75, reps: 1 },
-]
-
 interface Props {
   plan: Plan
   day: DayWithExercises
   week: number
   setsByExercise: Map<string, LoggedSet[]>
   alleSaetzeJemals: LoggedSet[]
+  alleSaetzeJemalsBereit: boolean
   onClose: () => void
 }
 
-export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, onClose }: Props) {
+export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, onClose }: Props) {
   const upsertSet = useUpsertSet()
   const restTimer = useRestTimer()
+  const { data: progression } = useBenchProgression(plan.id)
   const [uebIdx, setUebIdx] = useState(0)
   const [satzIdx, setSatzIdx] = useState(0)
   const [aufgewaermt, setAufgewaermt] = useState<Set<string>>(new Set())
@@ -44,29 +40,53 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, onC
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Mounten/Unmounten schalten, nicht bei jeder Timer-Änderung
   }, [])
 
+  // Die Bank-Progression kennt das für diese Woche vorgesehene Gewicht/
+  // Schema unabhängig von der Historie — wichtig direkt nach einem Block-
+  // abschluss, wenn die alten Sätze gelöscht wurden und die Historie noch
+  // leer ist. Ohne gesetzte Bank-Zuordnung, aber erkennbarem Namen, wird
+  // der schwere Slot (d1) angenommen — dieselbe Erkennung wie fürs
+  // Aufwärmen, damit beides zusammenpasst.
+  const progressionZeileFuer = (ex: Exercise) => {
+    if (!progression) return undefined
+    const slot = ex.bench_slot ?? (istBankdruecken(ex) ? 'd1' : null)
+    return slot ? benchRowsFor(progression, slot).find(r => r.week === week) : undefined
+  }
+  const sollFuer = (ex: Exercise) => {
+    const zeile = progressionZeileFuer(ex)
+    return setsOf(zeile ? zeile.scheme : ex.scheme)
+  }
+
   const uebungen = day.exercises
   const exercise = uebungen[Math.min(uebIdx, uebungen.length - 1)]
   const sets = setsByExercise.get(exercise.id) ?? []
-  const soll = setsOf(exercise.scheme)
+  const progressionZeile = progressionZeileFuer(exercise)
+  const soll = sollFuer(exercise)
   const aktuellerSatz = sets.find(s => s.position === satzIdx)
   const vorschlag = letzterSatz(exercise.id, alleSaetzeJemals)
+  const vorschlagKg = progressionZeile ? benchLoad(plan, progressionZeile) : (vorschlag?.kg ?? null)
+  const vorschlagReps = progressionZeile ? zielWdh(progressionZeile.scheme) : (vorschlag?.reps ?? null)
 
-  const [kg, setKg] = useState(() => aktuellerSatz?.kg ?? vorschlag?.kg ?? 0)
-  const [reps, setReps] = useState(() => aktuellerSatz?.reps ?? vorschlag?.reps ?? zielWdh(exercise.scheme))
+  const [kg, setKg] = useState(() => aktuellerSatz?.kg ?? vorschlagKg ?? 0)
+  const [reps, setReps] = useState(() => aktuellerSatz?.reps ?? vorschlagReps ?? zielWdh(exercise.scheme))
   const [rpe, setRpe] = useState(() => aktuellerSatz?.rpe ?? vorschlag?.rpe ?? 0)
 
-  // Beim Wechsel auf einen anderen Satz/Übung die Eingabefelder neu vorbelegen.
-  const schluessel = `${exercise.id}|${satzIdx}`
+  // Beim Wechsel auf einen anderen Satz/Übung die Eingabefelder neu vorbelegen
+  // — und außerdem, sobald Historie bzw. Bank-Progression nach dem Mounten
+  // fertig geladen sind: ohne das bliebe eine vor dem ersten Render noch
+  // leere Vorbelegung (Gewicht 0) für immer stehen, auch nachdem die Daten
+  // eingetroffen sind, weil useState() seinen Startwert nur einmal liest.
+  const bereit = alleSaetzeJemalsBereit && (!istBankdruecken(exercise) || progression != null)
+  const schluessel = `${exercise.id}|${satzIdx}|${bereit}`
   const [letzterSchluessel, setLetzterSchluessel] = useState(schluessel)
   if (schluessel !== letzterSchluessel) {
     setLetzterSchluessel(schluessel)
-    setKg(aktuellerSatz?.kg ?? vorschlag?.kg ?? 0)
-    setReps(aktuellerSatz?.reps ?? vorschlag?.reps ?? zielWdh(exercise.scheme))
+    setKg(aktuellerSatz?.kg ?? vorschlagKg ?? 0)
+    setReps(aktuellerSatz?.reps ?? vorschlagReps ?? zielWdh(exercise.scheme))
     setRpe(aktuellerSatz?.rpe ?? vorschlag?.rpe ?? 0)
   }
 
-  const gesamtGeplant = uebungen.reduce((a, ex) => a + setsOf(ex.scheme), 0)
-  const bisHierGeplant = uebungen.slice(0, uebIdx).reduce((a, ex) => a + setsOf(ex.scheme), 0) + satzIdx
+  const gesamtGeplant = uebungen.reduce((a, ex) => a + sollFuer(ex), 0)
+  const bisHierGeplant = uebungen.slice(0, uebIdx).reduce((a, ex) => a + sollFuer(ex), 0) + satzIdx
   const anteil = gesamtGeplant ? Math.min(1, bisHierGeplant / gesamtGeplant) : 0
 
   const naechster = () => {
@@ -127,10 +147,13 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, onC
     )
   }
 
-  // Aufwärmen: nur beim ersten Satz einer an die Bank-Progression
-  // gekoppelten Übung, einmal je Übung.
-  if (exercise.bench_slot && satzIdx === 0 && !aufgewaermt.has(exercise.id)) {
-    const e1 = baseE1RM(plan)
+  // Aufwärmen: vor dem ersten Satz einer Übung, wenn sie entweder an die
+  // Bank-Progression gekoppelt ist, ein schweres Gewicht hat oder als
+  // erste Übung der Einheit drankommt (siehe aufwaermPlan) — einmal je
+  // Übung. Bezieht sich auf das tatsächlich vorbelegte Arbeitsgewicht,
+  // nicht auf ein fixes 1RM, damit die Leiter mit der Woche mitwächst.
+  const warmSaetze = aufwaermPlan(istBankdruecken(exercise), kg, uebIdx === 0, plate)
+  if (satzIdx === 0 && warmSaetze.length > 0 && !aufgewaermt.has(exercise.id)) {
     return (
       <div className="gym">
         <button className="gym-zu" onClick={onClose} aria-label="Gym-Modus verlassen">
@@ -146,15 +169,15 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, onC
           <div className="gym-warm">
             <div className="gym-wtitel">Aufwärmen</div>
             <div className="gym-wliste">
-              {AUFWAERM_STUFEN.map(s => (
+              {warmSaetze.map((s, i) => (
                 <div key={s.label} className="gym-wzeile">
-                  <span className="nr">{s.anteil === 0 ? '—' : `${Math.round(s.anteil * 100)}%`}</span>
+                  <span className="nr">{i + 1}</span>
                   <span className="pct">{s.label}</span>
                   <span className="kg">
-                    {s.anteil === 0 ? '—' : mround(e1 * s.anteil, plate)}
-                    {s.anteil > 0 && <em>kg</em>}
+                    {s.kg}
+                    <em>kg</em>
                   </span>
-                  <span className="wdh">× {s.reps}</span>
+                  <span className="wdh">× {s.wdh}</span>
                 </div>
               ))}
               <div className="gym-wzeile arbeit">

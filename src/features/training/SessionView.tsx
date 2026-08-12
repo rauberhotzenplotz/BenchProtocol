@@ -22,11 +22,12 @@ interface Props {
   week: number
   setsByExercise: Map<string, LoggedSet[]>
   alleSaetzeJemals: LoggedSet[]
+  alleSaetzeJemalsBereit: boolean
   session: TrainingSession | null | undefined
   onBack: () => void
 }
 
-export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals, session, onBack }: Props) {
+export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, session, onBack }: Props) {
   const startSession = useStartSession()
   const endSession = useEndSession()
   const createExercise = useCreateExercise(plan.id)
@@ -147,6 +148,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
           week={week}
           setsByExercise={setsByExercise}
           alleSaetzeJemals={alleSaetzeJemals}
+          alleSaetzeJemalsBereit={alleSaetzeJemalsBereit}
           onClose={() => setGymOffen(false)}
         />
       )}

@@ -6,10 +6,10 @@ function zeitText(s: number): string {
   return `${m}:${String(r).padStart(2, '0')}`
 }
 
-/** Eine Ziffernstelle, die beim Wechsel nicht hart springt, sondern die
-    alte Ziffer nach oben heraus- und die neue von unten hereinrollt —
-    beide Lagen gleichzeitig sichtbar, solange die Austritts-Animation
-    noch läuft. */
+/** Eine Ziffernstelle, die beim Wechsel nicht hart springt: die alte
+    Ziffer fällt in sich zusammen (Skalierung gegen null), erst danach
+    entsteht die neue daraus (Skalierung von null hoch) — sequenziell,
+    nicht überlappend, siehe .gym-ziffer-lage in global.css. */
 function Ziffer({ zeichen }: { zeichen: string }) {
   const [aktuell, setAktuell] = useState(zeichen)
   const [vorherige, setVorherige] = useState<string | null>(null)

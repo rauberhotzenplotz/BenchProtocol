@@ -1723,14 +1723,16 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   text-shadow: 0 0 34px rgba(53,240,208,.4); white-space: nowrap;
   display: flex;
 }
-/* Jede Ziffernstelle rollt beim Wechsel ein, statt hart zu springen — die
-   austretende Lage bleibt bis zum Animationsende überlagert sichtbar. */
+/* Jede Ziffernstelle fällt beim Wechsel erst in sich zusammen, dann
+   entsteht die neue Ziffer daraus — nacheinander, nicht überlappend
+   (die zweite Animation startet erst per Verzögerung, wenn die erste
+   fertig ist; bis dahin hält "both" ihren Anfangszustand: unsichtbar). */
 .gym-ziffer { position: relative; display: inline-block; width: 1ch; height: 1em; overflow: hidden; }
-.gym-ziffer-lage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.gym-ziffer-lage.neu { animation: gymZifferRein .32s cubic-bezier(.16,1,.3,1) both; }
-.gym-ziffer-lage.alt { animation: gymZifferRaus .32s cubic-bezier(.16,1,.3,1) both; }
-@keyframes gymZifferRein { from { transform: translateY(65%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes gymZifferRaus { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-65%); opacity: 0; } }
+.gym-ziffer-lage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 50% 50%; }
+.gym-ziffer-lage.alt { animation: gymZifferKollaps .16s cubic-bezier(.55,0,1,.45) both; }
+.gym-ziffer-lage.neu { animation: gymZifferEntsteht .24s cubic-bezier(.34,1.56,.64,1) .14s both; }
+@keyframes gymZifferKollaps { from { transform: scale(1); opacity: 1; } to { transform: scale(0); opacity: 0; } }
+@keyframes gymZifferEntsteht { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .gym-ringbox { position: relative; display: grid; place-items: center; }
 .gym-naechst { margin-top: 16px; font-family: var(--f-mono); font-size: 11.5px;
   letter-spacing: .1em; color: var(--ink-3); text-align: center; }
