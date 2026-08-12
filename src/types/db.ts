@@ -81,6 +81,8 @@ export interface LoggedSet {
   done: boolean
   /** Zeitpunkt, zu dem der Haken gesetzt wurde — Grundlage der Übungsdauer. */
   done_at: string | null
+  /** Gehört dieser Satz zu einem laufenden RPE-Block als Wochen-Eintrag. */
+  rpe_block_id: string | null
   created_at: string
 }
 
@@ -92,4 +94,36 @@ export interface TrainingSession {
   started_at: string
   ended_at: string | null
   minutes: number | null
+}
+
+export type RpeBlockStatus = 'active' | 'completed' | 'abandoned'
+
+/** Siehe supabase/migrations/0003_rpe_blocks.sql — eigenständiges Modul für
+    RPE-basierte Blockprogression, unabhängig von der Bank-Progression. */
+export interface RpeBlock {
+  id: string
+  exercise_id: string
+  user_id: string
+  start_date: string
+  planned_weeks: number
+  status: RpeBlockStatus
+  plate: number
+  created_at: string
+}
+
+export interface RpePlannedSet {
+  id: string
+  block_id: string
+  user_id: string
+  week_number: number
+  target_reps: number
+  target_rpe: number
+  target_weight: number | null
+  /** Tatsächlicher Top-Satz dieser Woche — siehe topSatzDerWoche() in
+      src/features/rpeblock/blockAuswertung.ts. Eigene Spalten statt
+      logged_sets, siehe 0004_rpe_block_actuals.sql. */
+  actual_weight: number | null
+  actual_reps: number | null
+  actual_rpe: number | null
+  logged_at: string | null
 }

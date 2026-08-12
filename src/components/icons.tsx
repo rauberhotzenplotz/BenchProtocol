@@ -35,6 +35,9 @@ export function IconGuide() {
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 5.5V20.5M8 8h7M8 12h5" />
   )
 }
+export function IconBlocks() {
+  return <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 20l3-8-3-8" />
+}
 export function IconSettings() {
   return (
     <>
