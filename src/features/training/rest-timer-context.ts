@@ -8,6 +8,11 @@ export interface RestTimerState {
   start: (seconds: number, label: string) => void
   stop: () => void
   addSeconds: (delta: number) => void
+  /** true, solange der Gym-Modus offen ist — die kleine schwebende Leiste
+      blendet sich dann aus, weil der Gym-Modus die Pause großflächig
+      selbst anzeigt. */
+  gymActive: boolean
+  setGymActive: (an: boolean) => void
 }
 
 export const RestTimerContext = createContext<RestTimerState | null>(null)

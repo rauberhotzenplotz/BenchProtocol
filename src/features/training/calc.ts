@@ -45,6 +45,16 @@ export function tagFortschritt(exercises: Exercise[], setsByExercise: Map<string
   }
 }
 
+/** Letztes bekanntes Gewicht/Wdh./RPE einer Übung — wochenübergreifend,
+    nicht nur aus der aktuell angezeigten Woche. Neuere Woche schlägt
+    ältere, innerhalb derselben Woche gewinnt die höhere Position. */
+export function letzterSatz(exerciseId: string, alleSaetze: LoggedSet[], vorWoche?: number): LoggedSet | null {
+  const treffer = alleSaetze
+    .filter(s => s.exercise_id === exerciseId && s.kg != null && (vorWoche == null || s.week <= vorWoche))
+    .sort((a, b) => b.week - a.week || b.position - a.position)
+  return treffer[0] ?? null
+}
+
 export function gruppeSetsByExercise(sets: LoggedSet[]): Map<string, LoggedSet[]> {
   const m = new Map<string, LoggedSet[]>()
   sets.forEach(s => {

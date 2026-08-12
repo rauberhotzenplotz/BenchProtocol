@@ -2,10 +2,10 @@ import { useState, type ChangeEvent } from 'react'
 import { useActivePlan } from '../plans/active-plan-context'
 import { useUpdatePlan } from '../plans/queries'
 import { useBenchProgression, benchRowsFor } from './queries'
-import { useDays } from '../training/queries'
+import { useDays, useSetsForExercises } from '../training/queries'
 import { supabase } from '../../lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
-import { baseE1RM } from './calc'
+import { baseE1RM, blockSchritt, round } from './calc'
 import { ProgressionTable } from './ProgressionTable'
 import { GoalCard } from './GoalCard'
 import { RechnerCard } from './RechnerCard'
@@ -51,11 +51,15 @@ function BenchTab({ plan }: { plan: Plan }) {
   const updatePlan = useUpdatePlan()
   const { data: progression } = useBenchProgression(plan.id)
   const { data: days } = useDays(plan.id)
+  const alleExercises = (days ?? []).flatMap(d => d.exercises)
+  const alleExerciseIds = alleExercises.map(ex => ex.id)
+  const { data: woche3Saetze } = useSetsForExercises(alleExerciseIds, 3)
   const qc = useQueryClient()
   const [schliesstBlock, setSchliesstBlock] = useState(false)
 
   const bsp = !plan.beruehrt
   const e1 = baseE1RM(plan)
+  const schritt = blockSchritt(alleExercises, woche3Saetze ?? [])
 
   const feldGeaendert = (key: 'work' | 'reps' | 'rir' | 'plate') => (e: ChangeEvent<HTMLInputElement>) => {
     const v = parseFloat(e.target.value.replace(',', '.'))
@@ -73,7 +77,7 @@ function BenchTab({ plan }: { plan: Plan }) {
       if (dayIds.length) await supabase.from('sessions').delete().in('day_id', dayIds).lte('week', 4)
       await updatePlan.mutateAsync({
         id: plan.id,
-        patch: { block: (plan.block ?? 1) + 1, work: Math.round(((plan.work ?? 0) + 2.5) * 10) / 10, week: 1 },
+        patch: { block: (plan.block ?? 1) + 1, work: round((plan.work ?? 0) + schritt.delta), week: 1 },
       })
       await qc.invalidateQueries({ queryKey: ['sets'] })
       await qc.invalidateQueries({ queryKey: ['sets-all'] })
@@ -93,12 +97,17 @@ function BenchTab({ plan }: { plan: Plan }) {
           <h2>Bankdrücken</h2>
           <p>Ändere deine Ausgangsdaten — die Kilo-Vorgaben für beide Bank-Einheiten rechnen sofort neu.</p>
         </div>
-        <button className="btn primary" disabled={schliesstBlock} onClick={() => void blockAbschliessen()}>
-          <svg viewBox="0 0 24 24">
-            <path d="M5 12h14M13 6l6 6-6 6" />
-          </svg>
-          Block abschließen
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <button className="btn primary" disabled={schliesstBlock} onClick={() => void blockAbschliessen()}>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+            Block abschließen
+          </button>
+          <span className="muted tiny" style={{ maxWidth: 260, textAlign: 'right' }}>
+            {schritt.begruendung}
+          </span>
+        </div>
       </div>
 
       {bsp && (

@@ -71,7 +71,9 @@ export function useDeleteDay(planId: string | undefined) {
 export function useCreateExercise(planId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (row: Pick<Exercise, 'day_id' | 'name' | 'scheme' | 'rest' | 'note'> & { sort_order: number }) => {
+    mutationFn: async (
+      row: Pick<Exercise, 'day_id' | 'name' | 'scheme' | 'rest' | 'note' | 'bench_slot'> & { sort_order: number }
+    ) => {
       const { data, error } = await supabase.from('exercises').insert(row).select().single()
       if (error) throw error
       return data as Exercise
@@ -155,7 +157,10 @@ export function useUpsertSet() {
       if (error) throw error
       return data as LoggedSet
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sets'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sets'] })
+      qc.invalidateQueries({ queryKey: ['sets-all'] })
+    },
   })
 }
 
@@ -166,7 +171,10 @@ export function useDeleteSet() {
       const { error } = await supabase.from('logged_sets').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sets'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sets'] })
+      qc.invalidateQueries({ queryKey: ['sets-all'] })
+    },
   })
 }
 

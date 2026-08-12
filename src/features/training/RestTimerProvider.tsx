@@ -15,6 +15,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   const [endAt, setEndAt] = useState<number | null>(null)
   const [totalSeconds, setTotalSeconds] = useState(0)
   const [secondsLeft, setSecondsLeft] = useState(0)
+  const [gymActive, setGymActive] = useState(false)
   const gepiept = useRef(false)
 
   useEffect(() => {
@@ -29,7 +30,10 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     if (gepiept.current) return
     gepiept.current = true
     if (navigator.vibrate) navigator.vibrate([200, 100, 200])
-    const weg = setTimeout(() => setEndAt(null), 4000)
+    const weg = setTimeout(() => {
+      setEndAt(null)
+      setLabel(null)
+    }, 4000)
     return () => clearTimeout(weg)
   }, [secondsLeft, endAt])
 
@@ -49,8 +53,11 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
         stop: () => {
           setEndAt(null)
           setSecondsLeft(0)
+          setLabel(null)
         },
         addSeconds: delta => setEndAt(e => (e == null ? e : e + delta * 1000)),
+        gymActive,
+        setGymActive,
       }}
     >
       {children}

@@ -7,8 +7,8 @@ function zeitText(s: number): string {
 }
 
 export function RestTimerBar() {
-  const { label, secondsLeft, totalSeconds, stop, addSeconds } = useRestTimer()
-  if (label == null) return null
+  const { label, secondsLeft, totalSeconds, stop, addSeconds, gymActive } = useRestTimer()
+  if (label == null || gymActive) return null
 
   const fertig = secondsLeft <= 0
   const anteil = totalSeconds > 0 ? Math.max(0, Math.min(1, secondsLeft / totalSeconds)) : 0

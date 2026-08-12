@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
+import type { BenchSlot, Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import {
   useCreateExercise,
@@ -21,11 +21,12 @@ interface Props {
   day: DayWithExercises
   week: number
   setsByExercise: Map<string, LoggedSet[]>
+  alleSaetzeJemals: LoggedSet[]
   session: TrainingSession | null | undefined
   onBack: () => void
 }
 
-export function SessionView({ plan, day, week, setsByExercise, session, onBack }: Props) {
+export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals, session, onBack }: Props) {
   const startSession = useStartSession()
   const endSession = useEndSession()
   const createExercise = useCreateExercise(plan.id)
@@ -106,6 +107,7 @@ export function SessionView({ plan, day, week, setsByExercise, session, onBack }
           <ExerciseBlock
             key={ex.id}
             planId={plan.id}
+            planTyp={plan.typ}
             exercise={ex}
             sets={setsByExercise.get(ex.id) ?? []}
             week={week}
@@ -117,6 +119,7 @@ export function SessionView({ plan, day, week, setsByExercise, session, onBack }
       <div style={{ marginTop: 14 }}>
         {neueUebung ? (
           <NeueUebungForm
+            planTyp={plan.typ}
             onAbbrechen={() => setNeueUebung(false)}
             onAnlegen={async werte => {
               await createExercise.mutateAsync({
@@ -138,22 +141,32 @@ export function SessionView({ plan, day, week, setsByExercise, session, onBack }
       </div>
 
       {gymOffen && day.exercises.length > 0 && (
-        <GymMode day={day} week={week} setsByExercise={setsByExercise} onClose={() => setGymOffen(false)} />
+        <GymMode
+          plan={plan}
+          day={day}
+          week={week}
+          setsByExercise={setsByExercise}
+          alleSaetzeJemals={alleSaetzeJemals}
+          onClose={() => setGymOffen(false)}
+        />
       )}
     </section>
   )
 }
 
 function NeueUebungForm({
+  planTyp,
   onAnlegen,
   onAbbrechen,
 }: {
-  onAnlegen: (w: { name: string; scheme: string; rest: string; note: string }) => Promise<void>
+  planTyp: Plan['typ']
+  onAnlegen: (w: { name: string; scheme: string; rest: string; note: string; bench_slot: BenchSlot | null }) => Promise<void>
   onAbbrechen: () => void
 }) {
   const [name, setName] = useState('')
   const [scheme, setScheme] = useState('3 × 10')
   const [rest, setRest] = useState('2 min')
+  const [benchSlot, setBenchSlot] = useState<BenchSlot | null>(null)
 
   return (
     <div className="card">
@@ -172,6 +185,34 @@ function NeueUebungForm({
             <input className="inp mono" value={rest} onChange={e => setRest(e.target.value)} />
           </div>
         </div>
+        {planTyp === 'bench' && (
+          <div className="field">
+            <label>Bank-Zuordnung</label>
+            <div className="row" style={{ gap: 6 }}>
+              <button
+                type="button"
+                className={'chip' + (benchSlot === null ? ' neon' : ' mute')}
+                onClick={() => setBenchSlot(null)}
+              >
+                Keine
+              </button>
+              <button
+                type="button"
+                className={'chip' + (benchSlot === 'd1' ? ' neon' : ' mute')}
+                onClick={() => setBenchSlot('d1')}
+              >
+                Bankdrücken schwer
+              </button>
+              <button
+                type="button"
+                className={'chip' + (benchSlot === 'd3' ? ' neon' : ' mute')}
+                onClick={() => setBenchSlot('d3')}
+              >
+                Bankdrücken Pause
+              </button>
+            </div>
+          </div>
+        )}
         <div className="row" style={{ gap: 8 }}>
           <button className="btn ghost sm" onClick={onAbbrechen}>
             Abbrechen
@@ -179,7 +220,7 @@ function NeueUebungForm({
           <button
             className="btn primary sm"
             disabled={!name.trim()}
-            onClick={() => void onAnlegen({ name: name.trim(), scheme, rest, note: '' })}
+            onClick={() => void onAnlegen({ name: name.trim(), scheme, rest, note: '', bench_slot: benchSlot })}
           >
             Anlegen
           </button>
@@ -191,12 +232,14 @@ function NeueUebungForm({
 
 function ExerciseBlock({
   planId,
+  planTyp,
   exercise,
   sets,
   week,
   laeuft,
 }: {
   planId: string
+  planTyp: Plan['typ']
   exercise: Exercise
   sets: LoggedSet[]
   week: number
@@ -313,6 +356,32 @@ function ExerciseBlock({
               style={{ maxWidth: 220 }}
             />
           </div>
+          {planTyp === 'bench' && (
+            <div className="row" style={{ gap: 6, marginTop: 8 }}>
+              <span className="muted tiny">Bank-Zuordnung (Aufwärmsätze im Gym-Modus):</span>
+              <button
+                type="button"
+                className={'chip' + (exercise.bench_slot === null ? ' neon' : ' mute')}
+                onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: null } })}
+              >
+                Keine
+              </button>
+              <button
+                type="button"
+                className={'chip' + (exercise.bench_slot === 'd1' ? ' neon' : ' mute')}
+                onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: 'd1' } })}
+              >
+                Schwer
+              </button>
+              <button
+                type="button"
+                className={'chip' + (exercise.bench_slot === 'd3' ? ' neon' : ' mute')}
+                onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: 'd3' } })}
+              >
+                Pause
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

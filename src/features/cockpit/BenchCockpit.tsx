@@ -77,9 +77,13 @@ export function BenchCockpit({ plan, days, week, setsByExercise, sessions }: Pro
           </h3>
           <ul style={{ margin: 0, paddingLeft: 17, color: 'var(--ink-2)', fontSize: 12.8, display: 'flex', flexDirection: 'column', gap: 9 }}>
             <li>
-              Erhöhe das Arbeitsgewicht um <strong style={{ color: 'var(--neon)' }}>2,5 kg</strong> und starte den Block erneut.
+              Schaffst du Woche 3 planmäßig, steigt das Arbeitsgewicht um <strong style={{ color: 'var(--neon)' }}>2,5 kg</strong>.
             </li>
-            <li>Schaffst du Woche 3 nicht in allen Sätzen, wiederhole den Block mit unverändertem Ausgangsgewicht.</li>
+            <li>
+              Läuft Woche 3 mit deutlich mehr Reserve als geplant (Ø RPE ≤ 6,5), steigt es stattdessen um{' '}
+              <strong style={{ color: 'var(--neon)' }}>5 kg</strong>.
+            </li>
+            <li>Schaffst du Woche 3 nicht in allen Sätzen, wiederholt sich der Block mit unverändertem Ausgangsgewicht.</li>
           </ul>
         </div>
       </div>
