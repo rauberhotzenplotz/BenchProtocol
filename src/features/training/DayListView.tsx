@@ -1,6 +1,6 @@
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
-import { useCreateDay } from './queries'
+import { useCreateDay, useSkipSession } from './queries'
 import { tagFortschritt, gruppeSetsByExercise, wochenLabel } from './calc'
 import { WeekControl } from './WeekControl'
 import { PlanPicker } from '../plans/PlanPicker'
@@ -20,6 +20,7 @@ interface Props {
 export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJemals, alleSaetzeJemals, onOpen }: Props) {
   const setsByExercise = gruppeSetsByExercise(alleSaetze)
   const createDay = useCreateDay(plan.id)
+  const skipSession = useSkipSession()
 
   const gesamt = days.reduce(
     (a, d) => {
@@ -45,10 +46,18 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
         {days.map((d, i) => {
           const f = tagFortschritt(d.exercises, setsByExercise)
           const laeuft = sessions.some(s => s.day_id === d.id && !s.ended_at)
-          const rec = sessions.find(s => s.day_id === d.id && s.ended_at)
+          const rec = sessions.find(s => s.day_id === d.id && s.ended_at && s.status === 'completed')
+          const uebersprungen = sessions.some(s => s.day_id === d.id && s.status === 'skipped')
           const begonnen = laeuft || f.erledigt > 0 || !!rec
           return (
-            <button key={d.id} className={'tagkarte' + (f.fertig ? ' fertig' : '')} onClick={() => onOpen(d.id)}>
+            <div
+              key={d.id}
+              className={'tagkarte' + (f.fertig ? ' fertig' : '')}
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpen(d.id)}
+              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpen(d.id)}
+            >
               <div className="tnr">Tag {i + 1}</div>
               <h4>{d.name}</h4>
               <div className="tsub">{d.sub}</div>
@@ -57,31 +66,50 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
                 <span>·</span>
                 <span>{f.geplant} Sätze</span>
               </div>
-              {begonnen && (
-                <>
-                  <div className="tbalken">
-                    <div className="tfill" style={{ width: `${(f.anteil * 100).toFixed(0)}%` }} />
-                  </div>
-                  <div className="tzeile">
-                    {laeuft ? (
-                      <span className="chip neon">läuft gerade</span>
-                    ) : f.fertig ? (
-                      <span className="chip ok">fertig{rec?.minutes ? ` · ${rec.minutes} min` : ''}</span>
-                    ) : (
-                      <span className="chip">
-                        {f.erledigt} von {f.geplant} Sätzen
-                      </span>
-                    )}
-                  </div>
-                </>
+              {uebersprungen && !begonnen ? (
+                <div className="tzeile">
+                  <span className="chip mute">übersprungen</span>
+                </div>
+              ) : (
+                begonnen && (
+                  <>
+                    <div className="tbalken">
+                      <div className="tfill" style={{ width: `${(f.anteil * 100).toFixed(0)}%` }} />
+                    </div>
+                    <div className="tzeile">
+                      {laeuft ? (
+                        <span className="chip neon">läuft gerade</span>
+                      ) : f.fertig ? (
+                        <span className="chip ok">fertig{rec?.minutes ? ` · ${rec.minutes} min` : ''}</span>
+                      ) : (
+                        <span className="chip">
+                          {f.erledigt} von {f.geplant} Sätzen
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )
               )}
-              <div className="tstart">
-                {laeuft ? 'Weiter trainieren' : begonnen ? 'Einheit öffnen' : 'Training starten'}
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
+              <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                <div className="tstart" style={{ flex: 1 }}>
+                  {laeuft ? 'Weiter trainieren' : begonnen ? 'Einheit öffnen' : uebersprungen ? 'Doch noch trainieren' : 'Training starten'}
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </div>
+                {!begonnen && !uebersprungen && (
+                  <button
+                    className="btn sm ghost"
+                    onClick={e => {
+                      e.stopPropagation()
+                      skipSession.mutate({ dayId: d.id, week: plan.week })
+                    }}
+                  >
+                    Überspringen
+                  </button>
+                )}
               </div>
-            </button>
+            </div>
           )
         })}
         <button

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
+import { useDeleteSession } from './queries'
 import { tonnageOf, uebungsDauer, dauerKurz, wochenLabel } from './calc'
 import { cssVars } from '../../lib/style'
 
@@ -168,6 +169,8 @@ function TagDetail({
     month: 'long',
     year: 'numeric',
   })
+  const deleteSession = useDeleteSession()
+  const [loeschenId, setLoeschenId] = useState<string | null>(null)
 
   return (
     <div>
@@ -191,12 +194,35 @@ function TagDetail({
 
           return (
             <div key={session.id} className="card" style={{ padding: 14 }}>
-              <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+              <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span className="chip neon">{tag.name}</span>
                 <span className="chip mute">{wochenLabel(session.week, plan)}</span>
                 {session.minutes && <span className="chip mute">{session.minutes} min</span>}
                 <span className="chip mute">{uebungenMitSaetzen.length} Übungen</span>
                 {gesamtTonnage > 0 && <span className="chip mute">{Math.round(gesamtTonnage)} kg bewegt</span>}
+                <span className="spacer" />
+                {loeschenId === session.id ? (
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn ghost sm" onClick={() => setLoeschenId(null)}>
+                      Abbrechen
+                    </button>
+                    <button
+                      className="btn sm danger"
+                      onClick={() => {
+                        deleteSession.mutate({ sessionId: session.id, week: session.week, exerciseIds: tag.exercises.map(ex => ex.id) })
+                        setLoeschenId(null)
+                      }}
+                    >
+                      Löschen
+                    </button>
+                  </div>
+                ) : (
+                  <button className="rowbtn del" title="Einheit löschen" onClick={() => setLoeschenId(session.id)}>
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
               {uebungenMitSaetzen.length === 0 ? (

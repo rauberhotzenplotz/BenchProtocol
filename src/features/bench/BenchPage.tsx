@@ -1,11 +1,8 @@
-import { useState, type ChangeEvent } from 'react'
+import type { ChangeEvent } from 'react'
 import { useActivePlan } from '../plans/active-plan-context'
 import { useUpdatePlan } from '../plans/queries'
 import { useBenchProgression, benchRowsFor } from './queries'
-import { useDays, useSetsForExercises } from '../training/queries'
-import { supabase } from '../../lib/supabase'
-import { useQueryClient } from '@tanstack/react-query'
-import { baseE1RM, blockSchritt, round } from './calc'
+import { baseE1RM } from './calc'
 import { ProgressionTable } from './ProgressionTable'
 import { GoalCard } from './GoalCard'
 import { RechnerCard } from './RechnerCard'
@@ -50,43 +47,14 @@ export function BenchPage() {
 function BenchTab({ plan }: { plan: Plan }) {
   const updatePlan = useUpdatePlan()
   const { data: progression } = useBenchProgression(plan.id)
-  const { data: days } = useDays(plan.id)
-  const alleExercises = (days ?? []).flatMap(d => d.exercises)
-  const alleExerciseIds = alleExercises.map(ex => ex.id)
-  const { data: woche3Saetze } = useSetsForExercises(alleExerciseIds, 3)
-  const qc = useQueryClient()
-  const [schliesstBlock, setSchliesstBlock] = useState(false)
 
   const bsp = !plan.beruehrt
   const e1 = baseE1RM(plan)
-  const schritt = blockSchritt(alleExercises, woche3Saetze ?? [])
 
-  const feldGeaendert = (key: 'work' | 'reps' | 'rir' | 'plate') => (e: ChangeEvent<HTMLInputElement>) => {
+  const feldGeaendert = (key: 'work' | 'reps' | 'rpe' | 'plate') => (e: ChangeEvent<HTMLInputElement>) => {
     const v = parseFloat(e.target.value.replace(',', '.'))
     if (isNaN(v) || v <= 0) return
     updatePlan.mutate({ id: plan.id, patch: { [key]: v, beruehrt: true } })
-  }
-
-  const blockAbschliessen = async () => {
-    if (!days) return
-    setSchliesstBlock(true)
-    try {
-      const exerciseIds = days.flatMap(d => d.exercises.map(ex => ex.id))
-      const dayIds = days.map(d => d.id)
-      if (exerciseIds.length) await supabase.from('logged_sets').delete().in('exercise_id', exerciseIds).lte('week', 4)
-      if (dayIds.length) await supabase.from('sessions').delete().in('day_id', dayIds).lte('week', 4)
-      await updatePlan.mutateAsync({
-        id: plan.id,
-        patch: { block: (plan.block ?? 1) + 1, work: round((plan.work ?? 0) + schritt.delta), week: 1 },
-      })
-      await qc.invalidateQueries({ queryKey: ['sets'] })
-      await qc.invalidateQueries({ queryKey: ['sets-all'] })
-      await qc.invalidateQueries({ queryKey: ['session'] })
-      await qc.invalidateQueries({ queryKey: ['sessions'] })
-      await qc.invalidateQueries({ queryKey: ['sessions-all'] })
-    } finally {
-      setSchliesstBlock(false)
-    }
   }
 
   return (
@@ -97,18 +65,13 @@ function BenchTab({ plan }: { plan: Plan }) {
           <h2>Bankdrücken</h2>
           <p>Ändere deine Ausgangsdaten — die Kilo-Vorgaben für beide Bank-Einheiten rechnen sofort neu.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <button className="btn primary" disabled={schliesstBlock} onClick={() => void blockAbschliessen()}>
-            <svg viewBox="0 0 24 24">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-            Block abschließen
-          </button>
-          <span className="muted tiny" style={{ maxWidth: 260, textAlign: 'right' }}>
-            {schritt.begruendung}
-          </span>
-        </div>
       </div>
+
+      {plan.last_delta_note && (
+        <div className="note" style={cssVars({ '--i': 1 })}>
+          <strong>Letzter automatischer Blockwechsel:</strong> {plan.last_delta_note}
+        </div>
+      )}
 
       {bsp && (
         <div className="note" style={cssVars({ '--i': 1 })}>
@@ -116,6 +79,11 @@ function BenchTab({ plan }: { plan: Plan }) {
           Block mit deinen Zahlen.
         </div>
       )}
+
+      <div className="note" style={cssVars({ '--i': 1 })}>
+        Der nächste Block wird automatisch berechnet, sobald du die Deload-Woche komplett abhakst und die letzte
+        Einheit beendest — kein manueller Abschluss mehr nötig.
+      </div>
 
       <GoalCard plan={plan} />
 
@@ -137,8 +105,8 @@ function BenchTab({ plan }: { plan: Plan }) {
                 <input className="inp big" defaultValue={plan.reps ?? ''} onBlur={feldGeaendert('reps')} inputMode="numeric" />
               </div>
               <div className="field">
-                <label>Wdh in Reserve</label>
-                <input className="inp big" defaultValue={plan.rir ?? ''} onBlur={feldGeaendert('rir')} inputMode="numeric" />
+                <label>RPE</label>
+                <input className="inp big" defaultValue={plan.rpe ?? ''} onBlur={feldGeaendert('rpe')} inputMode="decimal" placeholder="6–10" />
               </div>
             </div>
             <div className="field">
@@ -164,7 +132,9 @@ function BenchTab({ plan }: { plan: Plan }) {
                 <span style={{ fontSize: 16, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}> kg</span>
               </div>
               <p className="muted tiny" style={{ margin: '5px 0 0' }}>
-                Epley: {plan.work ?? 0} × (1 + ({plan.reps ?? 0} + {plan.rir ?? 0}) / 30)
+                {plan.rpe != null
+                  ? `RPE-Tabelle: ${plan.work ?? 0} kg × ${plan.reps ?? 0} Wdh. @ RPE ${plan.rpe}`
+                  : `Epley: ${plan.work ?? 0} × (1 + (${plan.reps ?? 0} + ${plan.rir ?? 0}) / 30)`}
               </p>
             </div>
           </div>

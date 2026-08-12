@@ -1,5 +1,6 @@
 import type { BenchProgressionRow, Exercise, LoggedSet, Plan } from '../../types/db'
-import { setsOf } from '../training/calc'
+import { geschaetztes1RM } from '../rpeblock/e1rm'
+import { topSatzDerWoche, blockAuswertung, empfehlung, type WochenEintrag } from '../rpeblock/blockAuswertung'
 
 /** Epley — identisch zur Formel aus der alten App. */
 export function e1rm(kg: number, reps: number): number {
@@ -18,10 +19,17 @@ export function round(n: number, d = 1): number {
   return Math.round(n * 10 ** d) / 10 ** d
 }
 
-/** Geschätztes 1RM aus den Ausgangsdaten eines Bankfokus-Plans. */
+/** Geschätztes 1RM aus den Ausgangsdaten eines Bankfokus-Plans. Ist ein
+    Testsatz mit RPE hinterlegt (plan.rpe), kommt die genauere RPE-Tabelle
+    zum Einsatz (siehe rpeblock/e1rm.ts) — sonst Epley-Fallback für Pläne,
+    die ihre Ausgangsdaten noch vor der Umstellung eingetragen haben. */
 export function baseE1RM(plan: Plan): number {
   const work = plan.work ?? 0
   const reps = plan.reps ?? 0
+  if (plan.rpe != null && work > 0 && reps > 0) {
+    const wert = geschaetztes1RM(work, reps, plan.rpe)
+    if (wert != null) return round(wert, 1)
+  }
   const rir = plan.rir ?? 0
   return round(work * (1 + (reps + rir) / 30), 1)
 }
@@ -31,44 +39,46 @@ export function benchLoad(plan: Plan, row: BenchProgressionRow): number {
   return mround(baseE1RM(plan) * (row.pct ?? 0), plate)
 }
 
-export interface BlockSchritt {
-  delta: number
+/** Ziel-RPE je Woche, wie in den Progressions-Hinweisen aus
+    bench/queries.ts (DEFAULT_ROWS) beschrieben — dort nur als Text
+    ("RPE 7", "RPE 8–9" …) hinterlegt, hier als Zahl für die
+    Drift-Berechnung. */
+const GEPLANTE_RPE: Record<number, number> = { 1: 7, 2: 8, 3: 8.5 }
+
+export interface BlockErgebnis {
+  /** null = keine "Bank schwer"-Übung oder keine auswertbaren Daten —
+      das bisherige 1RM des Plans bleibt unangetastet. */
+  neuesE1rm: number | null
   begruendung: string
 }
 
-/** Wie viel das Arbeitsgewicht beim Blockabschluss steigt — abgeleitet aus
-    den tatsächlich geloggten Sätzen von Woche 3, nicht aus einem festen
-    Schritt: nicht alle Sätze geschafft → Gewicht bleibt gleich; planmäßig
-    geschafft → 2,5 kg; mit deutlich mehr Reserve geschafft (Ø RPE der
-    erledigten Sätze ≤ 6,5, also spürbar unter dem für Woche 3 vorgesehenen
-    RPE 8–9) → 5 kg. */
-export function blockSchritt(exercises: Exercise[], woche3Saetze: LoggedSet[]): BlockSchritt {
-  const bankUebungen = exercises.filter(ex => ex.bench_slot != null)
-  if (bankUebungen.length === 0) {
-    return { delta: 2.5, begruendung: 'Keine Bankdrücken-Übung mit Woche-3-Daten verknüpft — Standardschritt von 2,5 kg.' }
+/** Automatische Blockprogression aus den tatsächlich geloggten Wochen 1–3
+    der "Bank schwer"-Übung (Top-Satz je Woche, RPE-Tabelle) — ersetzt die
+    frühere feste 0/2,5/5-kg-Sprung-Heuristik. PROGRESS/ADD_STIMULUS
+    übernehmen das gemessene Bestwert-1RM; bei REDUCE_FATIGUE (RPE-Drift
+    zu hoch) oder INSUFFICIENT_DATA (nicht alle drei Wochen sauber
+    geloggt) bleibt das 1RM beim Blockstart stehen, kein Sprung ins Blaue. */
+export function naechstesE1rm(exercises: Exercise[], wochenSaetze: LoggedSet[]): BlockErgebnis {
+  const bankUebung = exercises.find(ex => ex.bench_slot === 'd1')
+  if (!bankUebung) {
+    return { neuesE1rm: null, begruendung: 'Keine als „Bank schwer“ markierte Übung im Plan gefunden — Ausgangsgewicht bleibt unverändert.' }
   }
 
-  const geplant = bankUebungen.reduce((a, ex) => a + setsOf(ex.scheme), 0)
-  const uebungIds = new Set(bankUebungen.map(ex => ex.id))
-  const relevanteSaetze = woche3Saetze.filter(s => uebungIds.has(s.exercise_id))
-  const erledigt = relevanteSaetze.filter(s => s.done).length
+  const wochen: WochenEintrag[] = [1, 2, 3].map(woche => ({
+    woche,
+    topSatz: topSatzDerWoche(
+      wochenSaetze
+        .filter(s => s.exercise_id === bankUebung.id && s.week === woche)
+        .map(s => ({ gewicht: s.kg ?? 0, wdh: s.reps ?? 0, rpe: s.rpe })),
+    ),
+    geplanterRpe: GEPLANTE_RPE[woche] ?? null,
+  }))
 
-  if (geplant > 0 && erledigt < geplant) {
-    return {
-      delta: 0,
-      begruendung: `Woche 3 nicht in allen Sätzen geschafft (${erledigt}/${geplant}) — Ausgangsgewicht bleibt unverändert.`,
-    }
+  const auswertung = blockAuswertung(wochen)
+  const empf = empfehlung(auswertung)
+
+  if (empf.typ === 'PROGRESS' || empf.typ === 'ADD_STIMULUS') {
+    return { neuesE1rm: auswertung.blockBestE1RM, begruendung: empf.begruendung }
   }
-
-  const rpeWerte = relevanteSaetze.filter(s => s.done && s.rpe != null).map(s => s.rpe as number)
-  const rpeSchnitt = rpeWerte.length ? rpeWerte.reduce((a, b) => a + b, 0) / rpeWerte.length : null
-
-  if (rpeSchnitt != null && rpeSchnitt <= 6.5) {
-    return {
-      delta: 5,
-      begruendung: `Woche 3 mit deutlich mehr Reserve geschafft (Ø RPE ${round(rpeSchnitt, 1)}) — größerer Sprung von 5 kg.`,
-    }
-  }
-
-  return { delta: 2.5, begruendung: 'Woche 3 planmäßig geschafft — Standardschritt von 2,5 kg.' }
+  return { neuesE1rm: auswertung.blockStartE1RM, begruendung: empf.begruendung }
 }

@@ -14,6 +14,8 @@ import { setsOf, tonnageOf, wochenLabel } from './calc'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
 import { GymMode } from './GymMode'
+import { DeloadBanner } from './DeloadBanner'
+import { useAutoAdvanceBlock } from '../bench/queries'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -30,7 +32,14 @@ interface Props {
 export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, session, onBack }: Props) {
   const startSession = useStartSession()
   const endSession = useEndSession()
+  const autoAdvanceBlock = useAutoAdvanceBlock()
   const createExercise = useCreateExercise(plan.id)
+
+  const beenden = async () => {
+    if (!session) return
+    await endSession.mutateAsync({ id: session.id, startedAt: session.started_at })
+    if (plan.typ === 'bench') autoAdvanceBlock.mutate(plan.id)
+  }
 
   const laeuft = !!session && !session.ended_at
   const [neueUebung, setNeueUebung] = useState(false)
@@ -42,6 +51,8 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
 
   return (
     <section className="view on frisch">
+      {!laeuft && <DeloadBanner plan={plan} />}
+
       <div className="ekopf" style={cssVars({ '--i': 0 })}>
         <button className="zurueck" onClick={onBack}>
           <svg viewBox="0 0 24 24">
@@ -89,10 +100,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
                 Gym
               </button>
             )}
-            <button
-              className="btn"
-              onClick={() => session && void endSession.mutateAsync({ id: session.id, startedAt: session.started_at })}
-            >
+            <button className="btn" onClick={() => void beenden()}>
               Beenden
             </button>
           </>
@@ -149,6 +157,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
           setsByExercise={setsByExercise}
           alleSaetzeJemals={alleSaetzeJemals}
           alleSaetzeJemalsBereit={alleSaetzeJemalsBereit}
+          session={session}
           onClose={() => setGymOffen(false)}
         />
       )}

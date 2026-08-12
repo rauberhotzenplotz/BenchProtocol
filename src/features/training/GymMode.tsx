@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import type { Exercise, LoggedSet, Plan } from '../../types/db'
+import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
-import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken } from './calc'
+import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken, tonnageOf } from './calc'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
-import { useUpsertSet } from './queries'
-import { useBenchProgression, benchRowsFor } from '../bench/queries'
+import { useUpsertSet, useEndSession } from './queries'
+import { useBenchProgression, benchRowsFor, useAutoAdvanceBlock } from '../bench/queries'
 import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
 
@@ -21,16 +21,20 @@ interface Props {
   setsByExercise: Map<string, LoggedSet[]>
   alleSaetzeJemals: LoggedSet[]
   alleSaetzeJemalsBereit: boolean
+  session: TrainingSession | null | undefined
   onClose: () => void
 }
 
-export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, onClose }: Props) {
+export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, session, onClose }: Props) {
   const upsertSet = useUpsertSet()
+  const endSession = useEndSession()
+  const autoAdvanceBlock = useAutoAdvanceBlock()
   const restTimer = useRestTimer()
   const { data: progression } = useBenchProgression(plan.id)
   const [uebIdx, setUebIdx] = useState(0)
   const [satzIdx, setSatzIdx] = useState(0)
   const [aufgewaermt, setAufgewaermt] = useState<Set<string>>(new Set())
+  const [fertig, setFertig] = useState(false)
 
   // Solange der Gym-Modus offen ist, übernimmt er selbst die große
   // Pausenanzeige — die kleine schwebende Leiste bleibt aus.
@@ -89,6 +93,8 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   const bisHierGeplant = uebungen.slice(0, uebIdx).reduce((a, ex) => a + sollFuer(ex), 0) + satzIdx
   const anteil = gesamtGeplant ? Math.min(1, bisHierGeplant / gesamtGeplant) : 0
 
+  const istLetzterSatz = satzIdx + 1 >= soll && uebIdx + 1 >= uebungen.length
+
   const naechster = () => {
     if (satzIdx + 1 < soll) {
       setSatzIdx(satzIdx + 1)
@@ -96,7 +102,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       setUebIdx(uebIdx + 1)
       setSatzIdx(0)
     } else {
-      onClose()
+      setFertig(true)
     }
   }
 
@@ -111,12 +117,63 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       done: true,
       done_at: new Date().toISOString(),
     })
-    const sek = pauseSekunden(exercise.rest)
-    if (autoPauseAn() && sek > 0) restTimer.start(sek, exercise.name)
+    // Vor dem letzten Satz keine Pause mehr anstoßen — danach kommt ohnehin
+    // die Abschluss-Übersicht, nicht die nächste Übung.
+    if (!istLetzterSatz) {
+      const sek = pauseSekunden(exercise.rest)
+      if (autoPauseAn() && sek > 0) restTimer.start(sek, exercise.name)
+    }
     naechster()
   }
 
+  const beenden = () => {
+    if (session) endSession.mutate({ id: session.id, startedAt: session.started_at })
+    if (plan.typ === 'bench') autoAdvanceBlock.mutate(plan.id)
+    onClose()
+  }
+
   const plate = plan.plate ?? 2.5
+
+  // Letzter Satz erledigt: kurze Übersicht statt direkt zu schließen —
+  // von hier aus wahlweise die Einheit auch gleich beenden.
+  if (fertig) {
+    // Nicht tagFortschritt() — die zählt Sätze über das statische Schema
+    // der Übung, hier soll dieselbe (ggf. Progressions-abhängige) Anzahl
+    // gelten, die der Gym-Modus selbst schon für "soll" verwendet hat.
+    const geplant = uebungen.reduce((a, ex) => a + sollFuer(ex), 0)
+    const erledigt = uebungen.reduce((a, ex) => a + (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length, 0)
+    const tonnage = uebungen.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
+    return (
+      <div className="gym">
+        <button className="gym-zu" onClick={onClose} aria-label="Gym-Modus verlassen">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+        <div className="gym-inhalt">
+          <div className="gym-fertig">
+            <div className="gym-fhaken">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 12.5 9.5 18 20 6.5" />
+              </svg>
+            </div>
+            <div className="gym-ftitel">Training fertig</div>
+            <p className="muted tiny" style={{ marginTop: 10 }}>
+              {erledigt} von {geplant} Sätzen · {Math.round(tonnage)} kg bewegt
+            </p>
+          </div>
+          <div className="gym-tasten zwei">
+            <button className="gym-taste grau" onClick={onClose}>
+              Weiter im Training
+            </button>
+            <button className="gym-taste ok" onClick={beenden}>
+              Training beenden
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Pause: solange ein Timer läuft (oder gerade fertig ist und noch
   // ausgeblendet wird), zeigt der Gym-Modus großflächig denselben Ring wie

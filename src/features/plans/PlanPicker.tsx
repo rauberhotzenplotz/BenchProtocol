@@ -33,6 +33,9 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
 
   const [neuerTyp, setNeuerTyp] = useState<PlanTyp | null>(null)
   const [name, setName] = useState('')
+  const [testGewicht, setTestGewicht] = useState('')
+  const [testWdh, setTestWdh] = useState('')
+  const [testRpe, setTestRpe] = useState('')
   const [umbenennenId, setUmbenennenId] = useState<string | null>(null)
   const [umbenennenName, setUmbenennenName] = useState('')
   const [loeschenId, setLoeschenId] = useState<string | null>(null)
@@ -40,9 +43,20 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
   const anlegen = async () => {
     const trimmed = name.trim()
     if (!trimmed || !neuerTyp) return
-    const plan = await createPlan.mutateAsync({ name: trimmed, typ: neuerTyp })
+    const testsatz =
+      neuerTyp === 'bench' && testGewicht.trim() && testWdh.trim() && testRpe.trim()
+        ? {
+            work: parseFloat(testGewicht.replace(',', '.')),
+            reps: parseInt(testWdh, 10),
+            rpe: parseFloat(testRpe.replace(',', '.')),
+          }
+        : undefined
+    const plan = await createPlan.mutateAsync({ name: trimmed, typ: neuerTyp, testsatz })
     setActivePlanId(plan.id)
     setName('')
+    setTestGewicht('')
+    setTestWdh('')
+    setTestRpe('')
     setNeuerTyp(null)
   }
 
@@ -179,6 +193,44 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
                 onChange={e => setName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && void anlegen()}
               />
+            </div>
+
+            {neuerTyp === 'bench' && (
+              <div style={{ marginTop: 10 }}>
+                <label className="mono tiny muted" style={{ letterSpacing: '.05em' }}>
+                  Testsatz für ein genaues Start-1RM (optional)
+                </label>
+                <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                  <input
+                    className="inp mono"
+                    placeholder="kg"
+                    inputMode="decimal"
+                    value={testGewicht}
+                    onChange={e => setTestGewicht(e.target.value)}
+                    style={{ maxWidth: 90 }}
+                  />
+                  <input
+                    className="inp mono"
+                    placeholder="Wdh"
+                    inputMode="numeric"
+                    value={testWdh}
+                    onChange={e => setTestWdh(e.target.value)}
+                    style={{ maxWidth: 70 }}
+                  />
+                  <input
+                    className="inp mono"
+                    placeholder="RPE"
+                    inputMode="decimal"
+                    value={testRpe}
+                    onChange={e => setTestRpe(e.target.value)}
+                    style={{ maxWidth: 70 }}
+                  />
+                </div>
+                <small className="muted tiny">Ohne Angabe startest du mit Beispielwerten — trägst du sie später im Bank-Tab nach.</small>
+              </div>
+            )}
+
+            <div className="row end" style={{ marginTop: 10 }}>
               <button className="btn sm primary" onClick={() => void anlegen()}>
                 Anlegen
               </button>

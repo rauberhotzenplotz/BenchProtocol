@@ -22,6 +22,10 @@ export interface Plan {
   goal: number | null
   goal_from: number | null
   beruehrt: boolean
+  /** Gesetzt → baseE1RM() nutzt die RPE-Tabelle statt Epley (rir). */
+  rpe: number | null
+  /** Begründung des letzten automatischen Blockabschlusses. */
+  last_delta_note: string | null
   created_at: string
   updated_at: string
 }
@@ -86,6 +90,8 @@ export interface LoggedSet {
   created_at: string
 }
 
+export type SessionStatus = 'completed' | 'skipped'
+
 export interface TrainingSession {
   id: string
   day_id: string
@@ -94,6 +100,7 @@ export interface TrainingSession {
   started_at: string
   ended_at: string | null
   minutes: number | null
+  status: SessionStatus
 }
 
 export type RpeBlockStatus = 'active' | 'completed' | 'abandoned'

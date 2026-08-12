@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import type { BenchProgressionRow, BenchSlot } from '../../types/db'
+import type { BenchProgressionRow, BenchSlot, Exercise } from '../../types/db'
+import { setsOf } from '../training/calc'
+import { naechstesE1rm, round } from './calc'
+import { zielgewicht } from '../rpeblock/e1rm'
 
 const DEFAULT_ROWS: Omit<BenchProgressionRow, 'id' | 'plan_id' | 'user_id'>[] = [
   { slot: 'd1', week: 1, scheme: '4 × 5', pct: 0.78, hint: 'RPE 7 — zwei bis drei Wdh. in Reserve' },
@@ -49,4 +52,89 @@ export function useUpdateBenchProgressionRow(planId: string | undefined) {
 
 export function benchRowsFor(rows: BenchProgressionRow[], slot: BenchSlot) {
   return rows.filter(r => r.slot === slot).sort((a, b) => a.week - b.week)
+}
+
+/** Referenz-Wiederholungen/RPE, auf die das neue 1RM nach einem
+    automatischen Blockabschluss zurückgerechnet wird (plans.work/reps/rpe
+    bilden gemeinsam den "Testsatz", aus dem baseE1RM() das 1RM wieder
+    herleitet — siehe bench/calc.ts). */
+const REFERENZ_WDH = 5
+const REFERENZ_RPE = 8
+
+/** Prüft nach dem Beenden einer Einheit, ob ein Bankfokus-Block automatisch
+    abgeschlossen werden kann: nur in der Deload-Woche (4) und nur, wenn
+    dort in allen Tagen alle geplanten Sätze abgehakt sind. Lädt dafür
+    frisch nach (statt sich auf React-Query-Cache zu verlassen), da das
+    direkt nach einer Mutation aufgerufen wird. Kein no-op-Wurf, wenn die
+    Bedingung nicht zutrifft — einfach nichts tun. */
+export function useAutoAdvanceBlock() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (planId: string) => {
+      const { data: plan, error: planErr } = await supabase.from('plans').select('*').eq('id', planId).single()
+      if (planErr) throw planErr
+      if (plan.typ !== 'bench' || plan.week !== 4) return null
+
+      const { data: days, error: daysErr } = await supabase
+        .from('plan_days')
+        .select('*, exercises(*)')
+        .eq('plan_id', planId)
+      if (daysErr) throw daysErr
+
+      const alleExercises = (days as { exercises: Exercise[] }[]).flatMap(d => d.exercises)
+      const exerciseIds = alleExercises.map(ex => ex.id)
+      if (!exerciseIds.length) return null
+
+      const { data: progression, error: progErr } = await supabase.from('bench_progression').select('*').eq('plan_id', planId)
+      if (progErr) throw progErr
+      const woche4Rows = (progression as BenchProgressionRow[]).filter(r => r.week === 4)
+
+      const sollFuer = (ex: Exercise) => {
+        if (ex.bench_slot) {
+          const row = woche4Rows.find(r => r.slot === ex.bench_slot)
+          if (row) return setsOf(row.scheme)
+        }
+        return setsOf(ex.scheme)
+      }
+      const geplant = alleExercises.reduce((a, ex) => a + sollFuer(ex), 0)
+
+      const { data: woche4Saetze, error: setsErr } = await supabase.from('logged_sets').select('*').in('exercise_id', exerciseIds).eq('week', 4)
+      if (setsErr) throw setsErr
+      const erledigt = woche4Saetze.filter(s => s.done).length
+      if (erledigt < geplant) return null
+
+      const { data: wochen1bis3, error: w13Err } = await supabase
+        .from('logged_sets')
+        .select('*')
+        .in('exercise_id', exerciseIds)
+        .lte('week', 3)
+      if (w13Err) throw w13Err
+
+      const ergebnis = naechstesE1rm(alleExercises, wochen1bis3)
+
+      const dayIds = (days as { id: string }[]).map(d => d.id)
+      await supabase.from('logged_sets').delete().in('exercise_id', exerciseIds).lte('week', 4)
+      await supabase.from('sessions').delete().in('day_id', dayIds).lte('week', 4)
+
+      const patch: Record<string, unknown> = { block: (plan.block ?? 1) + 1, week: 1, last_delta_note: ergebnis.begruendung }
+      if (ergebnis.neuesE1rm != null) {
+        patch.reps = REFERENZ_WDH
+        patch.rpe = REFERENZ_RPE
+        patch.work = round(zielgewicht(ergebnis.neuesE1rm, REFERENZ_WDH, REFERENZ_RPE, plan.plate ?? 2.5) ?? plan.work ?? 0)
+      }
+      const { error: updateErr } = await supabase.from('plans').update(patch).eq('id', planId)
+      if (updateErr) throw updateErr
+
+      return ergebnis
+    },
+    onSuccess: result => {
+      if (!result) return
+      qc.invalidateQueries({ queryKey: ['plans'] })
+      qc.invalidateQueries({ queryKey: ['sets'] })
+      qc.invalidateQueries({ queryKey: ['sets-all'] })
+      qc.invalidateQueries({ queryKey: ['session'] })
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions-all'] })
+    },
+  })
 }

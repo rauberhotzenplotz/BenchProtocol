@@ -10,21 +10,22 @@ export interface FrequenzDaten {
   letzte7: number
   gesamt: number
 }
+/** Übersprungene Einheiten (status: 'skipped') zählen nicht als Training. */
 export function frequenzDaten(sessions: TrainingSession[]): FrequenzDaten {
+  const echte = sessions.filter(s => s.status === 'completed')
   const jetzt = Date.now()
   return {
-    letzte7: sessions.filter(s => jetzt - new Date(s.started_at).getTime() <= 7 * 864e5).length,
-    gesamt: sessions.length,
+    letzte7: echte.filter(s => jetzt - new Date(s.started_at).getTime() <= 7 * 864e5).length,
+    gesamt: echte.length,
   }
 }
 
 export function trainingszeitDaten(sessions: TrainingSession[]) {
+  const echte = sessions.filter(s => s.status === 'completed')
   const jetzt = Date.now()
   return {
-    woche: sessions
-      .filter(s => jetzt - new Date(s.started_at).getTime() <= 7 * 864e5)
-      .reduce((a, s) => a + (s.minutes ?? 0), 0),
-    gesamt: sessions.reduce((a, s) => a + (s.minutes ?? 0), 0),
+    woche: echte.filter(s => jetzt - new Date(s.started_at).getTime() <= 7 * 864e5).reduce((a, s) => a + (s.minutes ?? 0), 0),
+    gesamt: echte.reduce((a, s) => a + (s.minutes ?? 0), 0),
   }
 }
 

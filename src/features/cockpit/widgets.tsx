@@ -148,7 +148,7 @@ export function UebungsdauerCard({ eintraege }: { eintraege: UebungsDauerSchnitt
 }
 
 export function LetzteEinheitenCard({ sessions, dayNameOf }: { sessions: TrainingSession[]; dayNameOf: (dayId: string) => string }) {
-  const liste = sessions.slice(0, 6)
+  const liste = sessions.filter(s => s.status === 'completed').slice(0, 6)
   if (!liste.length) {
     return (
       <div className="card">

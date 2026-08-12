@@ -242,7 +242,10 @@ export function useStartSession() {
       const { data, error } = await supabase
         .from('sessions')
         .upsert(
-          { day_id: dayId, week, started_at: new Date().toISOString(), ended_at: null, minutes: null },
+          // status ausdrücklich zurücksetzen — falls diese Woche vorher als
+          // "übersprungen" markiert war, macht ein echter Trainingsstart
+          // das rückgängig.
+          { day_id: dayId, week, started_at: new Date().toISOString(), ended_at: null, minutes: null, status: 'completed' },
           { onConflict: 'day_id,week' },
         )
         .select()
@@ -269,6 +272,48 @@ export function useEndSession() {
         .eq('id', id)
       if (error) throw error
       return minutes
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['session'] })
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions-all'] })
+    },
+  })
+}
+
+/** Löscht eine aufgezeichnete Einheit wieder — samt der geloggten Sätze
+    dieses Tages in dieser Woche (sonst blieben verwaiste Sätze übrig, die
+    Kalender/Cockpit weiter mitzählen würden). */
+export function useDeleteSession() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ sessionId, week, exerciseIds }: { sessionId: string; week: number; exerciseIds: string[] }) => {
+      if (exerciseIds.length) await supabase.from('logged_sets').delete().in('exercise_id', exerciseIds).eq('week', week)
+      const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sets'] })
+      qc.invalidateQueries({ queryKey: ['sets-all'] })
+      qc.invalidateQueries({ queryKey: ['session'] })
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions-all'] })
+    },
+  })
+}
+
+/** Markiert eine Einheit als bewusst übersprungen (z. B. Zeitmangel) —
+    zählt nicht in Frequenz/Trainingszeit, taucht aber im Kalender auf,
+    statt so auszusehen, als sei der Tag nie angefasst worden. */
+export function useSkipSession() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ dayId, week }: { dayId: string; week: number }) => {
+      const jetzt = new Date().toISOString()
+      const { error } = await supabase
+        .from('sessions')
+        .upsert({ day_id: dayId, week, started_at: jetzt, ended_at: jetzt, minutes: 0, status: 'skipped' }, { onConflict: 'day_id,week' })
+      if (error) throw error
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['session'] })

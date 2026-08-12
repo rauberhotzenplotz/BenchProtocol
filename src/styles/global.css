@@ -1441,6 +1441,33 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   padding: 11px 15px; border-radius: 0 var(--r-s) var(--r-s) 0; color: var(--ink-2); font-size: 12.5px;
 }
 
+/* Deload-Hinweis: eigene, ruhig glühende Karte statt der gelben Warnfarbe
+   von .note — Deload ist eine bewusste Entlastung, keine Warnung. */
+/* Spezifität muss die globale ".view.on.frisch > *"-Stagger-Animation
+   schlagen (sonst überschreibt die dortige "rise"-Animation unsere
+   eigene) — gleiche Klassenzahl wie dort, aber als Nachfahren- statt
+   Kind-Selektor und später in der Datei, damit sie bei Gleichstand
+   gewinnt. */
+.view.on.frisch .deload-banner {
+  position: relative; overflow: hidden; border-radius: var(--r-m);
+  padding: 16px 18px; margin-bottom: 14px;
+  background: linear-gradient(135deg, rgba(139,124,255,.16), rgba(53,240,208,.08));
+  border: 1px solid rgba(139,124,255,.35);
+  animation: deloadRein .6s cubic-bezier(.22,1,.36,1) both;
+}
+.deload-banner::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 20% 20%, rgba(53,240,208,.28), transparent 60%);
+  animation: deloadGlow 3s ease-in-out infinite;
+}
+.deload-banner b {
+  font-family: var(--f-display); font-size: 18px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--neon); display: block; margin-bottom: 4px; position: relative;
+}
+.deload-banner p { margin: 0; color: var(--ink-2); font-size: 12.8px; position: relative; }
+@keyframes deloadRein { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes deloadGlow { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+
 .stack { display: flex; flex-direction: column; gap: 14px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .row.end { justify-content: flex-end; }
