@@ -400,7 +400,7 @@ function SetRow({
   laeuft: boolean
   exerciseName: string
   restSeconds: number
-  onChange: (patch: { kg?: number | null; reps?: number | null; rpe?: number | null; done?: boolean }) => void
+  onChange: (patch: { kg?: number | null; reps?: number | null; rpe?: number | null; done?: boolean; done_at?: string | null }) => void
   onDelete: () => void
 }) {
   const [kg, setKg] = useState(set.kg?.toString() ?? '')
@@ -418,7 +418,7 @@ function SetRow({
 
   const haken = () => {
     const wirdErledigt = !set.done
-    onChange({ done: wirdErledigt })
+    onChange({ done: wirdErledigt, done_at: wirdErledigt ? new Date().toISOString() : null })
     if (wirdErledigt && autoPauseAn() && restSeconds > 0) restTimer.start(restSeconds, exerciseName)
   }
 

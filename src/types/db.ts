@@ -79,6 +79,8 @@ export interface LoggedSet {
   reps: number | null
   rpe: number | null
   done: boolean
+  /** Zeitpunkt, zu dem der Haken gesetzt wurde — Grundlage der Übungsdauer. */
+  done_at: string | null
   created_at: string
 }
 

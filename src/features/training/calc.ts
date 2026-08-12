@@ -55,6 +55,40 @@ export function letzterSatz(exerciseId: string, alleSaetze: LoggedSet[], vorWoch
   return treffer[0] ?? null
 }
 
+/** Dauer je Übung einer Einheit, in Millisekunden: die erste Übung zählt
+    ab Trainingsstart, jede weitere ab dem letzten erledigten Satz der
+    vorigen Übung — bis zum letzten erledigten Satz dieser Übung selbst.
+    Übungen ohne einen erledigten Satz mit Zeitstempel bleiben null und
+    verschieben den Anker nicht (die nächste Übung zählt weiter vom
+    letzten bekannten Zeitpunkt). */
+export function uebungsDauer(exercises: Exercise[], saetze: LoggedSet[], sessionStartIso: string): Map<string, number | null> {
+  const dauer = new Map<string, number | null>()
+  let anker = new Date(sessionStartIso).getTime()
+
+  exercises.forEach(ex => {
+    const zeiten = saetze
+      .filter(s => s.exercise_id === ex.id && s.done && s.done_at)
+      .map(s => new Date(s.done_at as string).getTime())
+    if (!zeiten.length) {
+      dauer.set(ex.id, null)
+      return
+    }
+    const letzterSatz = Math.max(...zeiten)
+    dauer.set(ex.id, Math.max(0, letzterSatz - anker))
+    anker = letzterSatz
+  })
+
+  return dauer
+}
+
+/** "3:45" — für kurze Dauern (Sätze, Übungen), nicht ganze Einheiten. */
+export function dauerKurz(ms: number): string {
+  const gesamtSek = Math.round(ms / 1000)
+  const m = Math.floor(gesamtSek / 60)
+  const s = gesamtSek % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 export function gruppeSetsByExercise(sets: LoggedSet[]): Map<string, LoggedSet[]> {
   const m = new Map<string, LoggedSet[]>()
   sets.forEach(s => {

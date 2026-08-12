@@ -148,6 +148,7 @@ export function useUpsertSet() {
       reps?: number | null
       rpe?: number | null
       done?: boolean
+      done_at?: string | null
     }) => {
       const { data, error } = await supabase
         .from('logged_sets')
@@ -249,7 +250,11 @@ export function useStartSession() {
       if (error) throw error
       return data as TrainingSession
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['session'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['session'] })
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions-all'] })
+    },
   })
 }
 
@@ -265,6 +270,10 @@ export function useEndSession() {
       if (error) throw error
       return minutes
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['session'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['session'] })
+      qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['sessions-all'] })
+    },
   })
 }

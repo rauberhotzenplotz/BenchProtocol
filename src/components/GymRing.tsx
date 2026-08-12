@@ -1,12 +1,41 @@
+import { useState } from 'react'
+
 function zeitText(s: number): string {
   const m = Math.floor(s / 60)
   const r = s % 60
   return `${m}:${String(r).padStart(2, '0')}`
 }
 
-/** Großer Ring-Countdown fürs Gym-Modus — dieselbe Zeit wie die kleine
-    Leiste, nur großflächig fürs Vollbild (.gym-ring/.gym-zeit aus dem
-    portierten CSS). */
+/** Eine Ziffernstelle, die beim Wechsel nicht hart springt, sondern die
+    alte Ziffer nach oben heraus- und die neue von unten hereinrollt —
+    beide Lagen gleichzeitig sichtbar, solange die Austritts-Animation
+    noch läuft. */
+function Ziffer({ zeichen }: { zeichen: string }) {
+  const [aktuell, setAktuell] = useState(zeichen)
+  const [vorherige, setVorherige] = useState<string | null>(null)
+
+  // Abgeleiteter Zustand direkt beim Rendern angepasst (React-empfohlenes
+  // Muster für "State beim Prop-Wechsel zurücksetzen"), statt in einem
+  // Effekt — vermeidet einen zusätzlichen Render-Zyklus nach dem Mount.
+  if (zeichen !== aktuell) {
+    setVorherige(aktuell)
+    setAktuell(zeichen)
+  }
+
+  return (
+    <span className="gym-ziffer">
+      {vorherige != null && (
+        <span key={'alt-' + vorherige} className="gym-ziffer-lage alt" onAnimationEnd={() => setVorherige(null)}>
+          {vorherige}
+        </span>
+      )}
+      <span key={'neu-' + aktuell} className="gym-ziffer-lage neu">
+        {aktuell}
+      </span>
+    </span>
+  )
+}
+
 export function GymRing({ secondsLeft, totalSeconds }: { secondsLeft: number; totalSeconds: number }) {
   const anteil = totalSeconds > 0 ? Math.max(0, Math.min(1, secondsLeft / totalSeconds)) : 0
   const r = 45
@@ -21,7 +50,11 @@ export function GymRing({ secondsLeft, totalSeconds }: { secondsLeft: number; to
         <circle className="halo" cx="50" cy="50" r={r} strokeDasharray={umfang} strokeDashoffset={offset} />
         <circle className="fg" cx="50" cy="50" r={r} strokeDasharray={umfang} strokeDashoffset={offset} />
       </svg>
-      <div className="gym-zeit">{zeitText(Math.max(0, secondsLeft))}</div>
+      <div className="gym-zeit">
+        {[...zeitText(Math.max(0, secondsLeft))].map((zeichen, i) => (
+          <Ziffer key={i} zeichen={zeichen} />
+        ))}
+      </div>
     </div>
   )
 }

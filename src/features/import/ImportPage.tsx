@@ -3,14 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { parseWorkbook, type ParsedWorkbook } from './xlsxParse'
 import { importAlsNeuerPlan } from './importPlan'
+import { parseAlphaCsv, type CsvWorkout } from './csvParse'
+import { planCsvImport, commitCsvImport, type CsvImportPlan } from './importCsv'
 import { useActivePlan } from '../plans/active-plan-context'
+import { useDays } from '../training/queries'
 import type { PlanTyp } from '../../types/db'
 import { cssVars } from '../../lib/style'
+
+function fehlertext(err: unknown, fallback: string): string {
+  return err && typeof err === 'object' && 'message' in err && typeof err.message === 'string' && err.message ? err.message : fallback
+}
 
 export function ImportPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const { setActivePlanId } = useActivePlan()
+  const { activePlan, setActivePlanId } = useActivePlan()
+  const { data: days } = useDays(activePlan?.id)
 
   const [datei, setDatei] = useState<File | null>(null)
   const [geparst, setGeparst] = useState<ParsedWorkbook | null>(null)
@@ -19,6 +27,14 @@ export function ImportPage() {
   const [fehler, setFehler] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(false)
   const [anlegen, setAnlegen] = useState(false)
+
+  const [csvDatei, setCsvDatei] = useState<File | null>(null)
+  const [csvWorkouts, setCsvWorkouts] = useState<CsvWorkout[] | null>(null)
+  const [csvPlan, setCsvPlan] = useState<CsvImportPlan | null>(null)
+  const [csvFehler, setCsvFehler] = useState<string | null>(null)
+  const [csvLaedt, setCsvLaedt] = useState(false)
+  const [csvSchreibt, setCsvSchreibt] = useState(false)
+  const [csvErfolg, setCsvErfolg] = useState<number | null>(null)
 
   const dateiGewaehlt = async (f: File) => {
     setFehler(null)
@@ -54,6 +70,44 @@ export function ImportPage() {
   }
 
   const gesamtUebungen = geparst?.days.reduce((a, d) => a + d.exercises.length, 0) ?? 0
+
+  const csvDateiGewaehlt = async (f: File) => {
+    setCsvFehler(null)
+    setCsvErfolg(null)
+    setCsvDatei(f)
+    setCsvWorkouts(null)
+    setCsvPlan(null)
+    setCsvLaedt(true)
+    try {
+      const workouts = parseAlphaCsv(await f.text())
+      if (!workouts.length) throw new Error('In der CSV stehen keine Einheiten. Erwartet wird ein Trainings-Export mit Einheiten, Übungen und Sätzen.')
+      setCsvWorkouts(workouts)
+      setCsvPlan(planCsvImport(workouts, days ?? [], activePlan?.week ?? 1))
+    } catch (err) {
+      setCsvFehler(fehlertext(err, 'Datei konnte nicht gelesen werden.'))
+    } finally {
+      setCsvLaedt(false)
+    }
+  }
+
+  const csvEinlesen = async () => {
+    if (!csvPlan || !csvPlan.saetze.length) return
+    setCsvSchreibt(true)
+    setCsvFehler(null)
+    try {
+      const anzahl = await commitCsvImport(csvPlan)
+      await qc.invalidateQueries({ queryKey: ['sets'] })
+      await qc.invalidateQueries({ queryKey: ['sets-all'] })
+      setCsvErfolg(anzahl)
+      setCsvDatei(null)
+      setCsvWorkouts(null)
+      setCsvPlan(null)
+    } catch (err) {
+      setCsvFehler(fehlertext(err, 'Import fehlgeschlagen.'))
+    } finally {
+      setCsvSchreibt(false)
+    }
+  }
 
   return (
     <section className="view on frisch">
@@ -158,6 +212,74 @@ export function ImportPage() {
               ))}
             </div>
           </div>
+        )}
+      </div>
+
+      <div className="card" style={cssVars({ '--i': 2 })}>
+        <h3>
+          <span className="tick" style={{ background: 'var(--violet)' }} />
+          CSV-Import (Verlauf)
+        </h3>
+        <p className="muted tiny" style={{ margin: '2px 0 12px' }}>
+          Bringt aufgezeichnete Einheiten aus einem Trainings-Tracker-Export (z. B. AlphaProgression) in den aktuell
+          aktiven Plan{activePlan ? ` „${activePlan.name}“` : ''}.
+        </p>
+
+        {!activePlan && <p className="muted tiny">Erst einen Plan anlegen oder auswählen, dann steht diese Funktion bereit.</p>}
+
+        {activePlan && (
+          <>
+            <div
+              className="drop"
+              tabIndex={0}
+              role="button"
+              aria-label="CSV-Datei wählen"
+              onClick={() => document.getElementById('csvInput')?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => {
+                e.preventDefault()
+                const f = e.dataTransfer.files?.[0]
+                if (f) void csvDateiGewaehlt(f)
+              }}
+            >
+              <strong>CSV hier ablegen</strong>
+              <p>oder klicken zum Auswählen · nur .csv</p>
+              <input
+                id="csvInput"
+                type="file"
+                accept=".csv"
+                hidden
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  if (f) void csvDateiGewaehlt(f)
+                }}
+              />
+            </div>
+
+            {csvLaedt && <p className="muted tiny" style={{ marginTop: 12 }}>Datei wird gelesen …</p>}
+            {csvFehler && <p className="auth-msg err">{csvFehler}</p>}
+            {csvErfolg != null && <p className="auth-msg ok">{csvErfolg} Sätze importiert.</p>}
+
+            {csvWorkouts && csvPlan && (
+              <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 16 }}>
+                <p className="mono tiny muted" style={{ letterSpacing: '.1em', textTransform: 'uppercase', margin: '0 0 9px' }}>
+                  {csvDatei?.name} · {csvWorkouts.length} Einheiten · {csvPlan.saetze.length} Sätze zuordenbar
+                </p>
+                {csvPlan.unmatchedNamen.length > 0 && (
+                  <p className="muted tiny" style={{ margin: '0 0 12px' }}>
+                    Nicht zugeordnet (keine passende Übung im Plan gefunden): {csvPlan.unmatchedNamen.join(', ')}
+                  </p>
+                )}
+                <button
+                  className="btn primary sm"
+                  disabled={!csvPlan.saetze.length || csvSchreibt}
+                  onClick={() => void csvEinlesen()}
+                >
+                  In „{activePlan.name}“ einlesen
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

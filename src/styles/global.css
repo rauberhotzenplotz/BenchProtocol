@@ -1721,7 +1721,16 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   position: absolute; font-family: var(--f-display); font-variant-numeric: tabular-nums;
   font-size: calc(var(--ring) * .24); line-height: 1; color: var(--neon);
   text-shadow: 0 0 34px rgba(53,240,208,.4); white-space: nowrap;
+  display: flex;
 }
+/* Jede Ziffernstelle rollt beim Wechsel ein, statt hart zu springen — die
+   austretende Lage bleibt bis zum Animationsende überlagert sichtbar. */
+.gym-ziffer { position: relative; display: inline-block; width: 1ch; height: 1em; overflow: hidden; }
+.gym-ziffer-lage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.gym-ziffer-lage.neu { animation: gymZifferRein .32s cubic-bezier(.16,1,.3,1) both; }
+.gym-ziffer-lage.alt { animation: gymZifferRaus .32s cubic-bezier(.16,1,.3,1) both; }
+@keyframes gymZifferRein { from { transform: translateY(65%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes gymZifferRaus { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-65%); opacity: 0; } }
 .gym-ringbox { position: relative; display: grid; place-items: center; }
 .gym-naechst { margin-top: 16px; font-family: var(--f-mono); font-size: 11.5px;
   letter-spacing: .1em; color: var(--ink-3); text-align: center; }

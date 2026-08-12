@@ -81,7 +81,16 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, onC
   }
 
   const erledigt = () => {
-    upsertSet.mutate({ exercise_id: exercise.id, week, position: satzIdx, kg, reps, rpe: rpe || null, done: true })
+    upsertSet.mutate({
+      exercise_id: exercise.id,
+      week,
+      position: satzIdx,
+      kg,
+      reps,
+      rpe: rpe || null,
+      done: true,
+      done_at: new Date().toISOString(),
+    })
     const sek = pauseSekunden(exercise.rest)
     if (autoPauseAn() && sek > 0) restTimer.start(sek, exercise.name)
     naechster()

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useActivePlan } from '../plans/active-plan-context'
-import { useDays, useSession, useSetsForExercises, useSessionsForDays, useAllSetsForExercises } from './queries'
+import { useDays, useSession, useSetsForExercises, useSessionsForDays, useAllSetsForExercises, useAllSessionsForDays } from './queries'
 import { gruppeSetsByExercise } from './calc'
 import { DayListView } from './DayListView'
 import { SessionView } from './SessionView'
@@ -18,6 +18,7 @@ export function TrainingPage() {
   const { data: alleSaetze } = useSetsForExercises(alleExerciseIds, week)
   const { data: saetzeJemals } = useAllSetsForExercises(alleExerciseIds)
   const { data: sessions } = useSessionsForDays(alleDayIds, week)
+  const { data: sessionenJemals } = useAllSessionsForDays(alleDayIds)
   const offenerTagDaten = days?.find(d => d.id === offenerTag)
   const { data: session } = useSession(offenerTag ?? undefined, week)
 
@@ -57,6 +58,8 @@ export function TrainingPage() {
       days={days}
       alleSaetze={alleSaetze ?? []}
       sessions={sessions ?? []}
+      alleSessionenJemals={sessionenJemals ?? []}
+      alleSaetzeJemals={saetzeJemals ?? []}
       onOpen={setOffenerTag}
     />
   )

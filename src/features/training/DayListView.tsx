@@ -4,6 +4,7 @@ import { useCreateDay } from './queries'
 import { tagFortschritt, gruppeSetsByExercise, wochenLabel } from './calc'
 import { WeekControl } from './WeekControl'
 import { PlanPicker } from '../plans/PlanPicker'
+import { TrainingCalendar } from './TrainingCalendar'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -11,10 +12,12 @@ interface Props {
   days: DayWithExercises[]
   alleSaetze: LoggedSet[]
   sessions: TrainingSession[]
+  alleSessionenJemals: TrainingSession[]
+  alleSaetzeJemals: LoggedSet[]
   onOpen: (dayId: string) => void
 }
 
-export function DayListView({ plan, days, alleSaetze, sessions, onOpen }: Props) {
+export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJemals, alleSaetzeJemals, onOpen }: Props) {
   const setsByExercise = gruppeSetsByExercise(alleSaetze)
   const createDay = useCreateDay(plan.id)
 
@@ -97,6 +100,10 @@ export function DayListView({ plan, days, alleSaetze, sessions, onOpen }: Props)
         <span className="mono tiny muted">
           {wochenLabel(plan.week, plan)}: {gesamt.erledigt} von {gesamt.geplant} Sätzen · {Math.round(gesamt.tonnage)} kg bewegt
         </span>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <TrainingCalendar plan={plan} days={days} sessions={alleSessionenJemals} alleSaetze={alleSaetzeJemals} />
       </div>
     </section>
   )
