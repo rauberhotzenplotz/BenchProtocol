@@ -82,7 +82,7 @@ function BenchTab({ plan }: { plan: Plan }) {
 
       <div className="note" style={cssVars({ '--i': 1 })}>
         Der nächste Block wird automatisch berechnet, sobald du die Deload-Woche komplett abhakst und die letzte
-        Einheit beendest — kein manueller Abschluss mehr nötig.
+        Einheit beendest.
       </div>
 
       <GoalCard plan={plan} />
