@@ -45,6 +45,9 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
   const laeuft = !!session && !session.ended_at
   const [neueUebung, setNeueUebung] = useState(false)
   const [gymOffen, setGymOffen] = useState(false)
+  // Kommt man aus dem Gym-Modus zum Prüfen zurück, sollen die Sätze nicht
+  // erst einzeln aufgeklappt werden müssen.
+  const [saetzeOffen, setSaetzeOffen] = useState(false)
 
   const gesamtTonnage = day.exercises.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
   const gesamtGeplant = day.exercises.reduce((a, ex) => a + setsOf(ex.scheme), 0)
@@ -122,6 +125,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
             sets={setsByExercise.get(ex.id) ?? []}
             week={week}
             laeuft={laeuft}
+            aufklappen={saetzeOffen}
           />
         ))}
       </div>
@@ -169,6 +173,10 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
             alleSaetzeJemalsBereit={alleSaetzeJemalsBereit}
             session={session}
             onClose={() => setGymOffen(false)}
+            onPruefen={() => {
+              setGymOffen(false)
+              setSaetzeOffen(true)
+            }}
           />,
           document.body,
         )}
@@ -259,6 +267,7 @@ function ExerciseBlock({
   sets,
   week,
   laeuft,
+  aufklappen,
 }: {
   planId: string
   planTyp: Plan['typ']
@@ -266,8 +275,18 @@ function ExerciseBlock({
   sets: LoggedSet[]
   week: number
   laeuft: boolean
+  /** Von außen angestoßenes Aufklappen (Rückkehr aus dem Gym-Modus). Danach
+      bleibt das Auf- und Zuklappen wieder ganz beim Nutzer. */
+  aufklappen: boolean
 }) {
-  const [auf, setAuf] = useState(false)
+  const [auf, setAuf] = useState(aufklappen)
+  // Abgeleiteter Zustand beim Rendern nachgezogen — dasselbe Muster wie
+  // sonst in dieser Datei, statt eines Effekts mit zusätzlichem Durchlauf.
+  const [letzteVorgabe, setLetzteVorgabe] = useState(aufklappen)
+  if (aufklappen !== letzteVorgabe) {
+    setLetzteVorgabe(aufklappen)
+    if (aufklappen) setAuf(true)
+  }
   const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
   const updateExercise = useUpdateExercise(planId)
   const deleteExercise = useDeleteExercise(planId)

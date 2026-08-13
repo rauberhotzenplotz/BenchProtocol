@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { cssVars } from '../../lib/style'
 import { useActivePlan } from '../plans/active-plan-context'
 import { autoPauseAn, setAutoPauseAn } from '../training/pause'
+import { vibrationAn, setVibrationAn } from '../../lib/haptik'
 import { baueBackup, backupHerunterladen, backupEinspielen } from './backup'
 
 /** Supabase-Fehler sind nicht immer `instanceof Error` (Klassenidentität
@@ -24,6 +25,7 @@ export function SettingsPage() {
   const [busy, setBusy] = useState(false)
   const [bestaetigen, setBestaetigen] = useState(false)
   const [autoPause, setAutoPause] = useState(autoPauseAn())
+  const [vibration, setVibration] = useState(vibrationAn())
   const [backupMeldung, setBackupMeldung] = useState<{ art: 'ok' | 'err'; text: string } | null>(null)
   const [backupBusy, setBackupBusy] = useState(false)
 
@@ -120,6 +122,32 @@ export function SettingsPage() {
               onClick={() => {
                 setAutoPause(false)
                 setAutoPauseAn(false)
+              }}
+            >
+              Aus
+            </button>
+          </div>
+        </div>
+        <div className="setzeile">
+          <div className="txt">
+            <b>Vibration im Gym-Modus</b>
+            <small>Kurzes Signal beim Abhaken eines Satzes und am Ende der Einheit. Nur auf Geräten mit Vibrationsmotor.</small>
+          </div>
+          <div className="pills" role="group" aria-label="Vibration im Gym-Modus">
+            <button
+              className={'pill' + (vibration ? ' on' : '')}
+              onClick={() => {
+                setVibration(true)
+                setVibrationAn(true)
+              }}
+            >
+              An
+            </button>
+            <button
+              className={'pill' + (!vibration ? ' on' : '')}
+              onClick={() => {
+                setVibration(false)
+                setVibrationAn(false)
               }}
             >
               Aus

@@ -10,6 +10,7 @@ import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
 import { SatzQuittung } from './SatzQuittung'
 import { GymFertig } from './GymFertig'
+import { vibrieren, SATZ_ERLEDIGT } from '../../lib/haptik'
 
 function zielWdh(scheme: string | null | undefined): number {
   const m = String(scheme ?? '').match(/[×x*]\s*(\d+)/i)
@@ -25,9 +26,13 @@ interface Props {
   alleSaetzeJemalsBereit: boolean
   session: TrainingSession | null | undefined
   onClose: () => void
+  /** Verlässt den Gym-Modus und klappt in der Einheit die Sätze auf, damit
+      man einen versehentlich gesetzten Haken gleich wieder lösen kann. Die
+      Einheit läuft dabei weiter — es wird nichts neu gestartet. */
+  onPruefen: () => void
 }
 
-export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, session, onClose }: Props) {
+export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, session, onClose, onPruefen }: Props) {
   const upsertSet = useUpsertSet()
   const endSession = useEndSession()
   const autoAdvanceBlock = useAutoAdvanceBlock()
@@ -129,6 +134,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       done_at: new Date().toISOString(),
     })
     setQuittung(n => n + 1)
+    vibrieren(SATZ_ERLEDIGT)
     // Vor dem letzten Satz keine Pause mehr anstoßen — danach kommt ohnehin
     // die Abschluss-Übersicht, nicht die nächste Übung.
     if (!istLetzterSatz) {
@@ -169,7 +175,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
     const geplant = uebungen.reduce((a, ex) => a + sollFuer(ex), 0)
     const abgehakt = uebungen.reduce((a, ex) => a + (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length, 0)
     const tonnage = uebungen.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
-    inhalt = <GymFertig geplant={geplant} erledigt={abgehakt} tonnage={tonnage} onWeiter={onClose} onBeenden={beenden} />
+    inhalt = <GymFertig geplant={geplant} erledigt={abgehakt} tonnage={tonnage} onPruefen={onPruefen} onBeenden={beenden} />
   } else if (restTimer.label != null) {
     // Pause: solange ein Timer läuft (oder gerade fertig ist und noch
     // ausgeblendet wird), zeigt der Gym-Modus großflächig denselben Ring wie

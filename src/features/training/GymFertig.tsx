@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CountUp } from '../../components/CountUp'
 import { cssVars } from '../../lib/style'
+import { vibrieren, TRAINING_FERTIG } from '../../lib/haptik'
 
 /** Abschlusstexte als Paare, nicht als zwei getrennte Töpfe: Überschrift
     und Unterzeile sollen zueinander passen, statt zufällig zu einer
@@ -38,14 +39,20 @@ interface Props {
   geplant: number
   erledigt: number
   tonnage: number
-  onWeiter: () => void
+  onPruefen: () => void
   onBeenden: () => void
 }
 
-export function GymFertig({ geplant, erledigt, tonnage, onWeiter, onBeenden }: Props) {
+export function GymFertig({ geplant, erledigt, tonnage, onPruefen, onBeenden }: Props) {
   // Einmal beim Aufbau würfeln, nicht bei jedem Rendern — sonst wechselte
   // der Text unter den Augen des Nutzers.
   const [lob] = useState(() => LOB[Math.floor(Math.random() * LOB.length)])
+
+  // Der Abschluss ist die Stelle, an der man das Handy typischerweise gar
+  // nicht in der Hand hat — hier lohnt sich das spürbare Signal am meisten.
+  useEffect(() => {
+    vibrieren(TRAINING_FERTIG)
+  }, [])
 
   return (
     <>
@@ -91,8 +98,8 @@ export function GymFertig({ geplant, erledigt, tonnage, onWeiter, onBeenden }: P
       </div>
 
       <div className="gym-tasten zwei spaet">
-        <button className="gym-taste grau" onClick={onWeiter}>
-          Weiter im Training
+        <button className="gym-taste grau" onClick={onPruefen}>
+          Sätze prüfen
         </button>
         <button className="gym-taste ok" onClick={onBeenden}>
           Training beenden
