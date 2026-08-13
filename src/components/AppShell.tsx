@@ -5,6 +5,7 @@ import { Nav } from './Nav'
 import { UpdateBanner } from './UpdateBanner'
 import { RestTimerBar } from './RestTimerBar'
 import { Mark } from './Mark'
+import { BootScreen } from './BootScreen'
 import { useAuth } from '../auth/auth-context'
 
 function useClock() {
@@ -23,6 +24,7 @@ export function AppShell() {
 
   return (
     <div className="app">
+      <BootScreen />
       <aside className="rail">
         <Mark />
         <Nav />

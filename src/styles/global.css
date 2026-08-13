@@ -119,6 +119,31 @@ body {
 .mark .plate2 { transform-origin: 32px 32px; animation: spin 20s linear infinite reverse; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Aufbau-Variante (Boot-Screen): die Teile fliegen einzeln ein und setzen
+   sich zum Logo zusammen. Die Flug-Animation sitzt auf einer zusätzlichen
+   <g>-Hülle um jedes Teil — die ewige spin-Animation bleibt unangetastet
+   auf .plate/.plate2 selbst, beide Transforms addieren sich unabhängig. */
+.mark.aufbau .stueck { transform-origin: 32px 32px; }
+.mark.aufbau .ring1 { animation: stueckRing1 .6s .05s cubic-bezier(.34,1.56,.64,1) both; }
+.mark.aufbau .ring2 { animation: stueckRing2 .6s .12s cubic-bezier(.34,1.56,.64,1) both; }
+.mark.aufbau .bar { animation: stueckBar .5s .28s cubic-bezier(.34,1.56,.64,1) both; }
+.mark.aufbau .platte-l { animation: stueckPlatteL .5s .36s cubic-bezier(.34,1.56,.64,1) both; }
+.mark.aufbau .platte-r { animation: stueckPlatteR .5s .36s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes stueckRing1 { from { opacity: 0; transform: translate(-16px,-14px) scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes stueckRing2 { from { opacity: 0; transform: translate(15px,13px) scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes stueckBar { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
+@keyframes stueckPlatteL { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: none; } }
+@keyframes stueckPlatteR { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+/* Boot-Screen: kurzer Vollbild-Aufbau beim App-Start, dann Fade zum Cockpit. */
+.boot {
+  position: fixed; inset: 0; z-index: 300; background: var(--ground);
+  display: grid; place-items: center;
+  transition: opacity .26s ease, visibility .26s ease;
+}
+.boot.aus { opacity: 0; visibility: hidden; pointer-events: none; }
+.boot .mark { width: 84px; height: 84px; margin-bottom: 0; }
+
 .nav-btn {
   width: 60px; height: 54px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
