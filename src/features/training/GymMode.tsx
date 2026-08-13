@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken, tonnageOf } from './calc'
@@ -8,6 +8,8 @@ import { useUpsertSet, useEndSession } from './queries'
 import { useBenchProgression, benchRowsFor, useAutoAdvanceBlock } from '../bench/queries'
 import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
+import { SatzQuittung } from './SatzQuittung'
+import { GymFertig } from './GymFertig'
 
 function zielWdh(scheme: string | null | undefined): number {
   const m = String(scheme ?? '').match(/[×x*]\s*(\d+)/i)
@@ -35,6 +37,15 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   const [satzIdx, setSatzIdx] = useState(0)
   const [aufgewaermt, setAufgewaermt] = useState<Set<string>>(new Set())
   const [fertig, setFertig] = useState(false)
+  // Zählt hoch statt umzuschalten: hakt man zwei Sätze schnell nacheinander
+  // ab, erzwingt der neue Wert über key= einen Neuaufbau, damit die
+  // Quittung von vorn läuft statt die erste Bewegung weiterlaufen zu lassen.
+  const [quittung, setQuittung] = useState(0)
+  // Muss stabil bleiben: die Quittung räumt sich per Zeitgeber selbst ab,
+  // und während der Pause rendert der Timer im Sekundentakt neu. Ein bei
+  // jedem Rendern neu erzeugter Rückruf würde den Zeitgeber ständig neu
+  // aufziehen.
+  const quittungFertig = useCallback(() => setQuittung(0), [])
 
   // Solange der Gym-Modus offen ist, übernimmt er selbst die große
   // Pausenanzeige — die kleine schwebende Leiste bleibt aus.
@@ -117,6 +128,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       done: true,
       done_at: new Date().toISOString(),
     })
+    setQuittung(n => n + 1)
     // Vor dem letzten Satz keine Pause mehr anstoßen — danach kommt ohnehin
     // die Abschluss-Übersicht, nicht die nächste Übung.
     if (!istLetzterSatz) {
@@ -134,139 +146,92 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
 
   const plate = plan.plate ?? 2.5
 
-  // Letzter Satz erledigt: kurze Übersicht statt direkt zu schließen —
-  // von hier aus wahlweise die Einheit auch gleich beenden.
-  if (fertig) {
-    // Nicht tagFortschritt() — die zählt Sätze über das statische Schema
-    // der Übung, hier soll dieselbe (ggf. Progressions-abhängige) Anzahl
-    // gelten, die der Gym-Modus selbst schon für "soll" verwendet hat.
-    const geplant = uebungen.reduce((a, ex) => a + sollFuer(ex), 0)
-    const erledigt = uebungen.reduce((a, ex) => a + (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length, 0)
-    const tonnage = uebungen.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
-    return (
-      <div className="gym">
-        <button className="gym-zu" onClick={onClose} aria-label="Gym-Modus verlassen">
-          <svg viewBox="0 0 24 24">
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
-        <div className="gym-inhalt">
-          <div className="gym-fertig">
-            <div className="gym-fhaken">
-              <svg viewBox="0 0 24 24">
-                <path d="M4 12.5 9.5 18 20 6.5" />
-              </svg>
-            </div>
-            <div className="gym-ftitel">Training fertig</div>
-            <p className="muted tiny" style={{ marginTop: 10 }}>
-              {erledigt} von {geplant} Sätzen · {Math.round(tonnage)} kg bewegt
-            </p>
-          </div>
-          <div className="gym-tasten zwei">
-            <button className="gym-taste grau" onClick={onClose}>
-              Weiter im Training
-            </button>
-            <button className="gym-taste ok" onClick={beenden}>
-              Training beenden
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Pause: solange ein Timer läuft (oder gerade fertig ist und noch
-  // ausgeblendet wird), zeigt der Gym-Modus großflächig denselben Ring wie
-  // die kleine Leiste sonst — "derselbe Timer, nur im Vollbild".
-  if (restTimer.label != null) {
-    return (
-      <div className="gym">
-        <button className="gym-zu" onClick={onClose} aria-label="Gym-Modus verlassen">
-          <svg viewBox="0 0 24 24">
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
-        <div className="gym-inhalt">
-          <div className="gym-pause">
-            <GymRing secondsLeft={restTimer.secondsLeft} totalSeconds={restTimer.totalSeconds} />
-            <div className="gym-naechst">Als Nächstes: {exercise.name}</div>
-          </div>
-          <div className="gym-tasten zwei">
-            <button className="gym-taste grau" onClick={() => restTimer.addSeconds(15)}>
-              +15s
-            </button>
-            <button className="gym-taste ok" onClick={restTimer.stop}>
-              Weiter
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // Aufwärmen: vor dem ersten Satz einer Übung, wenn sie entweder an die
   // Bank-Progression gekoppelt ist, ein schweres Gewicht hat oder als
   // erste Übung der Einheit drankommt (siehe aufwaermPlan) — einmal je
   // Übung. Bezieht sich auf das tatsächlich vorbelegte Arbeitsgewicht,
   // nicht auf ein fixes 1RM, damit die Leiter mit der Woche mitwächst.
   const warmSaetze = aufwaermPlan(istBankdruecken(exercise), kg, uebIdx === 0, plate)
-  if (satzIdx === 0 && warmSaetze.length > 0 && !aufgewaermt.has(exercise.id)) {
-    return (
-      <div className="gym">
-        <button className="gym-zu" onClick={onClose} aria-label="Gym-Modus verlassen">
-          <svg viewBox="0 0 24 24">
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
-        <div className="gym-inhalt">
-          <div className="gym-kopf">
-            <div className="gym-fort">Vor den Arbeitssätzen</div>
-            <div className="gym-ueb">{exercise.name}</div>
-          </div>
-          <div className="gym-warm">
-            <div className="gym-wtitel">Aufwärmen</div>
-            <div className="gym-wliste">
-              {warmSaetze.map((s, i) => (
-                <div key={s.label} className="gym-wzeile">
-                  <span className="nr">{i + 1}</span>
-                  <span className="pct">{s.label}</span>
-                  <span className="kg">
-                    {s.kg}
-                    <em>kg</em>
-                  </span>
-                  <span className="wdh">× {s.wdh}</span>
-                </div>
-              ))}
-              <div className="gym-wzeile arbeit">
-                <span className="nr">→</span>
-                <span className="pct">Arbeitssatz</span>
+  const zeigtAufwaermen = satzIdx === 0 && warmSaetze.length > 0 && !aufgewaermt.has(exercise.id)
+
+  // Alle vier Bildschirme teilen sich dieselbe Hülle (Schließen-Knopf,
+  // Inhaltsrahmen). Hier entsteht nur der Inhalt — gerendert wird einmal
+  // weiter unten. Dadurch liegt auch die Satz-Quittung an einer Stelle,
+  // statt in jedem Zweig wiederholt zu werden.
+  let inhalt: ReactNode
+
+  if (fertig) {
+    // Letzter Satz erledigt: kurze Übersicht statt direkt zu schließen —
+    // von hier aus wahlweise die Einheit auch gleich beenden.
+    // Nicht tagFortschritt() — die zählt Sätze über das statische Schema
+    // der Übung, hier soll dieselbe (ggf. Progressions-abhängige) Anzahl
+    // gelten, die der Gym-Modus selbst schon für "soll" verwendet hat.
+    const geplant = uebungen.reduce((a, ex) => a + sollFuer(ex), 0)
+    const abgehakt = uebungen.reduce((a, ex) => a + (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length, 0)
+    const tonnage = uebungen.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
+    inhalt = <GymFertig geplant={geplant} erledigt={abgehakt} tonnage={tonnage} onWeiter={onClose} onBeenden={beenden} />
+  } else if (restTimer.label != null) {
+    // Pause: solange ein Timer läuft (oder gerade fertig ist und noch
+    // ausgeblendet wird), zeigt der Gym-Modus großflächig denselben Ring wie
+    // die kleine Leiste sonst — "derselbe Timer, nur im Vollbild".
+    inhalt = (
+      <>
+        <div className="gym-pause">
+          <GymRing secondsLeft={restTimer.secondsLeft} totalSeconds={restTimer.totalSeconds} />
+          <div className="gym-naechst">Als Nächstes: {exercise.name}</div>
+        </div>
+        <div className="gym-tasten zwei">
+          <button className="gym-taste grau" onClick={() => restTimer.addSeconds(15)}>
+            +15s
+          </button>
+          <button className="gym-taste ok" onClick={restTimer.stop}>
+            Weiter
+          </button>
+        </div>
+      </>
+    )
+  } else if (zeigtAufwaermen) {
+    inhalt = (
+      <>
+        <div className="gym-kopf">
+          <div className="gym-fort">Vor den Arbeitssätzen</div>
+          <div className="gym-ueb">{exercise.name}</div>
+        </div>
+        <div className="gym-warm">
+          <div className="gym-wtitel">Aufwärmen</div>
+          <div className="gym-wliste">
+            {warmSaetze.map((s, i) => (
+              <div key={s.label} className="gym-wzeile">
+                <span className="nr">{i + 1}</span>
+                <span className="pct">{s.label}</span>
                 <span className="kg">
-                  {kg}
+                  {s.kg}
                   <em>kg</em>
                 </span>
-                <span className="wdh">× {reps}</span>
+                <span className="wdh">× {s.wdh}</span>
               </div>
+            ))}
+            <div className="gym-wzeile arbeit">
+              <span className="nr">→</span>
+              <span className="pct">Arbeitssatz</span>
+              <span className="kg">
+                {kg}
+                <em>kg</em>
+              </span>
+              <span className="wdh">× {reps}</span>
             </div>
           </div>
-          <div className="gym-tasten">
-            <button className="gym-taste neon" onClick={() => setAufgewaermt(prev => new Set(prev).add(exercise.id))}>
-              Aufgewärmt — weiter zu den Arbeitssätzen
-            </button>
-          </div>
         </div>
-      </div>
+        <div className="gym-tasten">
+          <button className="gym-taste neon" onClick={() => setAufgewaermt(prev => new Set(prev).add(exercise.id))}>
+            Aufgewärmt — weiter zu den Arbeitssätzen
+          </button>
+        </div>
+      </>
     )
-  }
-
-  return (
-    <div className="gym">
-      <button className="gym-zu" onClick={onClose} aria-label="Gym-Modus verlassen">
-        <svg viewBox="0 0 24 24">
-          <path d="M6 6l12 12M18 6L6 18" />
-        </svg>
-      </button>
-
-      <div className="gym-inhalt">
+  } else {
+    inhalt = (
+      <>
         <div className="gym-kopf">
           <div className="gym-fort">
             Übung {uebIdx + 1} von {uebungen.length} · Satz {satzIdx + 1} von {soll}
@@ -326,7 +291,21 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
             Erledigt
           </button>
         </div>
-      </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="gym">
+      <button className="gym-zu" onClick={onClose} aria-label="Gym-Modus verlassen">
+        <svg viewBox="0 0 24 24">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+
+      <div className="gym-inhalt">{inhalt}</div>
+
+      {quittung > 0 && <SatzQuittung key={quittung} onEnde={quittungFertig} />}
     </div>
   )
 }

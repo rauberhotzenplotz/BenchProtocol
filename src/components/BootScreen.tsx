@@ -1,8 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { cssVars } from '../lib/style'
 
-const AUTO_DISMISS = 1400
+// Etwas länger als vorher (1400): der Schriftzug läuft jetzt Buchstabe für
+// Buchstabe ein und wäre sonst noch mitten in der Bewegung, wenn das Bild
+// schon wieder verschwindet.
+const AUTO_DISMISS = 1600
 const ENTFERNEN_NACH = 460 // muss zur .44s-CSS-Transition von .startbild passen
+
+/** Funken, die im Moment des Zusammensetzens aus dem Zeichen schießen.
+    Ungleichmäßig verteilt und in den drei Akzentfarben, damit es nach
+    Streuung aussieht und nicht nach Zahnrad. */
+const FUNKEN = [
+  { winkel: -84, weite: 96, spaet: 620, ton: 'neon' },
+  { winkel: -36, weite: 124, spaet: 660, ton: 'violett' },
+  { winkel: 6, weite: 104, spaet: 635, ton: 'neon' },
+  { winkel: 44, weite: 132, spaet: 690, ton: 'magenta' },
+  { winkel: 92, weite: 100, spaet: 645, ton: 'neon' },
+  { winkel: 134, weite: 128, spaet: 700, ton: 'violett' },
+  { winkel: 172, weite: 108, spaet: 655, ton: 'neon' },
+  { winkel: -140, weite: 136, spaet: 675, ton: 'magenta' },
+  { winkel: -108, weite: 92, spaet: 630, ton: 'neon' },
+]
+
+/** Schriftzug buchstabenweise: jeder Buchstabe bekommt seinen Platz in der
+    Reihe als CSS-Variable, die Verzögerung rechnet das Stylesheet daraus.
+    Der Versatz läuft über beide Wörter durch, darum der Startindex. */
+function buchstaben(wort: string, ab: number) {
+  return [...wort].map((z, i) => (
+    <span key={i} style={cssVars({ '--i': ab + i })}>
+      {z}
+    </span>
+  ))
+}
 
 /** Läuft einmal beim App-Start (schon angemeldet): die Scheibe zeichnet
     sich, die Hantel schiebt sich auf, der Schriftzug fährt von beiden
@@ -45,6 +75,21 @@ export function BootScreen() {
         <div className="sb-scheibe">
           <span className="sb-puls" />
           <span className="sb-puls p2" />
+          <span className="sb-bloom" />
+          {FUNKEN.map((f, i) => {
+            const rad = (f.winkel * Math.PI) / 180
+            return (
+              <span
+                key={i}
+                className={'sb-funke ' + f.ton}
+                style={cssVars({
+                  '--fx': `${(Math.cos(rad) * f.weite).toFixed(1)}px`,
+                  '--fy': `${(Math.sin(rad) * f.weite).toFixed(1)}px`,
+                  animationDelay: `${f.spaet}ms`,
+                })}
+              />
+            )
+          })}
           <svg className="sb-mark" viewBox="0 0 64 64">
             <circle className="rg sb-r1" cx="32" cy="32" r="25" />
             <circle className="rg sb-r2" cx="32" cy="32" r="17" />
@@ -57,8 +102,8 @@ export function BootScreen() {
           </svg>
         </div>
         <div className="sb-wort">
-          <b>Bench</b>
-          <em>Protocol</em>
+          <b>{buchstaben('Bench', 0)}</b>
+          <em>{buchstaben('Protocol', 5)}</em>
         </div>
         <div className="sb-linie">
           <i />

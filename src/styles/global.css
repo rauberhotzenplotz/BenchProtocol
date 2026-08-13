@@ -1768,8 +1768,12 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 }
 .gym-ziffer { display: block; height: .92em; width: .575em; overflow: visible; }
 .gym-ziffer path {
-  fill: none; stroke: currentColor; stroke-width: 12;
+  fill: none; stroke: currentColor; stroke-width: 13;
   stroke-linecap: round; stroke-linejoin: round;
+  /* Siehe GymRing.tsx: lässt Selbstkreuzungen beim Verformen zu einer
+     Masse zusammenlaufen. Die Schwelle trägt den Strich leicht ab —
+     darum 13 statt 12. */
+  filter: url(#gymZifferFluss);
 }
 .gym-doppelpunkt { display: block; height: .92em; width: .196em; overflow: visible; }
 .gym-doppelpunkt circle { fill: currentColor; }
@@ -1777,18 +1781,92 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .gym-naechst { margin-top: 16px; font-family: var(--f-mono); font-size: 11.5px;
   letter-spacing: .1em; color: var(--ink-3); text-align: center; }
 
+/* ── Quittung beim Abhaken eines Satzes ─────────────────────────
+   Liegt per Portal über allem (siehe SatzQuittung.tsx) und lässt keine
+   Klicks durch — direkt danach wechselt der Gym-Modus auf den Pausen-
+   oder Abschlussbildschirm, dessen Knöpfe erreichbar bleiben müssen. */
+.satzok { position: fixed; inset: 0; z-index: 135; display: grid; place-items: center; pointer-events: none; }
+.satzok-kern { position: relative; display: grid; place-items: center; width: 200px; height: 200px; }
+.satzok-welle {
+  position: absolute; width: 96px; height: 96px; border-radius: 50%;
+  border: 2px solid var(--good); opacity: 0;
+  animation: satzokWelle .72s cubic-bezier(.22,1,.36,1) both;
+}
+.satzok-welle.spaet { animation-delay: .13s; border-color: rgba(63,224,138,.45); }
+@keyframes satzokWelle {
+  0% { transform: scale(.45); opacity: 0; }
+  20% { opacity: .9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.satzok-haken { position: relative; width: 96px; height: 96px; overflow: visible; }
+.satzok-haken path {
+  fill: none; stroke: var(--good); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 61; stroke-dashoffset: 61;
+  filter: drop-shadow(0 0 10px rgba(63,224,138,.8));
+  animation: satzokHaken .3s cubic-bezier(.65,0,.35,1) .05s forwards,
+             satzokWeg .22s ease .56s forwards;
+}
+@keyframes satzokHaken { to { stroke-dashoffset: 0; } }
+@keyframes satzokWeg { to { opacity: 0; transform: scale(1.15); } }
+.satzok-funke {
+  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px;
+  border-radius: 50%; background: #B6FFD6; box-shadow: 0 0 14px var(--good), 0 0 4px #fff;
+  opacity: 0; animation: satzokFunke .7s cubic-bezier(.22,1,.36,1) both;
+}
+/* Der Zwischenschritt bei 22 % ist nötig, damit der Funke unterwegs seine
+   volle Größe erreicht — ginge die Skalierung direkt von klein auf klein,
+   bliebe er über die ganze Flugbahn ein kaum sichtbarer Punkt. Die
+   Teilstrecke rechnet calc() aus derselben Zielrichtung. */
+@keyframes satzokFunke {
+  0%   { transform: translate(0,0) scale(.35); opacity: 0; }
+  22%  { transform: translate(calc(var(--fx) * .22), calc(var(--fy) * .22)) scale(1); opacity: 1; }
+  100% { transform: translate(var(--fx), var(--fy)) scale(.3); opacity: 0; }
+}
+
 /* Abschluss */
 .gym-fertig { flex: 1; min-height: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px; text-align: center; }
-.gym-fhaken {
-  width: 78px; height: 78px; border-radius: 50%; border: 2px solid var(--good);
-  background: rgba(63,224,138,.12); display: grid; place-items: center; margin-bottom: 16px;
+.gym-fhaken { position: relative; width: 104px; height: 104px; margin-bottom: 18px; }
+.gym-fhaken > svg { width: 100%; height: 100%; overflow: visible; }
+/* Ring und Haken zeichnen sich nacheinander — erst schließt sich der
+   Kreis, dann setzt der Haken hinein. */
+.gym-fhaken .ring {
+  fill: rgba(63,224,138,.09); stroke: var(--good); stroke-width: 2.4;
+  stroke-dasharray: 289; stroke-dashoffset: 289;
+  transform: rotate(-90deg); transform-origin: 50% 50%;
+  animation: gymFRing .6s cubic-bezier(.22,1,.36,1) .06s forwards;
 }
-.gym-fhaken svg { width: 40px; height: 40px; stroke: var(--good); fill: none;
-  stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes gymFRing { to { stroke-dashoffset: 0; } }
+.gym-fhaken .haken {
+  fill: none; stroke: var(--good); stroke-width: 6.5; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 61; stroke-dashoffset: 61;
+  filter: drop-shadow(0 0 12px rgba(63,224,138,.7));
+  animation: gymFHaken .36s cubic-bezier(.65,0,.35,1) .46s forwards;
+}
+@keyframes gymFHaken { to { stroke-dashoffset: 0; } }
+.gym-ffunke {
+  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px;
+  border-radius: 50%; background: #B6FFD6; box-shadow: 0 0 16px var(--good), 0 0 5px #fff;
+  opacity: 0; animation: gymFFunke .95s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes gymFFunke {
+  0%   { transform: translate(0,0) scale(.35); opacity: 0; }
+  20%  { transform: translate(calc(var(--fx) * .2), calc(var(--fy) * .2)) scale(1); opacity: 1; }
+  100% { transform: translate(var(--fx), var(--fy)) scale(.3); opacity: 0; }
+}
+/* Text und Zahlen laufen gestaffelt hinter dem Haken ein. */
+@keyframes gymFRein {
+  from { opacity: 0; transform: translateY(16px); filter: blur(7px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
 .gym-ftitel { font-family: var(--f-display); font-size: clamp(24px, 7vw, 34px);
-  letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
-.gym-fwerte { display: flex; gap: clamp(18px, 7vw, 44px); margin-top: 22px; flex-wrap: wrap; justify-content: center; }
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink);
+  animation: gymFRein .55s cubic-bezier(.22,1,.36,1) .5s both; }
+.gym-fzeile { margin-top: 8px; font-size: 13px; color: var(--ink-3); max-width: 34ch;
+  animation: gymFRein .55s cubic-bezier(.22,1,.36,1) .62s both; }
+.gym-tasten.spaet { animation: gymFRein .5s ease .9s both; }
+.gym-fwerte { display: flex; gap: clamp(18px, 7vw, 44px); margin-top: 22px; flex-wrap: wrap; justify-content: center;
+  animation: gymFRein .55s cubic-bezier(.22,1,.36,1) .72s both; }
 .gym-fwert { text-align: center; }
 .gym-fwert b { display: block; font-family: var(--f-display); font-variant-numeric: tabular-nums;
   font-size: clamp(30px, 9vw, 46px); line-height: 1; color: var(--neon); }
@@ -1997,13 +2075,47 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   font-family: var(--f-display); font-size: clamp(26px, 8vw, 38px);
   letter-spacing: .15em; text-transform: uppercase; line-height: 1;
 }
-.sb-wort b { font-weight: 600; color: var(--ink);
-  animation: sbVonLinks .55s cubic-bezier(.22,1,.36,1) .56s both; }
+/* Buchstabe für Buchstabe statt als zwei Blöcke: jeder kippt aus der Tiefe
+   herein, der Versatz läuft über beide Wörter durch (siehe buchstaben()
+   in BootScreen.tsx). */
+.sb-wort b, .sb-wort em { display: flex; }
+.sb-wort b { font-weight: 600; color: var(--ink); }
 .sb-wort em { font-style: normal; font-weight: 600; color: var(--neon);
-  text-shadow: 0 0 22px rgba(53,240,208,.55);
-  animation: sbVonRechts .55s cubic-bezier(.22,1,.36,1) .64s both; }
-@keyframes sbVonLinks  { from { opacity: 0; transform: translateX(-30px); filter: blur(7px); } }
-@keyframes sbVonRechts { from { opacity: 0; transform: translateX(30px);  filter: blur(7px); } }
+  text-shadow: 0 0 22px rgba(53,240,208,.55); }
+.sb-wort span {
+  display: inline-block; white-space: pre;
+  animation: sbBuchstabe .44s cubic-bezier(.22,1,.36,1) both;
+  animation-delay: calc(.5s + var(--i) * 28ms);
+}
+@keyframes sbBuchstabe {
+  from { opacity: 0; transform: translateY(18px) scale(.82); filter: blur(8px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* Aufblitzen und Funken in dem Moment, in dem das Zeichen zusammensteht. */
+.sb-bloom {
+  position: absolute; width: 150px; height: 150px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(53,240,208,.55), rgba(53,240,208,.14) 45%, transparent 70%);
+  opacity: 0; animation: sbBloom .85s cubic-bezier(.22,1,.36,1) .58s both;
+}
+@keyframes sbBloom {
+  0% { transform: scale(.25); opacity: 0; }
+  22% { opacity: .95; }
+  100% { transform: scale(2.3); opacity: 0; }
+}
+.sb-funke {
+  position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px;
+  border-radius: 50%; opacity: 0; pointer-events: none;
+  animation: sbFunke .95s cubic-bezier(.22,1,.36,1) both;
+}
+.sb-funke.neon    { background: #B9FFF2; box-shadow: 0 0 12px var(--neon); }
+.sb-funke.violett { background: #CFC6FF; box-shadow: 0 0 12px var(--violet); }
+.sb-funke.magenta { background: #FFC2DC; box-shadow: 0 0 12px var(--magenta); }
+@keyframes sbFunke {
+  0%   { transform: translate(0,0) scale(.35); opacity: 0; }
+  20%  { transform: translate(calc(var(--fx) * .2), calc(var(--fy) * .2)) scale(1); opacity: 1; }
+  100% { transform: translate(var(--fx), var(--fy)) scale(.3); opacity: 0; }
+}
 
 .sb-linie {
   margin-top: 18px; width: min(250px, 60vw); height: 2px; border-radius: 2px;

@@ -130,7 +130,10 @@ function pfad(p: Punkt[]): string {
   return d
 }
 
-const DAUER = 480
+/** Länger als nötig gewählt: die Verformung soll fließen, nicht schnappen.
+    Muss deutlich unter einer Sekunde bleiben, sonst liefe sie in den
+    nächsten Sekundenwechsel hinein. */
+const DAUER = 560
 
 function bewegungAn(): boolean {
   if (document.documentElement.dataset.motion === 'off') return false
