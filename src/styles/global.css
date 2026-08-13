@@ -2037,6 +2037,9 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   letter-spacing: .04em; text-transform: uppercase; color: var(--ink);
 }
 .auth-brand em { color: var(--neon); font-style: normal; }
+/* .mark bringt aus der Navigationsleiste einen margin-bottom für den
+   dortigen Block-Kontext mit — hier steht sie inline neben dem Wortmark. */
+.auth-brand .mark { margin-bottom: 0; width: 34px; height: 34px; }
 .auth-msg { font-size: 12.5px; margin: 10px 0 0; }
 .auth-msg.err { color: var(--crit); }
 .auth-msg.ok { color: var(--good); }

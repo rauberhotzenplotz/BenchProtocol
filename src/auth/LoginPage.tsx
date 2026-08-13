@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './auth-context'
+import { Mark } from '../components/Mark'
 
 type Verfahren = 'passwort' | 'magic'
 type Modus = 'anmelden' | 'registrieren'
@@ -77,6 +78,7 @@ export function LoginPage() {
     <div className="auth-screen">
       <div className="auth-card">
         <div className="auth-brand">
+          <Mark />
           Bench<em>Protocol</em>
         </div>
 
