@@ -17,6 +17,30 @@ function zielWdh(scheme: string | null | undefined): number {
   return m ? +m[1] : 8
 }
 
+/** Wo weitermachen: die erste Übung/Position, die noch nicht abgehakt ist
+    — oder der Abschluss, wenn schon alles erledigt ist. Wird nur beim
+    ersten Aufbau von GymMode ausgewertet (siehe useState-Lazy-
+    Initializer dort), nicht bei jeder Änderung an den Sätzen — sonst
+    würde ein frisch gesetzter Haken den Gym-Modus mitten in der Bewegung
+    weiterspringen lassen. Setzt voraus, dass es mindestens eine Übung
+    gibt (Gym-Modus öffnet ohnehin nur dann, siehe SessionView.tsx). */
+function ersteOffenePosition(
+  uebungen: Exercise[],
+  setsByExercise: Map<string, LoggedSet[]>,
+  sollFuer: (ex: Exercise) => number,
+): { uebIdx: number; satzIdx: number; fertig: boolean } {
+  for (let ui = 0; ui < uebungen.length; ui++) {
+    const sets = setsByExercise.get(uebungen[ui].id) ?? []
+    const soll = sollFuer(uebungen[ui])
+    for (let si = 0; si < soll; si++) {
+      if (!sets.find(s => s.position === si)?.done) {
+        return { uebIdx: ui, satzIdx: si, fertig: false }
+      }
+    }
+  }
+  return { uebIdx: uebungen.length - 1, satzIdx: 0, fertig: true }
+}
+
 interface Props {
   plan: Plan
   day: DayWithExercises
@@ -38,27 +62,6 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   const autoAdvanceBlock = useAutoAdvanceBlock()
   const restTimer = useRestTimer()
   const { data: progression } = useBenchProgression(plan.id)
-  const [uebIdx, setUebIdx] = useState(0)
-  const [satzIdx, setSatzIdx] = useState(0)
-  const [aufgewaermt, setAufgewaermt] = useState<Set<string>>(new Set())
-  const [fertig, setFertig] = useState(false)
-  // Zählt hoch statt umzuschalten: hakt man zwei Sätze schnell nacheinander
-  // ab, erzwingt der neue Wert über key= einen Neuaufbau, damit die
-  // Quittung von vorn läuft statt die erste Bewegung weiterlaufen zu lassen.
-  const [quittung, setQuittung] = useState(0)
-  // Muss stabil bleiben: die Quittung räumt sich per Zeitgeber selbst ab,
-  // und während der Pause rendert der Timer im Sekundentakt neu. Ein bei
-  // jedem Rendern neu erzeugter Rückruf würde den Zeitgeber ständig neu
-  // aufziehen.
-  const quittungFertig = useCallback(() => setQuittung(0), [])
-
-  // Solange der Gym-Modus offen ist, übernimmt er selbst die große
-  // Pausenanzeige — die kleine schwebende Leiste bleibt aus.
-  useEffect(() => {
-    restTimer.setGymActive(true)
-    return () => restTimer.setGymActive(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Mounten/Unmounten schalten, nicht bei jeder Timer-Änderung
-  }, [])
 
   // Die Bank-Progression kennt das für diese Woche vorgesehene Gewicht/
   // Schema unabhängig von der Historie — wichtig direkt nach einem Block-
@@ -77,6 +80,60 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   }
 
   const uebungen = day.exercises
+
+  // Nicht immer bei Übung 1 / Satz 1 anfangen: kommt man aus "Sätze
+  // prüfen" zurück, soll es beim ersten noch offenen Satz weitergehen —
+  // oder, wenn zwischenzeitlich schon alles abgehakt wurde, direkt beim
+  // Abschlussbildschirm stehen, statt die Einheit noch mal von vorn
+  // durchzuzählen. Nur einmal beim Aufbau ausgewertet (Lazy-Initializer),
+  // nicht bei jeder Satzänderung — sonst risse ein frisch gesetzter Haken
+  // mitten aus der laufenden Bewegung.
+  const [start] = useState(() => ersteOffenePosition(uebungen, setsByExercise, sollFuer))
+  const [uebIdx, setUebIdx] = useState(start.uebIdx)
+  const [satzIdx, setSatzIdx] = useState(start.satzIdx)
+  const [aufgewaermt, setAufgewaermt] = useState<Set<string>>(new Set())
+  const [fertig, setFertig] = useState(start.fertig)
+
+  // sollFuer() rechnet ohne geladene Bank-Progression mit dem statischen
+  // Übungsschema statt der Wochenvorgabe — bei einem frischen Seitenaufruf
+  // ist die Progression im allerersten Rendern oft noch nicht da. War das
+  // beim Bestimmen von "start" oben der Fall, einmalig nachbessern, sobald
+  // sie eintrifft. Nur, solange der Nutzer in der Zwischenzeit nicht schon
+  // selbst weitergeklickt hat — sonst überschriebe die Korrektur echten
+  // Fortschritt. Abgeleiteter Zustand direkt beim Rendern, nicht in einem
+  // Effekt: sonst bliebe die falsche Startposition für einen zusätzlichen
+  // Render-Zyklus sichtbar.
+  const progressionNoetig = uebungen.some(ex => ex.bench_slot != null || istBankdruecken(ex))
+  const positionBereit = !progressionNoetig || progression != null
+  const [positionKorrigiert, setPositionKorrigiert] = useState(positionBereit)
+  if (!positionKorrigiert && positionBereit) {
+    setPositionKorrigiert(true)
+    const nochUnveraendert = uebIdx === start.uebIdx && satzIdx === start.satzIdx && fertig === start.fertig
+    if (nochUnveraendert) {
+      const echt = ersteOffenePosition(uebungen, setsByExercise, sollFuer)
+      if (echt.uebIdx !== uebIdx) setUebIdx(echt.uebIdx)
+      if (echt.satzIdx !== satzIdx) setSatzIdx(echt.satzIdx)
+      if (echt.fertig !== fertig) setFertig(echt.fertig)
+    }
+  }
+  // Zählt hoch statt umzuschalten: hakt man zwei Sätze schnell nacheinander
+  // ab, erzwingt der neue Wert über key= einen Neuaufbau, damit die
+  // Quittung von vorn läuft statt die erste Bewegung weiterlaufen zu lassen.
+  const [quittung, setQuittung] = useState(0)
+  // Muss stabil bleiben: die Quittung räumt sich per Zeitgeber selbst ab,
+  // und während der Pause rendert der Timer im Sekundentakt neu. Ein bei
+  // jedem Rendern neu erzeugter Rückruf würde den Zeitgeber ständig neu
+  // aufziehen.
+  const quittungFertig = useCallback(() => setQuittung(0), [])
+
+  // Solange der Gym-Modus offen ist, übernimmt er selbst die große
+  // Pausenanzeige — die kleine schwebende Leiste bleibt aus.
+  useEffect(() => {
+    restTimer.setGymActive(true)
+    return () => restTimer.setGymActive(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Mounten/Unmounten schalten, nicht bei jeder Timer-Änderung
+  }, [])
+
   const exercise = uebungen[Math.min(uebIdx, uebungen.length - 1)]
   const sets = setsByExercise.get(exercise.id) ?? []
   const progressionZeile = progressionZeileFuer(exercise)
