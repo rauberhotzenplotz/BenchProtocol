@@ -145,7 +145,7 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
           <ul style={{ margin: 0, paddingLeft: 17, color: 'var(--ink-2)', fontSize: 12.8, display: 'flex', flexDirection: 'column', gap: 9 }}>
             <li>
               Am Ende der Deload-Woche berechnet die App dein neues 1RM automatisch aus den RPE-Werten der Wochen 1–3 auf{' '}
-              <strong style={{ color: 'var(--neon)' }}>Bank schwer</strong> — kein manueller Schritt mehr nötig.
+              <strong style={{ color: 'var(--neon)' }}>Bank schwer</strong>.
             </li>
             <li>
               Lief der Block planmäßig oder besser (Ø RPE nah am Ziel), übernimmt der nächste Block dein tatsächlich{' '}
@@ -153,7 +153,7 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
             </li>
             <li>
               War die Ermüdung höher als geplant oder fehlt eine Woche mit RPE-Eintrag, bleibt das Ausgangsgewicht{' '}
-              <strong style={{ color: 'var(--neon)' }}>unverändert</strong> — kein Sprung ins Blaue.
+              <strong style={{ color: 'var(--neon)' }}>unverändert</strong>.
             </li>
           </ul>
         </div>
