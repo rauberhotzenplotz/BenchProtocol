@@ -135,6 +135,29 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
           {wochenLabel(plan.week, plan)}: {gesamt.erledigt} von {gesamt.geplant} Sätzen · {Math.round(gesamt.tonnage)} kg bewegt
         </span>
       </div>
+
+      {plan.typ === 'bench' && (
+        <div className="card" style={{ ...cssVars({ '--i': 4 }), marginTop: 14 }}>
+          <h3>
+            <span className="tick" />
+            Nach dem Block
+          </h3>
+          <ul style={{ margin: 0, paddingLeft: 17, color: 'var(--ink-2)', fontSize: 12.8, display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <li>
+              Am Ende der Deload-Woche berechnet die App dein neues 1RM automatisch aus den RPE-Werten der Wochen 1–3 auf{' '}
+              <strong style={{ color: 'var(--neon)' }}>Bank schwer</strong> — kein manueller Schritt mehr nötig.
+            </li>
+            <li>
+              Lief der Block planmäßig oder besser (Ø RPE nah am Ziel), übernimmt der nächste Block dein tatsächlich{' '}
+              <strong style={{ color: 'var(--neon)' }}>bestes gemessenes 1RM</strong> aus diesem Block.
+            </li>
+            <li>
+              War die Ermüdung höher als geplant oder fehlt eine Woche mit RPE-Eintrag, bleibt das Ausgangsgewicht{' '}
+              <strong style={{ color: 'var(--neon)' }}>unverändert</strong> — kein Sprung ins Blaue.
+            </li>
+          </ul>
+        </div>
+      )}
     </section>
   )
 }

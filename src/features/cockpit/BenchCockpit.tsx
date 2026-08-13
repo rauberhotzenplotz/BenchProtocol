@@ -74,24 +74,7 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
         <KpiCard cls="c4" label="Wochenvolumen" value={<CountUp value={gesamtVolumen} />} unit="Sätze" sub={`${(volumeRows ?? []).length} Muskelgruppen erfasst`} />
       </div>
 
-      <div className="card" style={cssVars({ '--i': 3 })}>
-        <h3>
-          <span className="tick" />
-          Nach dem Block
-        </h3>
-        <ul style={{ margin: 0, paddingLeft: 17, color: 'var(--ink-2)', fontSize: 12.8, display: 'flex', flexDirection: 'column', gap: 9 }}>
-          <li>
-            Schaffst du Woche 3 planmäßig, steigt das Arbeitsgewicht um <strong style={{ color: 'var(--neon)' }}>2,5 kg</strong>.
-          </li>
-          <li>
-            Läuft Woche 3 mit deutlich mehr Reserve als geplant (Ø RPE ≤ 6,5), steigt es stattdessen um{' '}
-            <strong style={{ color: 'var(--neon)' }}>5 kg</strong>.
-          </li>
-          <li>Schaffst du Woche 3 nicht in allen Sätzen, wiederholt sich der Block mit unverändertem Ausgangsgewicht.</li>
-        </ul>
-      </div>
-
-      <div className="stack" style={{ ...cssVars({ '--i': 4 }), marginTop: 14, gap: 14 }}>
+      <div className="stack" style={{ ...cssVars({ '--i': 3 }), marginTop: 14, gap: 14 }}>
         <TonnageEinheitenCard punkte={einheiten} />
         <DauerEinheitenCard punkte={einheiten} />
         <UebungsdauerCard eintraege={dauerJeUebung} />
