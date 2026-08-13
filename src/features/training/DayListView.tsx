@@ -4,7 +4,8 @@ import { useCreateDay, useSkipSession } from './queries'
 import { tagFortschritt, gruppeSetsByExercise, wochenLabel } from './calc'
 import { WeekControl } from './WeekControl'
 import { PlanPicker } from '../plans/PlanPicker'
-import { TrainingCalendar } from './TrainingCalendar'
+import { DateStrip } from './DateStrip'
+import { tagFarbe } from './dayColor'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -42,6 +43,10 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
         <WeekControl plan={plan} />
       </div>
 
+      <div style={{ marginBottom: 14 }}>
+        <DateStrip plan={plan} days={days} sessions={alleSessionenJemals} alleSaetze={alleSaetzeJemals} />
+      </div>
+
       <div className="tagliste" style={cssVars({ '--i': 2 })}>
         {days.map((d, i) => {
           const f = tagFortschritt(d.exercises, setsByExercise)
@@ -53,6 +58,7 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
             <div
               key={d.id}
               className={'tagkarte' + (f.fertig ? ' fertig' : '')}
+              style={cssVars({ '--f': tagFarbe(days, d.id) })}
               role="button"
               tabIndex={0}
               onClick={() => onOpen(d.id)}
@@ -128,10 +134,6 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
         <span className="mono tiny muted">
           {wochenLabel(plan.week, plan)}: {gesamt.erledigt} von {gesamt.geplant} Sätzen · {Math.round(gesamt.tonnage)} kg bewegt
         </span>
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <TrainingCalendar plan={plan} days={days} sessions={alleSessionenJemals} alleSaetze={alleSaetzeJemals} />
       </div>
     </section>
   )

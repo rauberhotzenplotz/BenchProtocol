@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useActivePlan } from './active-plan-context'
 import { useCreatePlan, useDeletePlan, useUpdatePlan } from './queries'
 import type { PlanTyp } from '../../types/db'
@@ -20,7 +21,13 @@ export function PlanPicker() {
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
-      {offen && <PlanManagerDialog onClose={() => setOffen(false)} />}
+      {offen &&
+        // Portal statt normalem Kind-Render: PlanPicker sitzt meist in einer
+        // <section className="view on frisch"> mit Eintrittsanimation, die
+        // (auch nach Ablauf) einen Containing Block für position:fixed-
+        // Nachfahren erzeugt (siehe SessionView.tsx/GymMode-Fix). Ohne Portal
+        // würde der Dialog auf die Section zusammengequetscht statt Vollbild.
+        createPortal(<PlanManagerDialog onClose={() => setOffen(false)} />, document.body)}
     </>
   )
 }

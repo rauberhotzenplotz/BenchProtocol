@@ -119,31 +119,6 @@ body {
 .mark .plate2 { transform-origin: 32px 32px; animation: spin 20s linear infinite reverse; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Aufbau-Variante (Boot-Screen): die Teile fliegen einzeln ein und setzen
-   sich zum Logo zusammen. Die Flug-Animation sitzt auf einer zusätzlichen
-   <g>-Hülle um jedes Teil — die ewige spin-Animation bleibt unangetastet
-   auf .plate/.plate2 selbst, beide Transforms addieren sich unabhängig. */
-.mark.aufbau .stueck { transform-origin: 32px 32px; }
-.mark.aufbau .ring1 { animation: stueckRing1 .6s .05s cubic-bezier(.34,1.56,.64,1) both; }
-.mark.aufbau .ring2 { animation: stueckRing2 .6s .12s cubic-bezier(.34,1.56,.64,1) both; }
-.mark.aufbau .bar { animation: stueckBar .5s .28s cubic-bezier(.34,1.56,.64,1) both; }
-.mark.aufbau .platte-l { animation: stueckPlatteL .5s .36s cubic-bezier(.34,1.56,.64,1) both; }
-.mark.aufbau .platte-r { animation: stueckPlatteR .5s .36s cubic-bezier(.34,1.56,.64,1) both; }
-@keyframes stueckRing1 { from { opacity: 0; transform: translate(-16px,-14px) scale(.4); } to { opacity: 1; transform: none; } }
-@keyframes stueckRing2 { from { opacity: 0; transform: translate(15px,13px) scale(.4); } to { opacity: 1; transform: none; } }
-@keyframes stueckBar { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
-@keyframes stueckPlatteL { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: none; } }
-@keyframes stueckPlatteR { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
-
-/* Boot-Screen: kurzer Vollbild-Aufbau beim App-Start, dann Fade zum Cockpit. */
-.boot {
-  position: fixed; inset: 0; z-index: 300; background: var(--ground);
-  display: grid; place-items: center;
-  transition: opacity .26s ease, visibility .26s ease;
-}
-.boot.aus { opacity: 0; visibility: hidden; pointer-events: none; }
-.boot .mark { width: 84px; height: 84px; margin-bottom: 0; }
-
 .nav-btn {
   width: 60px; height: 54px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -203,7 +178,7 @@ body {
   display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
   border: 1px solid transparent; background: transparent; color: var(--ink-2);
   padding: 10px 12px; border-radius: var(--r-m); cursor: pointer;
-  font: inherit; transition: all .18s;
+  font: inherit; transition: all .18s; text-decoration: none;
 }
 .mehr-eintrag:hover { background: rgba(53,240,208,.08); color: var(--ink); border-color: rgba(53,240,208,.25); }
 .mehr-eintrag:focus-visible { outline: 2px solid var(--neon); outline-offset: -2px; }
@@ -514,7 +489,15 @@ tr:hover .rowbtn, .rowbtn:focus, .rowbtn:focus-visible, .rowbtn:hover { opacity:
 .bar-fill {
   height: 100%; border-radius: inherit; position: relative; overflow: hidden;
   width: 0; transition: width 1s cubic-bezier(.22,1,.36,1);
+  /* Die width-transition greift nur bei SPÄTEREN Änderungen — React setzt
+     die Ziel-Breite schon im ersten Render, ohne eine "0"-Zwischenstufe zu
+     malen, an der die Transition ansetzen könnte. Das erste Aufbauen
+     übernimmt stattdessen eine echte @keyframes-Animation (spielt immer ab
+     "from", unabhängig vom Mount-Zeitpunkt), analog zu .dbar/barGrow. */
+  transform-origin: 0 50%;
+  animation: barFillWachsen .9s cubic-bezier(.22,1,.36,1) both;
 }
+@keyframes barFillWachsen { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .bar-fill::after {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.42) 50%, transparent 80%);

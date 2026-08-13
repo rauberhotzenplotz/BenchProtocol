@@ -30,9 +30,6 @@ export function AppShell() {
         <Nav />
         <div className="rail-foot">
           <div className="pulse-dot" title={speichertGerade ? 'Speichert …' : 'Mit Konto verbunden'} />
-          <span className="tiny mono" style={{ color: 'var(--ink-4)' }}>
-            {speichertGerade ? 'SYNC' : 'OK'}
-          </span>
         </div>
       </aside>
 

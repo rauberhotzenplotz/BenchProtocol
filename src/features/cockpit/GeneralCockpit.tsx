@@ -2,8 +2,11 @@ import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, tagFortschritt, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, frequenzDaten, trainingszeitDaten } from './calc'
-import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, ProgressCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard } from './widgets'
+import { naechsterTag, frequenzDaten, trainingszeitDaten, einheitenDaten } from './calc'
+import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard } from './widgets'
+import { DauerEinheitenCard } from './DauerEinheitenCard'
+import { TonnageEinheitenCard } from './TonnageEinheitenCard'
+import { CountUp } from '../../components/CountUp'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -32,6 +35,7 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
   }
   const letzteTonnage = letzte.length ? tonnageVon(letzte[0]) : 0
   const serie = letzte.map(tonnageVon).reverse()
+  const einheiten = einheitenDaten(days, sessions, allSets)
 
   return (
     <>
@@ -53,19 +57,20 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
         <KpiCard
           cls="c3"
           label="Tonnage letztes Training"
-          value={Math.round(letzteTonnage / 1000 * 10) / 10}
+          value={<CountUp value={Math.round(letzteTonnage / 1000 * 10) / 10} decimals={1} />}
           unit="t"
           sub={letzteTonnage > 0 ? `${Math.round(letzteTonnage)} kg bewegt` : 'noch nichts geloggt'}
           spark={serie.length > 1 ? serie : undefined}
         />
       </div>
 
-      <div className="grid g-21" style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
-        <ProgressCard wocheLabel={wochenLabel(week, plan)} days={days} setsByExercise={setsByExercise} />
-        <LetzteEinheitenCard sessions={sessions} dayNameOf={id => days.find(d => d.id === id)?.name ?? '—'} />
+      <div style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
+        <LetzteEinheitenCard sessions={sessions} days={days} />
       </div>
 
-      <div style={cssVars({ '--i': 3 })}>
+      <div className="stack" style={{ ...cssVars({ '--i': 3 }), gap: 14 }}>
+        <TonnageEinheitenCard punkte={einheiten} />
+        <DauerEinheitenCard punkte={einheiten} />
         <UebungsdauerCard eintraege={dauerJeUebung} />
       </div>
     </>

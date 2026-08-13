@@ -3,7 +3,7 @@ import type { LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import { useDeleteSession } from './queries'
 import { tonnageOf, uebungsDauer, dauerKurz, wochenLabel } from './calc'
-import { cssVars } from '../../lib/style'
+import { tagFarbe } from './dayColor'
 
 const WOCHENTAG = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const MONATE = [
@@ -67,11 +67,8 @@ export function TrainingCalendar({ plan, days, sessions, alleSaetze }: Props) {
   const gewaehlteSessions = gewaehlteIso ? (nachTag.get(gewaehlteIso) ?? []) : []
 
   return (
-    <div className="card" style={cssVars({ '--i': 4 })}>
-      <h3>
-        <span className="tick" style={{ background: 'var(--magenta)' }} />
-        Kalender
-      </h3>
+    <div>
+      <h4>Kalender</h4>
 
       {gewaehlteIso && gewaehlteSessions.length > 0 ? (
         <TagDetail iso={gewaehlteIso} sessions={gewaehlteSessions} days={days} plan={plan} alleSaetze={alleSaetze} onZurueck={() => setGewaehlteIso(null)} />
@@ -105,6 +102,7 @@ export function TrainingCalendar({ plan, days, sessions, alleSaetze }: Props) {
               const einheiten = nachTag.get(iso) ?? []
               const istHeute = iso === heuteIso
               const namen = einheiten.map(s => days.find(d => d.id === s.day_id)?.name ?? '—')
+              const farben = [...new Set(einheiten.map(s => tagFarbe(days, s.day_id)))]
               const InhaltTag = einheiten.length ? 'button' : 'div'
               return (
                 <InhaltTag
@@ -130,7 +128,13 @@ export function TrainingCalendar({ plan, days, sessions, alleSaetze }: Props) {
                   <span className="mono tiny" style={{ color: istHeute ? 'var(--neon)' : 'var(--ink-2)' }}>
                     {tag}
                   </span>
-                  {einheiten.length > 0 && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--neon)' }} />}
+                  {farben.length > 0 && (
+                    <span style={{ display: 'flex', gap: 2 }}>
+                      {farben.map(f => (
+                        <span key={f} style={{ width: 5, height: 5, borderRadius: '50%', background: f }} />
+                      ))}
+                    </span>
+                  )}
                 </InhaltTag>
               )
             })}
@@ -195,7 +199,9 @@ function TagDetail({
           return (
             <div key={session.id} className="card" style={{ padding: 14 }}>
               <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span className="chip neon">{tag.name}</span>
+                <span className="chip" style={{ borderColor: `${tagFarbe(days, tag.id)}59`, background: `${tagFarbe(days, tag.id)}15`, color: tagFarbe(days, tag.id) }}>
+                  {tag.name}
+                </span>
                 <span className="chip mute">{wochenLabel(session.week, plan)}</span>
                 {session.minutes && <span className="chip mute">{session.minutes} min</span>}
                 <span className="chip mute">{uebungenMitSaetzen.length} Übungen</span>

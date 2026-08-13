@@ -1,3 +1,5 @@
+import { cssVars } from '../../lib/style'
+
 /** Handgerollte Verlaufslinie des e1RM über die Wochen eines Blocks —
     Pendant zu components/Sparkline.tsx, nur mit Wochen-Beschriftung. */
 export function E1rmVerlauf({ punkte }: { punkte: { woche: number; e1rm: number }[] }) {
@@ -18,13 +20,26 @@ export function E1rmVerlauf({ punkte }: { punkte: { woche: number; e1rm: number 
     return [x, y] as const
   })
   const pfad = xy.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
+  const laenge = xy.slice(1).reduce((sum, [x, y], i) => {
+    const [px, py] = xy[i]
+    return sum + Math.hypot(x - px, y - py)
+  }, 0)
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block' }} aria-hidden="true">
-        <path d={pfad} fill="none" stroke="var(--neon)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block' }} className="chart" aria-hidden="true">
+        <path
+          className="ser"
+          d={pfad}
+          fill="none"
+          stroke="var(--neon)"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={cssVars({ '--len': laenge })}
+        />
         {xy.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={3.2} fill="var(--neon)" />
+          <circle key={i} className="dot" cx={x} cy={y} r={3.2} fill="var(--neon)" />
         ))}
       </svg>
       <div className="row" style={{ justifyContent: 'space-between', marginTop: 2 }}>
