@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken, tonnageOf } from './calc'
@@ -139,7 +139,19 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   // Wie die Quittung über einen Zähler, damit zwei Rekorde kurz
   // hintereinander die Nova neu starten statt sie weiterlaufen zu lassen.
   const [nova, setNova] = useState<{ nr: number; text: string } | null>(null)
-  const novaFertig = useCallback(() => setNova(null), [])
+  // Alle in dieser Einheit erzielten Bestleistungen, nicht nur die letzte —
+  // der Abschlussbildschirm hält sie fest (siehe GymFertig).
+  const [erzielteRekorde, setErzielteRekorde] = useState<string[]>([])
+  // Ref statt State: löst kein eigenes Rendern aus, wird nur von
+  // novaFertig gelesen, wenn die Supernova durchgelaufen ist.
+  const wartetAufNova = useRef(false)
+  const novaFertig = useCallback(() => {
+    setNova(null)
+    if (wartetAufNova.current) {
+      wartetAufNova.current = false
+      setFertig(true)
+    }
+  }, [])
 
   // Solange der Gym-Modus offen ist, übernimmt er selbst die große
   // Pausenanzeige — die kleine schwebende Leiste bleibt aus.
@@ -212,18 +224,30 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       done_at: new Date().toISOString(),
     })
     if (rekord) {
-      setNova(n => ({ nr: (n?.nr ?? 0) + 1, text: `${exercise.name} · ${kg} kg × ${reps}` }))
+      const text = `${exercise.name} · ${kg} kg × ${reps}`
+      setErzielteRekorde(r => [...r, text])
+      setNova(n => ({ nr: (n?.nr ?? 0) + 1, text }))
       vibrieren(TRAINING_FERTIG)
     } else {
       vibrieren(SATZ_ERLEDIGT)
     }
     setQuittung(n => n + 1)
+
+    if (istLetzterSatz) {
+      // Bei einer Bestleistung im letzten Satz soll die Supernova ihren
+      // eigenen Moment bekommen, statt gleichzeitig mit dem Abschluss-
+      // bildschirm (eigener Haken, eigene Funken, eigene Zahlen) um
+      // Aufmerksamkeit zu konkurrieren — der Abschluss wartet, bis
+      // novaFertig() feuert. Ohne Rekord gibt es nichts, worauf zu warten wäre.
+      if (rekord) wartetAufNova.current = true
+      else setFertig(true)
+      return
+    }
+
     // Vor dem letzten Satz keine Pause mehr anstoßen — danach kommt ohnehin
     // die Abschluss-Übersicht, nicht die nächste Übung.
-    if (!istLetzterSatz) {
-      const sek = pauseSekunden(exercise.rest)
-      if (autoPauseAn() && sek > 0) restTimer.start(sek, exercise.name)
-    }
+    const sek = pauseSekunden(exercise.rest)
+    if (autoPauseAn() && sek > 0) restTimer.start(sek, exercise.name)
     naechster()
   }
 
@@ -258,7 +282,16 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
     const geplant = uebungen.reduce((a, ex) => a + sollFuer(ex), 0)
     const abgehakt = uebungen.reduce((a, ex) => a + (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length, 0)
     const tonnage = uebungen.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
-    inhalt = <GymFertig geplant={geplant} erledigt={abgehakt} tonnage={tonnage} onPruefen={onPruefen} onBeenden={beenden} />
+    inhalt = (
+      <GymFertig
+        geplant={geplant}
+        erledigt={abgehakt}
+        tonnage={tonnage}
+        rekorde={erzielteRekorde}
+        onPruefen={onPruefen}
+        onBeenden={beenden}
+      />
+    )
   } else if (restTimer.label != null) {
     // Pause: solange ein Timer läuft (oder gerade fertig ist und noch
     // ausgeblendet wird), zeigt der Gym-Modus großflächig denselben Ring wie

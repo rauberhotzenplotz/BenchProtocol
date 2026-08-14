@@ -39,11 +39,14 @@ interface Props {
   geplant: number
   erledigt: number
   tonnage: number
+  /** Texte der in dieser Einheit erzielten Bestleistungen (siehe rekord.ts),
+      in der Reihenfolge, in der sie erzielt wurden. Leer, wenn keine. */
+  rekorde: string[]
   onPruefen: () => void
   onBeenden: () => void
 }
 
-export function GymFertig({ geplant, erledigt, tonnage, onPruefen, onBeenden }: Props) {
+export function GymFertig({ geplant, erledigt, tonnage, rekorde, onPruefen, onBeenden }: Props) {
   // Einmal beim Aufbau würfeln, nicht bei jedem Rendern — sonst wechselte
   // der Text unter den Augen des Nutzers.
   const [lob] = useState(() => LOB[Math.floor(Math.random() * LOB.length)])
@@ -80,6 +83,17 @@ export function GymFertig({ geplant, erledigt, tonnage, onPruefen, onBeenden }: 
 
         <div className="gym-ftitel">{lob.titel}</div>
         <div className="gym-fzeile">{lob.zeile}</div>
+
+        {rekorde.length > 0 && (
+          <div className="gym-frekorde">
+            <span className="gym-frekord-label">{rekorde.length === 1 ? 'Neue Bestleistung' : 'Neue Bestleistungen'}</span>
+            {rekorde.map((r, i) => (
+              <div key={i} className="gym-frekord-zeile">
+                {r}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="gym-fwerte">
           <div className="gym-fwert">
