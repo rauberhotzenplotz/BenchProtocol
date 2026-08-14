@@ -72,7 +72,7 @@ export function useCreateExercise(planId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (
-      row: Pick<Exercise, 'day_id' | 'name' | 'scheme' | 'rest' | 'note' | 'bench_slot'> & { sort_order: number }
+      row: Pick<Exercise, 'day_id' | 'name' | 'scheme' | 'rest' | 'note' | 'bench_slot' | 'muscle_group'> & { sort_order: number }
     ) => {
       const { data, error } = await supabase.from('exercises').insert(row).select().single()
       if (error) throw error

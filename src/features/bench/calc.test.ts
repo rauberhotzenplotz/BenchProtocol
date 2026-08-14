@@ -27,7 +27,7 @@ function plan(patch: Partial<Plan>): Plan {
 }
 
 function exercise(patch: Partial<Exercise>): Exercise {
-  return { id: 'ex1', day_id: 'd1', user_id: 'u1', name: 'Bankdrücken', scheme: '4 × 5', rest: '2 min', note: null, bench_slot: null, sort_order: 0, ...patch }
+  return { id: 'ex1', day_id: 'd1', user_id: 'u1', name: 'Bankdrücken', scheme: '4 × 5', rest: '2 min', note: null, bench_slot: null, muscle_group: null, sort_order: 0, ...patch }
 }
 
 function satz(patch: Partial<LoggedSet>): LoggedSet {

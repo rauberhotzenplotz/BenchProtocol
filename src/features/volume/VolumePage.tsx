@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useActivePlan } from '../plans/active-plan-context'
-import { useDays } from '../training/queries'
-import { useVolumeRows, useCreateVolumeRow, useUpdateVolumeRow, useDeleteVolumeRow, totalSetsOf, volumeVerdict } from './queries'
+import { useDays, useSetsForExercises } from '../training/queries'
+import { gruppeSetsByExercise } from '../training/calc'
+import { useVolumeRows, useCreateVolumeRow, useUpdateVolumeRow, useDeleteVolumeRow, volumeVerdict } from './queries'
+import { istSaetzeJeGruppeUndTag, istGesamt } from './calc'
 import { cssVars } from '../../lib/style'
 
 export function VolumePage() {
   const { activePlan } = useActivePlan()
   const { data: days } = useDays(activePlan?.id)
+  const exerciseIds = (days ?? []).flatMap(d => d.exercises.map(ex => ex.id))
+  const { data: saetzeWoche } = useSetsForExercises(exerciseIds, activePlan?.week ?? 1)
   const { data: rows } = useVolumeRows(activePlan?.id)
   const createRow = useCreateVolumeRow(activePlan?.id)
   const updateRow = useUpdateVolumeRow(activePlan?.id)
@@ -24,13 +28,16 @@ export function VolumePage() {
     )
   }
 
+  const setsByExercise = gruppeSetsByExercise(saetzeWoche ?? [])
+  const tabelle = istSaetzeJeGruppeUndTag(days ?? [], setsByExercise)
+
   return (
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
           <span className="eyebrow">Kontrollblatt</span>
           <h2>Volumen</h2>
-          <p>Arbeitssätze je Muskelgruppe und Trainingstag — Zielband 8–20 Sätze pro Woche.</p>
+          <p>Abgehakte Arbeitssätze diese Woche je Muskelgruppe und Trainingstag — Zielband 8–20 Sätze pro Woche.</p>
         </div>
       </div>
 
@@ -51,23 +58,15 @@ export function VolumePage() {
           </thead>
           <tbody>
             {(rows ?? []).map(r => {
-              const gesamt = totalSetsOf(r)
+              const proTag = tabelle.get(r.muscle_group)
+              const gesamt = istGesamt(proTag)
               const urteil = volumeVerdict(gesamt)
               return (
                 <tr key={r.id}>
                   <td>{r.muscle_group}</td>
                   {(days ?? []).map(d => (
                     <td key={d.id} className="num">
-                      <input
-                        className="inp mono"
-                        style={{ width: 48, textAlign: 'center' }}
-                        defaultValue={r.sets_by_day[d.id] ?? 0}
-                        inputMode="numeric"
-                        onBlur={e => {
-                          const v = parseInt(e.target.value, 10)
-                          updateRow.mutate({ id: r.id, patch: { sets_by_day: { ...r.sets_by_day, [d.id]: isNaN(v) ? 0 : v } } })
-                        }}
-                      />
+                      {proTag?.get(d.id) ?? 0}
                     </td>
                   ))}
                   <td className="num">
@@ -94,6 +93,10 @@ export function VolumePage() {
             })}
           </tbody>
         </table>
+
+        <p className="muted tiny" style={{ marginTop: 10 }}>
+          Die Zahlen kommen direkt aus abgehakten Sätzen — ordne dazu eine Übung im Training-Tab dieser Muskelgruppe zu.
+        </p>
 
         <div className="row" style={{ marginTop: 14, gap: 8 }}>
           <input

@@ -1754,29 +1754,30 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .gym-ring .halo { stroke: var(--neon); stroke-width: 12; opacity: .14; transition: stroke .3s, stroke-dashoffset .3s linear; }
 .gym-ring.warn .fg, .gym-ring.warn .halo { stroke: var(--warn); }
 .gym-ring.crit .fg, .gym-ring.crit .halo { stroke: var(--crit); }
-/* Die Zahl misst sich am Ring, nicht am Fenster: 24 % des Durchmessers
-   bleiben auch bei „10:00“ innerhalb des einbeschriebenen Quadrats. */
-/* Die Ziffern sind gezeichnete Vektor-Züge (siehe MorphZiffer.tsx), keine
-   Schrift — dadurch kann sich beim Wechsel die eine Ziffer in die nächste
-   verformen. Die Größe hängt weiter am Ring, nicht am Fenster: 24 % des
-   Durchmessers bleiben auch bei „10:00“ im einbeschriebenen Quadrat. */
+/* Die Ziffern sind echter Text in der App-eigenen Anzeigeschrift (siehe
+   GymZiffer.tsx), nur deutlich fetter als sonst in der App — auf den
+   ersten Blick soll man eine Uhr sehen, nicht einen Schriftzug. Beim
+   Wechsel rollt die alte Ziffer wie bei einem Kilometerzähler nach oben
+   weg, die neue zieht von unten nach. Die Größe hängt am Ring, nicht am
+   Fenster: 24 % des Durchmessers bleiben auch bei „10:00“ im
+   einbeschriebenen Quadrat. */
 .gym-zeit {
   position: absolute; color: var(--neon);
+  font-family: var(--f-display); font-weight: 800; font-variant-numeric: tabular-nums;
   font-size: calc(var(--ring) * .24); line-height: 1;
-  display: flex; align-items: center; gap: .03em;
+  display: flex; align-items: center; gap: .02em;
   filter: drop-shadow(0 0 .14em rgba(53,240,208,.5));
 }
-.gym-ziffer { display: block; height: .92em; width: .575em; overflow: visible; }
-.gym-ziffer path {
-  fill: none; stroke: currentColor; stroke-width: 13;
-  stroke-linecap: round; stroke-linejoin: round;
-  /* Siehe GymRing.tsx: lässt Selbstkreuzungen beim Verformen zu einer
-     Masse zusammenlaufen. Die Schwelle trägt den Strich leicht ab —
-     darum 13 statt 12. */
-  filter: url(#gymZifferFluss);
+.gz-box { position: relative; display: inline-block; overflow: hidden; height: 1em; }
+.gz-glyph { display: flex; align-items: center; justify-content: center; height: 1em; }
+.gz-roll { display: block; height: 2em; animation: gzDreh .38s cubic-bezier(.3,.7,.2,1) both; }
+/* data-motion="off" bremst über die globale Regel oben ab, kein eigener
+   Sonderfall hier nötig. */
+@keyframes gzDreh {
+  from { transform: translateY(0); }
+  to { transform: translateY(-1em); }
 }
-.gym-doppelpunkt { display: block; height: .92em; width: .196em; overflow: visible; }
-.gym-doppelpunkt circle { fill: currentColor; }
+.gz-doppelpunkt { display: flex; align-items: center; justify-content: center; height: 1em; }
 .gym-ringbox { position: relative; display: grid; place-items: center; }
 .gym-naechst { margin-top: 16px; font-family: var(--f-mono); font-size: 11.5px;
   letter-spacing: .1em; color: var(--ink-3); text-align: center; }

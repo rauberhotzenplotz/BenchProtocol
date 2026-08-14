@@ -48,6 +48,9 @@ export interface Exercise {
   rest: string | null
   note: string | null
   bench_slot: BenchSlot | null
+  /** Verknüpfung zum Volumen-Kontrollblatt (VolumeRow.muscle_group) — Basis
+      für das automatisch aus echten Sätzen berechnete Wochenvolumen. */
+  muscle_group: string | null
   sort_order: number
 }
 

@@ -1,6 +1,6 @@
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { tonnageOf, wochenLabel, tagFortschritt, durchschnittsDauerJeUebung } from '../training/calc'
+import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
 import { naechsterTag, frequenzDaten, trainingszeitDaten, einheitenDaten } from './calc'
 import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard } from './widgets'
@@ -20,7 +20,6 @@ interface Props {
 
 export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sessions }: Props) {
   const tag = naechsterTag(days, setsByExercise)
-  const fortschritt = tag ? tagFortschritt(tag.exercises, setsByExercise) : null
   const f = frequenzDaten(sessions)
   const t = trainingszeitDaten(sessions)
   const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
@@ -51,15 +50,14 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
       </div>
 
       <div className="grid g4" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
-        <NextWorkoutCard tag={tag} fortschritt={fortschritt} />
-        <FrequenzCard letzte7={f.letzte7} gesamt={f.gesamt} />
-        <TrainingszeitCard woche={t.woche} gesamt={t.gesamt} />
+        <NextWorkoutCard tag={tag} />
+        <FrequenzCard letzte7={f.letzte7} />
+        <TrainingszeitCard woche={t.woche} />
         <KpiCard
           cls="c3"
           label="Tonnage letztes Training"
           value={<CountUp value={Math.round(letzteTonnage / 1000 * 10) / 10} decimals={1} />}
           unit="t"
-          sub={letzteTonnage > 0 ? `${Math.round(letzteTonnage)} kg bewegt` : 'noch nichts geloggt'}
           spark={serie.length > 1 ? serie : undefined}
         />
       </div>

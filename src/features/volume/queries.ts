@@ -52,10 +52,6 @@ export function useDeleteVolumeRow(planId: string | undefined) {
   })
 }
 
-export function totalSetsOf(row: VolumeRow): number {
-  return Object.values(row.sets_by_day).reduce((a, n) => a + (n || 0), 0)
-}
-
 export function volumeVerdict(total: number): { klasse: string; text: string } {
   if (total === 0) return { klasse: 'mute', text: 'kein Volumen' }
   if (total < 8) return { klasse: 'low', text: 'unter Zielband' }

@@ -17,6 +17,7 @@ import { useRestTimer } from './rest-timer-context'
 import { GymMode } from './GymMode'
 import { DeloadBanner } from './DeloadBanner'
 import { useAutoAdvanceBlock } from '../bench/queries'
+import { useVolumeRows } from '../volume/queries'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -35,6 +36,8 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
   const endSession = useEndSession()
   const autoAdvanceBlock = useAutoAdvanceBlock()
   const createExercise = useCreateExercise(plan.id)
+  const { data: volumeRows } = useVolumeRows(plan.id)
+  const muskelgruppen = (volumeRows ?? []).map(r => r.muscle_group)
 
   const beenden = async () => {
     if (!session) return
@@ -126,6 +129,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
             week={week}
             laeuft={laeuft}
             aufklappen={saetzeOffen}
+            muskelgruppen={muskelgruppen}
           />
         ))}
       </div>
@@ -134,6 +138,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
         {neueUebung ? (
           <NeueUebungForm
             planTyp={plan.typ}
+            muskelgruppen={muskelgruppen}
             onAbbrechen={() => setNeueUebung(false)}
             onAnlegen={async werte => {
               await createExercise.mutateAsync({
@@ -186,17 +191,20 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
 
 function NeueUebungForm({
   planTyp,
+  muskelgruppen,
   onAnlegen,
   onAbbrechen,
 }: {
   planTyp: Plan['typ']
-  onAnlegen: (w: { name: string; scheme: string; rest: string; note: string; bench_slot: BenchSlot | null }) => Promise<void>
+  muskelgruppen: string[]
+  onAnlegen: (w: { name: string; scheme: string; rest: string; note: string; bench_slot: BenchSlot | null; muscle_group: string | null }) => Promise<void>
   onAbbrechen: () => void
 }) {
   const [name, setName] = useState('')
   const [scheme, setScheme] = useState('3 × 10')
   const [rest, setRest] = useState('2 min')
   const [benchSlot, setBenchSlot] = useState<BenchSlot | null>(null)
+  const [muscleGroup, setMuscleGroup] = useState<string | null>(null)
 
   return (
     <div className="card">
@@ -238,9 +246,22 @@ function NeueUebungForm({
                 className={'chip' + (benchSlot === 'd3' ? ' neon' : ' mute')}
                 onClick={() => setBenchSlot('d3')}
               >
-                Bankdrücken Pause
+                Bankdrücken leicht
               </button>
             </div>
+          </div>
+        )}
+        {muskelgruppen.length > 0 && (
+          <div className="field">
+            <label>Muskelgruppe</label>
+            <select className="inp" value={muscleGroup ?? ''} onChange={e => setMuscleGroup(e.target.value || null)}>
+              <option value="">Keine</option>
+              {muskelgruppen.map(g => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
           </div>
         )}
         <div className="row" style={{ gap: 8 }}>
@@ -250,7 +271,7 @@ function NeueUebungForm({
           <button
             className="btn primary sm"
             disabled={!name.trim()}
-            onClick={() => void onAnlegen({ name: name.trim(), scheme, rest, note: '', bench_slot: benchSlot })}
+            onClick={() => void onAnlegen({ name: name.trim(), scheme, rest, note: '', bench_slot: benchSlot, muscle_group: muscleGroup })}
           >
             Anlegen
           </button>
@@ -268,12 +289,14 @@ function ExerciseBlock({
   week,
   laeuft,
   aufklappen,
+  muskelgruppen,
 }: {
   planId: string
   planTyp: Plan['typ']
   exercise: Exercise
   sets: LoggedSet[]
   week: number
+  muskelgruppen: string[]
   laeuft: boolean
   /** Von außen angestoßenes Aufklappen (Rückkehr aus dem Gym-Modus). Danach
       bleibt das Auf- und Zuklappen wieder ganz beim Nutzer. */
@@ -306,7 +329,8 @@ function ExerciseBlock({
           <div className="row" style={{ gap: 6, marginTop: 4 }}>
             {exercise.scheme && <span className="chip mute">{exercise.scheme}</span>}
             {exercise.rest && <span className="chip mute">Pause {exercise.rest}</span>}
-            {exercise.bench_slot && <span className="chip mute">Bank {exercise.bench_slot === 'd1' ? 'schwer' : 'Pause'}</span>}
+            {exercise.bench_slot && <span className="chip mute">Bank {exercise.bench_slot === 'd1' ? 'schwer' : 'leicht'}</span>}
+            {exercise.muscle_group && <span className="chip mute">{exercise.muscle_group}</span>}
           </div>
         </div>
         {fertig && <span className="chip ok">fertig</span>}
@@ -419,8 +443,26 @@ function ExerciseBlock({
                 className={'chip' + (exercise.bench_slot === 'd3' ? ' neon' : ' mute')}
                 onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: 'd3' } })}
               >
-                Pause
+                Leicht
               </button>
+            </div>
+          )}
+          {muskelgruppen.length > 0 && (
+            <div className="row" style={{ gap: 6, marginTop: 8 }}>
+              <span className="muted tiny">Muskelgruppe (fürs Wochenvolumen):</span>
+              <select
+                className="inp mono"
+                style={{ width: 'auto' }}
+                value={exercise.muscle_group ?? ''}
+                onChange={e => updateExercise.mutate({ id: exercise.id, patch: { muscle_group: e.target.value || null } })}
+              >
+                <option value="">Keine</option>
+                {muskelgruppen.map(g => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>

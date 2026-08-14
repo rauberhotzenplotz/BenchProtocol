@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { DayWithExercises } from '../training/queries'
-import { type TagFortschritt, type UebungsDauerSchnitt } from '../training/calc'
+import { type UebungsDauerSchnitt } from '../training/calc'
 import { tagFarbe } from '../training/dayColor'
 import type { TrainingSession } from '../../types/db'
 import { Sparkline } from '../../components/Sparkline'
@@ -12,14 +12,12 @@ export function KpiCard({
   label,
   value,
   unit,
-  sub,
   spark,
 }: {
   cls: 'c1' | 'c2' | 'c3' | 'c4'
   label: string
   value: ReactNode
   unit?: string
-  sub?: ReactNode
   spark?: number[]
 }) {
   return (
@@ -29,45 +27,21 @@ export function KpiCard({
         {value}
         {unit && <u>{unit}</u>}
       </div>
-      {sub && <div className="sub">{sub}</div>}
       {spark && <Sparkline values={spark} />}
     </div>
   )
 }
 
-export function NextWorkoutCard({ tag, fortschritt }: { tag: DayWithExercises | null; fortschritt: TagFortschritt | null }) {
-  return (
-    <KpiCard
-      cls="c1"
-      label="Als Nächstes"
-      value={<span style={{ fontSize: 22 }}>{tag ? tag.name : '—'}</span>}
-      sub={tag && fortschritt ? `${fortschritt.geplant} Sätze` : 'noch keine Übungen angelegt'}
-    />
-  )
+export function NextWorkoutCard({ tag }: { tag: DayWithExercises | null }) {
+  return <KpiCard cls="c1" label="Als Nächstes" value={<span style={{ fontSize: 22 }}>{tag ? tag.name : '—'}</span>} />
 }
 
-export function FrequenzCard({ letzte7, gesamt }: { letzte7: number; gesamt: number }) {
-  return (
-    <KpiCard
-      cls="c2"
-      label="Trainiert · letzte 7 Tage"
-      value={<CountUp value={letzte7} />}
-      unit={letzte7 === 1 ? 'Einheit' : 'Einheiten'}
-      sub={`${gesamt} insgesamt aufgezeichnet`}
-    />
-  )
+export function FrequenzCard({ letzte7 }: { letzte7: number }) {
+  return <KpiCard cls="c2" label="Trainiert · letzte 7 Tage" value={<CountUp value={letzte7} />} unit={letzte7 === 1 ? 'Einheit' : 'Einheiten'} />
 }
 
-export function TrainingszeitCard({ woche, gesamt }: { woche: number; gesamt: number }) {
-  return (
-    <KpiCard
-      cls="c4"
-      label="Trainingszeit · letzte 7 Tage"
-      value={<CountUp value={woche} />}
-      unit="min"
-      sub={gesamt ? `${gesamt} min insgesamt` : 'noch nichts aufgezeichnet'}
-    />
-  )
+export function TrainingszeitCard({ woche }: { woche: number }) {
+  return <KpiCard cls="c4" label="Trainingszeit · letzte 7 Tage" value={<CountUp value={woche} />} unit="min" />
 }
 
 export function UebungsdauerCard({ eintraege }: { eintraege: UebungsDauerSchnitt[] }) {
