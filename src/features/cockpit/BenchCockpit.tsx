@@ -2,8 +2,8 @@ import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, frequenzDaten, trainingszeitDaten, einheitenDaten } from './calc'
-import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, UebungsdauerCard, KpiCard } from './widgets'
+import { naechsterTag, trainingszeitDaten, einheitenDaten } from './calc'
+import { NextWorkoutCard, TrainingszeitCard, UebungsdauerCard, KpiCard } from './widgets'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { CountUp } from '../../components/CountUp'
@@ -25,7 +25,6 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
   const { data: progression } = useBenchProgression(plan.id)
 
   const tag = naechsterTag(days, setsByExercise)
-  const f = frequenzDaten(sessions)
   const t = trainingszeitDaten(sessions)
   const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
 
@@ -53,18 +52,14 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
 
       <div className="grid g3" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
         <NextWorkoutCard tag={tag} />
-        <FrequenzCard letzte7={f.letzte7} />
         <TrainingszeitCard woche={t.woche} />
-      </div>
-
-      <div className="grid g4" style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
         <KpiCard cls="c1" label="Geschätztes 1RM" value={<CountUp value={e1} decimals={1} />} unit="kg" />
         <KpiCard cls="c2" label="Heute auf der Bank" value={<CountUp value={zielD1} decimals={1} />} unit="kg" />
         <KpiCard cls="c3" label={`Tonnage ${wochenLabel(week, plan).split(' ·')[0]}`} value={<CountUp value={Math.round(wochenTonnage / 1000 * 10) / 10} decimals={1} />} unit="t" />
         <KpiCard cls="c4" label="Wochenvolumen" value={<CountUp value={gesamtVolumen} />} unit="Sätze" />
       </div>
 
-      <div className="stack" style={{ ...cssVars({ '--i': 3 }), marginTop: 14, gap: 14 }}>
+      <div className="stack" style={{ ...cssVars({ '--i': 2 }), marginTop: 14, gap: 14 }}>
         <TonnageEinheitenCard punkte={einheiten} />
         <DauerEinheitenCard punkte={einheiten} />
         <UebungsdauerCard eintraege={dauerJeUebung} />

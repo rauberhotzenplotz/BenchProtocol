@@ -36,10 +36,6 @@ export function NextWorkoutCard({ tag }: { tag: DayWithExercises | null }) {
   return <KpiCard cls="c1" label="Als Nächstes" value={<span style={{ fontSize: 22 }}>{tag ? tag.name : '—'}</span>} />
 }
 
-export function FrequenzCard({ letzte7 }: { letzte7: number }) {
-  return <KpiCard cls="c2" label="Trainiert · letzte 7 Tage" value={<CountUp value={letzte7} />} unit={letzte7 === 1 ? 'Einheit' : 'Einheiten'} />
-}
-
 export function TrainingszeitCard({ woche }: { woche: number }) {
   return <KpiCard cls="c4" label="Trainingszeit · letzte 7 Tage" value={<CountUp value={woche} />} unit="min" />
 }

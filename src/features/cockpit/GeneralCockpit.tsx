@@ -2,8 +2,8 @@ import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, frequenzDaten, trainingszeitDaten, einheitenDaten } from './calc'
-import { NextWorkoutCard, FrequenzCard, TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard } from './widgets'
+import { naechsterTag, trainingszeitDaten, einheitenDaten } from './calc'
+import { NextWorkoutCard, TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard } from './widgets'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { CountUp } from '../../components/CountUp'
@@ -20,7 +20,6 @@ interface Props {
 
 export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sessions }: Props) {
   const tag = naechsterTag(days, setsByExercise)
-  const f = frequenzDaten(sessions)
   const t = trainingszeitDaten(sessions)
   const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
 
@@ -49,9 +48,8 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
         <PlanPicker />
       </div>
 
-      <div className="grid g4" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
+      <div className="grid g3" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
         <NextWorkoutCard tag={tag} />
-        <FrequenzCard letzte7={f.letzte7} />
         <TrainingszeitCard woche={t.woche} />
         <KpiCard
           cls="c3"
