@@ -120,20 +120,30 @@ body {
   animation: nbZug2 94s ease-in-out infinite;
 }
 /* Magenta unten links — hält den Fuß der Seite warm, sonst kippt alles
-   ins Kalte. */
+   ins Kalte. Deutlich größer und blasser als die übrigen drei: sie soll
+   als weiche, weiträumige Grundierung wirken statt als eigener Fleck,
+   und reicht dadurch schon früh beim Herunterscrollen ins Bild statt
+   erst ganz am Fußende sichtbar zu werden. */
 .nb-w3 {
-  width: 70vmin; height: 70vmin; left: 0vmin; bottom: -24vmin;
+  width: 96vmin; height: 96vmin; left: 0vmin; bottom: -24vmin;
   background: radial-gradient(circle closest-side,
-    rgba(150,42,92,.34) 0%, rgba(150,42,92,.19) 24%,
-    rgba(150,42,92,.08) 44%, rgba(150,42,92,.022) 61%, transparent 76%);
+    rgba(150,42,92,.19) 0%, rgba(150,42,92,.105) 24%,
+    rgba(150,42,92,.045) 44%, rgba(150,42,92,.012) 61%, transparent 76%);
   animation: nbZug3 86s ease-in-out infinite;
 }
-/* Tiefes Blau oben rechts, kleiner als die anderen drei — sie war es,
-   die zuvor alles überdeckte, darum bekommt gerade sie hier die
-   kleinste Fläche statt gleich groß mit den übrigen mitzuhalten. Klein
-   heißt hier aber nicht mehr unsichtbar wie in der letzten Fassung. */
+/* Tiefes Blau, aus der oberen rechten Ecke Richtung Mitte gerückt, damit
+   sie erkennbar neben statt genau über der türkisen Wolke steht.
+
+   right mischt hier vmin mit vw statt nur vmin zu nehmen — derselbe
+   Grund wie beim vh-Anteil bei w1/w4s top: vmin hängt an der kleineren
+   Bildschirmseite, im Querformat auf dem Desktop also an der Höhe. Ein
+   rein in vmin angegebener Versatz landet auf einem breiten Bildschirm
+   dadurch viel zu nah am linken Rand — genau dort, wo die türkise Wolke
+   schon sitzt. Der vw-Anteil hält den Versatz an die tatsächliche
+   Breite gekoppelt und damit auf beiden Seitenverhältnissen frei von
+   der türkisen Wolke. */
 .nb-w4 {
-  width: 52vmin; height: 52vmin; right: -10vmin; top: calc(-16vmin + 6vh);
+  width: 52vmin; height: 52vmin; right: calc(-6vmin + 20vw); top: calc(-16vmin + 6vh);
   background: radial-gradient(circle closest-side,
     rgba(28,64,132,.30) 0%, rgba(28,64,132,.17) 24%,
     rgba(28,64,132,.07) 44%, rgba(28,64,132,.02) 61%, transparent 76%);
