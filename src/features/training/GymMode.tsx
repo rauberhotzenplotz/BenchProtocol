@@ -10,7 +10,10 @@ import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
 import { SatzQuittung } from './SatzQuittung'
 import { GymFertig } from './GymFertig'
-import { vibrieren, SATZ_ERLEDIGT } from '../../lib/haptik'
+import { Warp } from './Warp'
+import { Supernova } from './Supernova'
+import { istRekord } from './rekord'
+import { vibrieren, SATZ_ERLEDIGT, TRAINING_FERTIG } from '../../lib/haptik'
 
 function zielWdh(scheme: string | null | undefined): number {
   const m = String(scheme ?? '').match(/[×x*]\s*(\d+)/i)
@@ -126,6 +129,18 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   // aufziehen.
   const quittungFertig = useCallback(() => setQuittung(0), [])
 
+  // Der Warp läuft genau einmal, beim Betreten. Der Anfangswert wird
+  // beim ersten Rendern festgelegt: steht der Bewegungsschalter auf aus,
+  // entsteht der Sprung gar nicht erst, statt ihn per CSS auf .001 ms
+  // zusammenzustauchen und kurz aufblitzen zu lassen.
+  const [warp, setWarp] = useState(() => document.documentElement.dataset.motion !== 'off')
+  const warpFertig = useCallback(() => setWarp(false), [])
+
+  // Wie die Quittung über einen Zähler, damit zwei Rekorde kurz
+  // hintereinander die Nova neu starten statt sie weiterlaufen zu lassen.
+  const [nova, setNova] = useState<{ nr: number; text: string } | null>(null)
+  const novaFertig = useCallback(() => setNova(null), [])
+
   // Solange der Gym-Modus offen ist, übernimmt er selbst die große
   // Pausenanzeige — die kleine schwebende Leiste bleibt aus.
   useEffect(() => {
@@ -180,6 +195,12 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   }
 
   const erledigt = () => {
+    // Vor dem Speichern prüfen: danach stünde der neue Satz selbst schon
+    // in der Historie und schlüge damit seinen eigenen Bestwert nie.
+    // Nur wenn die Historie geladen ist — sonst sähe jeder Satz nach dem
+    // allerersten aus und es käme nie eine Nova.
+    const rekord = alleSaetzeJemalsBereit && istRekord(kg, reps, alleSaetzeJemals, exercise.id)
+
     upsertSet.mutate({
       exercise_id: exercise.id,
       week,
@@ -190,8 +211,13 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       done: true,
       done_at: new Date().toISOString(),
     })
+    if (rekord) {
+      setNova(n => ({ nr: (n?.nr ?? 0) + 1, text: `${exercise.name} · ${kg} kg × ${reps}` }))
+      vibrieren(TRAINING_FERTIG)
+    } else {
+      vibrieren(SATZ_ERLEDIGT)
+    }
     setQuittung(n => n + 1)
-    vibrieren(SATZ_ERLEDIGT)
     // Vor dem letzten Satz keine Pause mehr anstoßen — danach kommt ohnehin
     // die Abschluss-Übersicht, nicht die nächste Übung.
     if (!istLetzterSatz) {
@@ -369,6 +395,8 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       <div className="gym-inhalt">{inhalt}</div>
 
       {quittung > 0 && <SatzQuittung key={quittung} onEnde={quittungFertig} />}
+      {nova && <Supernova key={nova.nr} text={nova.text} onEnde={novaFertig} />}
+      {warp && <Warp onEnde={warpFertig} />}
     </div>
   )
 }

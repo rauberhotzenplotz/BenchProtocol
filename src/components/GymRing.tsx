@@ -20,6 +20,15 @@ export function GymRing({ secondsLeft, totalSeconds }: { secondsLeft: number; to
         <circle className="bg" cx="50" cy="50" r={r} strokeWidth={4} />
         <circle className="halo" cx="50" cy="50" r={r} strokeDasharray={umfang} strokeDashoffset={offset} />
         <circle className="fg" cx="50" cy="50" r={r} strokeDasharray={umfang} strokeDashoffset={offset} />
+        {/* Der Mond sitzt auf der Spitze des Bogens, die beim Ablaufen
+            zurückweicht. Gedreht wird die Gruppe statt cx/cy zu rechnen:
+            transform lässt sich überall zuverlässig weich überblenden,
+            SVG-Geometrieattribute nicht. Der Winkel entspricht genau dem
+            gezeichneten Bogen — bei vollem Ring 360°, also wieder oben. */}
+        <g className="mondbahn" style={{ transform: `rotate(${(anteil * 360).toFixed(2)}deg)` }}>
+          <circle className="mondhof" cx="50" cy={50 - r} r={5.5} />
+          <circle className="mond" cx="50" cy={50 - r} r={2.6} />
+        </g>
       </svg>
       <div className="gym-zeit" role="timer" aria-label={`${text} verbleibend`}>
         {[...text].map((zeichen, i) =>

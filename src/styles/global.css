@@ -119,6 +119,25 @@ body {
   animation: nbZug4 68s ease-in-out infinite;
 }
 
+/* Die Blockphase färbt den Nebel um — siehe nebelPhase.ts, gesetzt in
+   AppShell. Ausschließlich über Deckkraft, bewusst nicht über filter:
+   ein Filter über dem Gas zwänge die driftenden Wolken bei jedem Bild
+   durch einen eigenen Renderdurchgang, während opacity genau wie
+   transform direkt auf dem Compositor liegt.
+
+   Der Grundton (aufbau) bleibt unangetastet; die beiden anderen Phasen
+   sind Abweichungen davon. Statt Magenta hochzuziehen, treten für die
+   schwere Woche die kalten Wolken zurück — so wird es wärmer, ohne dass
+   der Hintergrund insgesamt heller wird und Text bedrängt. Der lange
+   Übergang lässt den Wochenwechsel driften statt umschalten. */
+.nb-wolke { transition: opacity 2.4s ease; }
+/* Woche 3, die schwerste: Türkis und Violett zurück, Magenta führt. */
+:root[data-phase="schwer"] .nb-w1 { opacity: .70; }
+:root[data-phase="schwer"] .nb-w2 { opacity: .78; }
+/* Deload: das Warme fällt fast weg, es bleibt kühl und ruhig. */
+:root[data-phase="deload"] .nb-w1 { opacity: .85; }
+:root[data-phase="deload"] .nb-w3 { opacity: .20; }
+
 @keyframes nbZug1 { 0%,100% { transform: translate3d(0,0,0) scale(1); }    50% { transform: translate3d(7vmax,5vmax,0) scale(1.12); } }
 @keyframes nbZug2 { 0%,100% { transform: translate3d(0,0,0) scale(1.08); } 50% { transform: translate3d(-8vmax,6vmax,0) scale(.94); } }
 @keyframes nbZug3 { 0%,100% { transform: translate3d(0,0,0) scale(.96); }  50% { transform: translate3d(6vmax,-5vmax,0) scale(1.14); } }
@@ -138,8 +157,11 @@ body {
 
 /* Sterne. Zwei Kacheln mit ungleichen Kantenlängen (217 / 383) — deren
    Muster wiederholen sich erst nach sehr vielen Bildschirmbreiten
-   gemeinsam, dadurch fällt das Raster nicht auf. */
-.nb-sterne { inset: 0; background-repeat: repeat; }
+   gemeinsam, dadurch fällt das Raster nicht auf.
+
+   Die Ebenen ragen oben und unten über den Bildschirm hinaus, damit der
+   Parallax-Versatz weiter unten keine Kante hereinschiebt. */
+.nb-sterne { inset: -15% 0; background-repeat: repeat; }
 .nb-s1 {
   background-image:
     radial-gradient(1.1px 1.1px at 12% 8%,  rgba(255,255,255,.75), transparent),
@@ -161,6 +183,65 @@ body {
   animation: nbFunkeln 7s ease-in-out infinite;
 }
 @keyframes nbFunkeln { 0%,100% { opacity: 1; } 50% { opacity: .68; } }
+
+/* Parallax: die Sterne wandern beim Scrollen leicht mit, die hellere
+   (also gedachte nähere) Ebene stärker als die feine dahinter. Über
+   scroll() läuft das auf dem Compositor und nicht über einen
+   Scroll-Ereignishorcher, kostet also nichts.
+
+   Das @supports ist nicht bloß Höflichkeit: ohne Scroll-Zeitachse hätten
+   diese Animationen die voreingestellte Dauer 0 s und sprängen sofort an
+   ihr Ende. Browser ohne Unterstützung bekommen so gar keine Regel und
+   damit schlicht keinen Parallax. */
+@supports (animation-timeline: scroll()) {
+  .nb-s1 {
+    animation: nbTiefeFern linear;
+    animation-timeline: scroll(root block);
+  }
+  .nb-s2 {
+    animation: nbFunkeln 7s ease-in-out infinite, nbTiefeNah linear;
+    animation-timeline: auto, scroll(root block);
+  }
+}
+@keyframes nbTiefeFern { to { transform: translate3d(0, -5%, 0); } }
+@keyframes nbTiefeNah  { to { transform: translate3d(0, -11%, 0); } }
+
+/* Sternschnuppen. Der Streifen ist die meiste Zeit unsichtbar: die
+   Bewegung läuft in den ersten 3 % des Zyklus ab, danach steht er bis
+   zum nächsten Durchlauf durchsichtig am Zielpunkt. Bei 38 s Dauer
+   heißt das gut eine Sekunde Flug und über eine halbe Minute Ruhe —
+   selten genug, dass es ein kleines Ereignis bleibt.
+
+   Weg und Neigung teilen sich dieselbe Einheit (vmax), damit der Winkel
+   des Streifens auf jedem Seitenverhältnis zur Flugrichtung passt. */
+.nb-schnuppe {
+  width: 15vmax; height: 1.6px; border-radius: 999px; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.85) 88%, #fff 100%);
+}
+.nb-k1 {
+  left: -18vmax; top: 4vmax;
+  animation: nbFlug1 38s linear infinite;
+}
+.nb-k2 {
+  left: -18vmax; top: 34vmax;
+  animation: nbFlug2 61s linear infinite 14s;
+}
+/* atan(38/85) ≈ 24°, atan(26/78) ≈ 18° — die Neigung entspricht genau
+   dem zurückgelegten Weg, sonst driftet der Streifen seitwärts. */
+@keyframes nbFlug1 {
+  0%          { opacity: 0; transform: translate3d(0,0,0) rotate(24deg); }
+  .4%         { opacity: 1; }
+  2.6%        { opacity: 1; }
+  3%          { opacity: 0; }
+  3.01%, 100% { opacity: 0; transform: translate3d(85vmax, 38vmax, 0) rotate(24deg); }
+}
+@keyframes nbFlug2 {
+  0%          { opacity: 0; transform: translate3d(0,0,0) rotate(18deg); }
+  .3%         { opacity: .8; }
+  1.7%        { opacity: .8; }
+  2%          { opacity: 0; }
+  2.01%, 100% { opacity: 0; transform: translate3d(78vmax, 26vmax, 0) rotate(18deg); }
+}
 
 /* Randabdunklung zuletzt, und sie hat zwei Aufgaben.
 
@@ -1654,6 +1735,17 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 :root[data-motion="off"] .mark .plate,
 :root[data-motion="off"] .mark .plate2 { animation: none; }
 
+/* Der Sternen-Parallax braucht eine eigene Abschaltung. Die Regel oben
+   staucht nur die Dauer — die greift bei einer Scroll-Zeitachse gar
+   nicht, deren Fortschritt hängt ja an der Scrollposition und nicht an
+   der Zeit. Ohne diese Zeile bliebe ausgerechnet die Bewegung übrig,
+   die beim Scrollen am ehesten unangenehm auffällt. animation: none
+   statt animation-timeline: auto — sonst liefe die Animation mit
+   gestauchter Dauer sofort in ihren Endzustand und die Sterne stünden
+   dauerhaft verschoben. */
+:root[data-motion="off"] .nb-s1,
+:root[data-motion="off"] .nb-s2 { animation: none; transform: none; }
+
 /* ══ Gym-Modus ══════════════════════════════════════════════════
    Vollbild fürs Training: ein Satz, zwei große Flächen, sonst nichts.
    Alles Bewegte bleibt draußen — das spart am Handy Akku.          */
@@ -1837,12 +1929,30 @@ body:has(.gym) .nebel { display: none; }
 .gym-pause { --ring: min(70vw, 40vh); }
 @keyframes gymPauseRein { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: scale(1); } }
 .gym-ring { width: var(--ring); height: var(--ring); overflow: visible; }
-.gym-ring circle { fill: none; transform: rotate(-90deg); transform-origin: 50% 50%; stroke-linecap: round; }
+/* Bewusst die drei Ringkreise einzeln statt schlicht "circle": der Mond
+   besteht ebenfalls aus Kreisen, und die Drehung um −90° (die den Ring
+   oben beginnen lässt) würde ihn sonst zusätzlich zur Bahndrehung
+   versetzen — er stünde eine Vierteldrehung neben der Bogenspitze. */
+.gym-ring .bg, .gym-ring .halo, .gym-ring .fg {
+  fill: none; transform: rotate(-90deg); transform-origin: 50% 50%; stroke-linecap: round;
+}
 .gym-ring .bg { stroke: rgba(255,255,255,.07); stroke-width: 4; }
 .gym-ring .fg { stroke: var(--neon); stroke-width: 4.5; transition: stroke .3s, stroke-dashoffset .3s linear; }
 .gym-ring .halo { stroke: var(--neon); stroke-width: 12; opacity: .14; transition: stroke .3s, stroke-dashoffset .3s linear; }
 .gym-ring.warn .fg, .gym-ring.warn .halo { stroke: var(--warn); }
 .gym-ring.crit .fg, .gym-ring.crit .halo { stroke: var(--crit); }
+/* Mond auf der Ringbahn (siehe GymRing.tsx). Dieselbe Übergangszeit wie
+   der Bogen, damit beide im Sekundentakt gemeinsam gleiten statt zu
+   springen. Die Drehung braucht einen eigenen transform-origin — die
+   Regel für .gym-ring circle greift auf der Gruppe nicht. */
+/* transform-box ausdrücklich: ohne die Angabe bezöge sich transform-origin
+   je nach Browser auf die Bounding Box der Gruppe — die umfasst nur den
+   Mond, der sich dann um sich selbst statt um die Ringmitte drehte. */
+.mondbahn { transform-box: view-box; transform-origin: 50% 50%; transition: transform .3s linear; }
+.gym-ring .mond { fill: var(--neon); }
+.gym-ring .mondhof { fill: var(--neon); opacity: .22; }
+.gym-ring.warn .mond, .gym-ring.warn .mondhof { fill: var(--warn); }
+.gym-ring.crit .mond, .gym-ring.crit .mondhof { fill: var(--crit); }
 /* Die Ziffern sind echter Text in der App-eigenen Anzeigeschrift (siehe
    GymZiffer.tsx), nur deutlich fetter als sonst in der App — auf den
    ersten Blick soll man eine Uhr sehen, nicht einen Schriftzug. Beim
@@ -1870,6 +1980,183 @@ body:has(.gym) .nebel { display: none; }
 .gym-ringbox { position: relative; display: grid; place-items: center; }
 .gym-naechst { margin-top: 16px; font-family: var(--f-mono); font-size: 11.5px;
   letter-spacing: .1em; color: var(--ink-3); text-align: center; }
+
+/* ── Sternbild des Blocks ───────────────────────────────────────
+   Siehe SternbildCard.tsx. Einfarbig und ohne Achsen: die Karte zeigt
+   den Rhythmus, nicht die genauen Werte — die stehen im Tooltip. */
+.sternbild { overflow: visible; }
+.sb-linie {
+  fill: none; stroke: var(--neon); stroke-width: 1.1; opacity: .34;
+  stroke-linejoin: round; stroke-linecap: round;
+  /* Die Linie zeichnet sich einmal von links nach rechts — der Block
+     entsteht vor den Augen, statt fertig dazuliegen. Das polyline trägt
+     pathLength="1" (siehe SternbildCard.tsx), dadurch rechnet der
+     Browser die echte Länge auf 1 um und hier steht keine geratene Zahl. */
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: sbZeichnen 2.2s cubic-bezier(.35,.7,.3,1) .15s forwards;
+}
+@keyframes sbZeichnen { to { stroke-dashoffset: 0; } }
+
+.sb-stern { animation: sbAuf .7s cubic-bezier(.22,1,.36,1) both; }
+@keyframes sbAuf { from { opacity: 0; } to { opacity: 1; } }
+.sb-kern { fill: #EAFFFA; }
+.sb-hof { fill: var(--neon); opacity: .26; }
+/* Die stärkste Einheit des Blocks bekommt einen ruhigen Puls.
+   transform-box: fill-box ist hier Pflicht — mit view-box läge der
+   Drehpunkt in der Mitte der gesamten Zeichenfläche, der Ring liefe also
+   beim Pulsieren von seinem Stern weg statt um ihn herum. */
+.sb-krone {
+  fill: none; stroke: var(--neon); stroke-width: 1.2; opacity: .5;
+  transform-box: fill-box; transform-origin: center;
+  animation: sbPuls 3.4s ease-in-out infinite;
+}
+@keyframes sbPuls {
+  0%, 100% { opacity: .5; transform: scale(1); }
+  50%      { opacity: .16; transform: scale(1.22); }
+}
+.sb-treffer { fill: transparent; cursor: pointer; }
+
+.sb-fuss {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 8px; font-family: var(--f-mono); font-size: 10px;
+  letter-spacing: .06em; color: var(--ink-4);
+}
+.sb-hinweis { color: var(--ink-3); letter-spacing: .1em; text-transform: uppercase; font-size: 9px; }
+/* Auf schmalen Schirmen bräche der Hinweis über zwei Zeilen und schöbe
+   die beiden Datumsangaben auseinander. Die sind das Wichtigere — der
+   Hinweis erklärt nur, was die Abstände bedeuten. */
+@media (max-width: 560px) { .sb-hinweis { display: none; } }
+
+/* ── Warp-Sprung ins Training ───────────────────────────────────
+   Siehe Warp.tsx. Liegt über dem Gym-Vollbild (z-index 120), aber unter
+   der Satzquittung (135), und lässt keine Klicks abfangen — der
+   Gym-Modus ist währenddessen schon bedienbar. */
+.warp {
+  position: fixed; inset: 0; z-index: 132;
+  pointer-events: none; overflow: hidden;
+  animation: warpAus .62s ease-out both;
+}
+@keyframes warpAus { 0%, 62% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Der Lichtkern in der Mitte: kurzer Blitz, aus dem die Strahlen kommen.
+   Er füllt zugleich das Loch, das in der Mitte bleibt, weil alle Strahlen
+   nach außen unterwegs sind. */
+.warp-kern {
+  position: absolute; left: 50%; top: 50%;
+  width: 44vmax; height: 44vmax; margin: -22vmax 0 0 -22vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle closest-side,
+    rgba(120,255,238,.55) 0%, rgba(53,240,208,.26) 26%,
+    rgba(53,240,208,.08) 48%, transparent 72%);
+  animation: warpKern .62s cubic-bezier(.2,.7,.4,1) both;
+}
+@keyframes warpKern {
+  0%   { opacity: 0; transform: scale(.12); }
+  14%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+
+/* Ein Strahl: waagerechter Streifen, dessen Drehpunkt in der Mitte des
+   Bildschirms liegt. Er wird nach außen geschoben und dabei gestreckt —
+   dieselbe Bewegung, die einen Stern im Vorbeiflug zur Linie zieht.
+   transform-origin links, damit das Strecken nach außen wächst und der
+   Strahl nicht nach beiden Seiten auseinanderläuft.
+
+   Start, Ziel, Streckung und Helligkeit kommen als Variablen je Strahl
+   aus Warp.tsx — siehe dort, warum die Streuung nötig ist. */
+.warp-strahl {
+  position: absolute; left: 50%; top: 50%;
+  width: 12vmax; height: 1.7px; margin-top: -.85px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, transparent, rgba(180,255,244,.85) 70%, #fff 100%);
+  animation: warpStrahl .62s cubic-bezier(.45,0,.85,.5) both;
+}
+@keyframes warpStrahl {
+  0%   { opacity: 0; transform: rotate(var(--wa)) translateX(var(--ws)) scaleX(.1); }
+  16%  { opacity: var(--wo); }
+  72%  { opacity: var(--wo); }
+  100% { opacity: 0; transform: rotate(var(--wa)) translateX(var(--ww)) scaleX(var(--wx)); }
+}
+
+/* ── Supernova bei neuer Bestleistung ───────────────────────────
+   Siehe Supernova.tsx. Liegt über der Satzquittung (135) — beide können
+   gleichzeitig laufen, und die Nova ist das größere Ereignis. */
+.nova {
+  position: fixed; inset: 0; z-index: 138;
+  pointer-events: none; overflow: hidden;
+  display: grid; place-items: center;
+  animation: novaAus 1.9s ease-out both;
+}
+@keyframes novaAus { 0%, 74% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Der erste Blitz: sehr kurz, sehr hell, füllt den ganzen Schirm.
+   Er ist der Knall, alles danach ist das Nachleuchten. */
+.nova-blitz {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(255,255,255,.55) 0%, rgba(120,255,238,.30) 18%, rgba(53,240,208,.10) 38%, transparent 62%);
+  animation: novaBlitz .5s cubic-bezier(.1,.8,.3,1) both;
+}
+@keyframes novaBlitz {
+  0%   { opacity: 0; transform: scale(.3); }
+  12%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* Die Hülle: ein Ring, der nach außen läuft und dabei dünner wird —
+   die abgestoßene Sternhülle. Zweimal versetzt, das gibt der Explosion
+   Tiefe statt einer einzelnen Seifenblase. */
+.nova-huelle {
+  position: absolute;
+  width: 22vmax; height: 22vmax; border-radius: 50%;
+  border: 2.5px solid rgba(140,255,240,.9);
+  animation: novaHuelle 1.5s cubic-bezier(.15,.75,.3,1) both;
+}
+.nova-huelle.spaet { animation-delay: .22s; border-color: rgba(53,240,208,.55); }
+@keyframes novaHuelle {
+  0%   { opacity: 0; transform: scale(.06); border-width: 5px; }
+  10%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(4.6); border-width: .5px; }
+}
+
+/* Auswurfstrahlen, gleicher Aufbau wie beim Warp: Drehpunkt in der
+   Mitte, nach außen geschoben und gestreckt. */
+.nova-strahl {
+  position: absolute; left: 50%; top: 50%;
+  width: 9vmax; height: 2px; margin-top: -1px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(53,240,208,0), rgba(160,255,242,.9) 72%, #fff 100%);
+  animation: novaStrahl 1.2s cubic-bezier(.2,.7,.35,1) both;
+}
+@keyframes novaStrahl {
+  0%   { opacity: 0; transform: rotate(var(--na)) translateX(1vmax) scaleX(.2); }
+  14%  { opacity: 1; }
+  62%  { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--na)) translateX(var(--nw)) scaleX(2.2); }
+}
+
+/* Die Beschriftung kommt erst, wenn der Blitz vorbei ist — währenddessen
+   wäre sie im Weiß ohnehin nicht zu lesen. */
+.nova-text {
+  position: relative; text-align: center; color: var(--ink);
+  text-shadow: 0 0 18px rgba(53,240,208,.7), 0 2px 10px rgba(0,0,0,.85);
+  animation: novaText 1.5s cubic-bezier(.22,1,.36,1) .28s both;
+}
+.nova-text b {
+  display: block; font-family: var(--f-display); font-weight: 600;
+  font-size: clamp(26px, 8vw, 40px); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--neon);
+}
+.nova-text span {
+  display: block; margin-top: 6px;
+  font-family: var(--f-mono); font-size: 13px; letter-spacing: .12em; color: var(--ink-2);
+}
+@keyframes novaText {
+  0%   { opacity: 0; transform: scale(.82); }
+  22%  { opacity: 1; transform: scale(1); }
+  76%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.04); }
+}
 
 /* ── Quittung beim Abhaken eines Satzes ─────────────────────────
    Liegt per Portal über allem (siehe SatzQuittung.tsx) und lässt keine

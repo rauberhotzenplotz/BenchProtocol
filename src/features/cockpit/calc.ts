@@ -23,6 +23,10 @@ export function dayTonnageFromSets(exerciseIds: string[], sets: LoggedSet[]) {
 export interface EinheitPunkt {
   sessionId: string
   datumLabel: string
+  /** Startzeitpunkt in Millisekunden. Das Sternbild braucht den echten
+      Abstand zwischen den Einheiten, nicht nur ihre Reihenfolge — sonst
+      sähe eine Woche Pause aus wie ein Tag. */
+  zeit: number
   wochenLabel: string
   tagName: string
   minuten: number
@@ -52,6 +56,7 @@ export function einheitenDaten(
     return {
       sessionId: s.id,
       datumLabel: new Date(s.started_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+      zeit: new Date(s.started_at).getTime(),
       wochenLabel: `W${s.week}`,
       tagName: tag?.name ?? '—',
       minuten: s.minutes ?? 0,

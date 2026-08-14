@@ -7,6 +7,8 @@ import { RestTimerBar } from './RestTimerBar'
 import { Mark } from './Mark'
 import { BootScreen } from './BootScreen'
 import { useAuth } from '../auth/auth-context'
+import { useActivePlan } from '../features/plans/active-plan-context'
+import { nebelPhase } from './nebelPhase'
 
 function useClock() {
   const [zeit, setZeit] = useState(() => new Date())
@@ -17,10 +19,26 @@ function useClock() {
   return zeit.toLocaleTimeString('de-DE')
 }
 
+/** Trägt die Blockphase ans <html>, damit der Hintergrundnebel sie
+    aufgreifen kann. Der Umweg über ein Attribut statt über Props ist
+    nötig, weil der Nebel außerhalb des Plan-Kontexts hängt — er steht ja
+    auch auf der Anmeldeseite. Gleiche Bauart wie data-motion. */
+function useNebelPhase() {
+  const { activePlan } = useActivePlan()
+  const phase = nebelPhase(activePlan)
+  useEffect(() => {
+    document.documentElement.dataset.phase = phase
+    return () => {
+      delete document.documentElement.dataset.phase
+    }
+  }, [phase])
+}
+
 export function AppShell() {
   const uhrzeit = useClock()
   const speichertGerade = useIsMutating() > 0
   const { signOut } = useAuth()
+  useNebelPhase()
 
   return (
     <div className="app">

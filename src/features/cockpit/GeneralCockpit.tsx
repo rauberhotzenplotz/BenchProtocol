@@ -6,6 +6,7 @@ import { naechsterTag, trainingszeitDaten, einheitenDaten } from './calc'
 import { NextWorkoutCard, TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard } from './widgets'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
+import { SternbildCard } from './SternbildCard'
 import { CountUp } from '../../components/CountUp'
 import { cssVars } from '../../lib/style'
 
@@ -65,6 +66,7 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
       </div>
 
       <div className="stack" style={{ ...cssVars({ '--i': 3 }), gap: 14 }}>
+        <SternbildCard punkte={einheiten} />
         <TonnageEinheitenCard punkte={einheiten} />
         <DauerEinheitenCard punkte={einheiten} />
         <UebungsdauerCard eintraege={dauerJeUebung} />

@@ -6,6 +6,7 @@ import { naechsterTag, trainingszeitDaten, einheitenDaten } from './calc'
 import { NextWorkoutCard, TrainingszeitCard, UebungsdauerCard, KpiCard } from './widgets'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
+import { SternbildCard } from './SternbildCard'
 import { CountUp } from '../../components/CountUp'
 import { useBenchProgression, benchRowsFor } from '../bench/queries'
 import { gesamtWochenVolumen } from '../volume/calc'
@@ -60,6 +61,7 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
       </div>
 
       <div className="stack" style={{ ...cssVars({ '--i': 2 }), marginTop: 14, gap: 14 }}>
+        <SternbildCard punkte={einheiten} />
         <TonnageEinheitenCard punkte={einheiten} />
         <DauerEinheitenCard punkte={einheiten} />
         <UebungsdauerCard eintraege={dauerJeUebung} />

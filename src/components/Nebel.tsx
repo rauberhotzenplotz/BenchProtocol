@@ -20,6 +20,8 @@ export function Nebel() {
       <span className="nb-korn" />
       <span className="nb-sterne nb-s1" />
       <span className="nb-sterne nb-s2" />
+      <span className="nb-schnuppe nb-k1" />
+      <span className="nb-schnuppe nb-k2" />
       <span className="nb-rand" />
     </div>
   )
