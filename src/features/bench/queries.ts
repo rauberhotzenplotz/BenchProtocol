@@ -116,7 +116,17 @@ export function useAutoAdvanceBlock() {
       await supabase.from('logged_sets').delete().in('exercise_id', exerciseIds).lte('week', 4)
       await supabase.from('sessions').delete().in('day_id', dayIds).lte('week', 4)
 
-      const patch: Record<string, unknown> = { block: (plan.block ?? 1) + 1, week: 1, last_delta_note: ergebnis.begruendung }
+      const patch: Record<string, unknown> = {
+        block: (plan.block ?? 1) + 1,
+        week: 1,
+        // Ohne den Reset hier bliebe der alte Zeitstempel stehen — die
+        // Wochenautomatik (wochenAutomatik.ts) sähe eine Woche 1, die
+        // angeblich schon seit dem vorigen Block läuft, und schaltete
+        // sofort wieder weiter, statt dem neuen Block seine volle Woche
+        // zu geben.
+        week_started_at: new Date().toISOString(),
+        last_delta_note: ergebnis.begruendung,
+      }
       if (ergebnis.neuesE1rm != null) {
         patch.reps = REFERENZ_WDH
         patch.rpe = REFERENZ_RPE

@@ -8,6 +8,8 @@ import { Mark } from './Mark'
 import { BootScreen } from './BootScreen'
 import { useAuth } from '../auth/auth-context'
 import { useActivePlan } from '../features/plans/active-plan-context'
+import { useUpdatePlan } from '../features/plans/queries'
+import { naechsteWoche } from '../features/training/wochenAutomatik'
 import { nebelPhase } from './nebelPhase'
 
 function useClock() {
@@ -34,11 +36,29 @@ function useNebelPhase() {
   }, [phase])
 }
 
+/** Ersetzt die frühere manuelle W1–W4/Deload-Auswahl (siehe
+    wochenAutomatik.ts): prüft bei jedem Laden des aktiven Plans, ob seit
+    Beginn der eingetragenen Woche 7 Tage vergangen sind, und schreibt bei
+    Bedarf die neue Woche. Läuft einmal je geänderter Woche, nicht bei
+    jedem Rendern — die Prüfung selbst ist reine Zeit-Arithmetik, ein
+    erneuter Aufruf nach dem Schreiben liefert dann null. */
+function useWochenAutomatik(plan: ReturnType<typeof useActivePlan>['activePlan']) {
+  const updatePlan = useUpdatePlan()
+  useEffect(() => {
+    if (!plan) return
+    const naechste = naechsteWoche(plan)
+    if (naechste) updatePlan.mutate({ id: plan.id, patch: naechste })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur bei geänderter Woche neu prüfen, nicht bei jeder Mutation von updatePlan
+  }, [plan?.id, plan?.week, plan?.week_started_at])
+}
+
 export function AppShell() {
   const uhrzeit = useClock()
   const speichertGerade = useIsMutating() > 0
   const { signOut } = useAuth()
+  const { activePlan } = useActivePlan()
   useNebelPhase()
+  useWochenAutomatik(activePlan)
 
   return (
     <div className="app">

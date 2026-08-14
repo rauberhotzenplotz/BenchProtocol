@@ -2,7 +2,6 @@ import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import { useCreateDay, useSkipSession } from './queries'
 import { tagFortschritt, gruppeSetsByExercise, wochenLabel } from './calc'
-import { WeekControl } from './WeekControl'
 import { PlanPicker } from '../plans/PlanPicker'
 import { DateStrip } from './DateStrip'
 import { tagFarbe } from './dayColor'
@@ -40,7 +39,6 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
           <p>Tippe auf einen Tag, um die Einheit zu öffnen.</p>
         </div>
         <PlanPicker />
-        <WeekControl plan={plan} />
       </div>
 
       <div style={{ marginBottom: 14 }}>

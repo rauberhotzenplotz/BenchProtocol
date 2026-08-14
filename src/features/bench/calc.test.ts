@@ -9,6 +9,7 @@ function plan(patch: Partial<Plan>): Plan {
     name: 'Test',
     typ: 'bench',
     week: 1,
+    week_started_at: '',
     sort_order: 0,
     work: null,
     reps: null,

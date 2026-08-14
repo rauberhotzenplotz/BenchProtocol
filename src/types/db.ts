@@ -12,6 +12,9 @@ export interface Plan {
   name: string
   typ: PlanTyp
   week: number
+  /** Seit wann die aktuelle Woche läuft — Grundlage des automatischen
+      Wochenwechsels nach 7 Tagen (siehe wochenAutomatik.ts). */
+  week_started_at: string
   sort_order: number
   /** Nur bei typ === 'bench' gesetzt. */
   work: number | null

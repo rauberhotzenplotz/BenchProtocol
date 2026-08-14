@@ -4,7 +4,7 @@ import type { Plan } from '../types/db'
 
 function plan(patch: Partial<Plan>): Plan {
   return {
-    id: 'p1', user_id: 'u1', name: 'Test', typ: 'bench', week: 1, sort_order: 0,
+    id: 'p1', user_id: 'u1', name: 'Test', typ: 'bench', week: 1, week_started_at: '', sort_order: 0,
     work: null, reps: null, rir: null, plate: 2.5, block: 1, goal: null, goal_from: null,
     beruehrt: true, rpe: null, last_delta_note: null, created_at: '', updated_at: '',
     ...patch,
