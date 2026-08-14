@@ -8,6 +8,7 @@ import {
   useDeleteSet,
   useEndSession,
   useStartSession,
+  useUpdateDay,
   useUpdateExercise,
   useUpsertSet,
 } from './queries'
@@ -36,8 +37,18 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
   const endSession = useEndSession()
   const autoAdvanceBlock = useAutoAdvanceBlock()
   const createExercise = useCreateExercise(plan.id)
+  const updateDay = useUpdateDay(plan.id)
   const { data: volumeRows } = useVolumeRows(plan.id)
   const muskelgruppen = (volumeRows ?? []).map(r => r.muscle_group)
+
+  const [nameBearbeiten, setNameBearbeiten] = useState(false)
+  const [neuerName, setNeuerName] = useState(day.name)
+  const nameSpeichern = () => {
+    setNameBearbeiten(false)
+    const trimmed = neuerName.trim()
+    if (trimmed && trimmed !== day.name) updateDay.mutate({ id: day.id, patch: { name: trimmed } })
+    else setNeuerName(day.name)
+  }
 
   const beenden = async () => {
     if (!session) return
@@ -72,9 +83,42 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
             {wochenLabel(week, plan)}
             {plan.typ === 'bench' ? ` · Block ${plan.block ?? 1}` : ''}
           </span>
-          <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>
-            {day.name}
-          </h2>
+          {nameBearbeiten ? (
+            <input
+              className="inp"
+              autoFocus
+              value={neuerName}
+              onChange={e => setNeuerName(e.target.value)}
+              onBlur={nameSpeichern}
+              onKeyDown={e => {
+                if (e.key === 'Enter') nameSpeichern()
+                if (e.key === 'Escape') {
+                  setNeuerName(day.name)
+                  setNameBearbeiten(false)
+                }
+              }}
+              style={{ fontFamily: 'var(--f-display)', fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', maxWidth: 320 }}
+            />
+          ) : (
+            <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>
+                {day.name}
+              </h2>
+              <button
+                className="rowbtn"
+                title="Tag umbenennen"
+                aria-label={`${day.name} umbenennen`}
+                onClick={() => {
+                  setNeuerName(day.name)
+                  setNameBearbeiten(true)
+                }}
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
