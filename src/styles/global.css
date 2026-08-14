@@ -97,40 +97,46 @@ body {
    bewusst mit je einer eigenen Farbe belegt, damit vom Kopf der Seite
    an mehr als eine Farbe zu sehen ist. */
 .nb-wolke { will-change: transform; }
-/* Türkis oben links — die Leitfarbe der App, entsprechend am kräftigsten. */
+/* Türkis oben links — die Leitfarbe der App, entsprechend am kräftigsten.
+   top mischt vmin mit einem vh-Anteil: rein in vmin liegt die Wolkenmitte
+   im Hochformat (vmin = Breite) viel zu nah an der Fensteroberkante, wo
+   .nb-rand am dunkelsten abblendet (siehe dort) — dort war die Wolke
+   praktisch unsichtbar. Der vh-Anteil schiebt die Mitte spürbar unter
+   diese Zone, ohne dass die Wolke selbst dafür größer werden müsste. */
 .nb-w1 {
-  width: 72vmin; height: 72vmin; left: -22vmin; top: -26vmin;
+  width: 88vmin; height: 88vmin; left: -24vmin; top: calc(-30vmin + 8vh);
   background: radial-gradient(circle closest-side,
-    rgba(20,179,154,.30) 0%, rgba(20,179,154,.17) 24%,
-    rgba(20,179,154,.07) 44%, rgba(20,179,154,.02) 61%, transparent 76%);
+    rgba(20,179,154,.40) 0%, rgba(20,179,154,.23) 24%,
+    rgba(20,179,154,.10) 44%, rgba(20,179,154,.03) 61%, transparent 76%);
   animation: nbZug1 78s ease-in-out infinite;
 }
 /* Violett weiter unten rechts — bewusst nicht auf gleicher Höhe wie das
    Blau (w4), sonst verschmelzen beide wieder zu einer Fläche. */
 .nb-w2 {
-  width: 64vmin; height: 64vmin; right: -20vmin; top: 46vh;
+  width: 78vmin; height: 78vmin; right: -22vmin; top: 46vh;
   background: radial-gradient(circle closest-side,
-    rgba(107,92,205,.27) 0%, rgba(107,92,205,.155) 24%,
-    rgba(107,92,205,.065) 44%, rgba(107,92,205,.018) 61%, transparent 76%);
+    rgba(107,92,205,.36) 0%, rgba(107,92,205,.21) 24%,
+    rgba(107,92,205,.09) 44%, rgba(107,92,205,.025) 61%, transparent 76%);
   animation: nbZug2 94s ease-in-out infinite;
 }
 /* Magenta unten links — hält den Fuß der Seite warm, sonst kippt alles
    ins Kalte. */
 .nb-w3 {
-  width: 58vmin; height: 58vmin; left: 2vmin; bottom: -22vmin;
+  width: 70vmin; height: 70vmin; left: 0vmin; bottom: -24vmin;
   background: radial-gradient(circle closest-side,
-    rgba(150,42,92,.25) 0%, rgba(150,42,92,.14) 24%,
-    rgba(150,42,92,.06) 44%, rgba(150,42,92,.016) 61%, transparent 76%);
+    rgba(150,42,92,.34) 0%, rgba(150,42,92,.19) 24%,
+    rgba(150,42,92,.08) 44%, rgba(150,42,92,.022) 61%, transparent 76%);
   animation: nbZug3 86s ease-in-out infinite;
 }
-/* Tiefes Blau oben rechts, deutlich kleiner als die anderen drei — sie
-   war es, die zuvor alles überdeckte, darum bekommt gerade sie hier die
-   kleinste Fläche statt gleich groß mit den übrigen mitzuhalten. */
+/* Tiefes Blau oben rechts, kleiner als die anderen drei — sie war es,
+   die zuvor alles überdeckte, darum bekommt gerade sie hier die
+   kleinste Fläche statt gleich groß mit den übrigen mitzuhalten. Klein
+   heißt hier aber nicht mehr unsichtbar wie in der letzten Fassung. */
 .nb-w4 {
-  width: 40vmin; height: 40vmin; right: -8vmin; top: -14vmin;
+  width: 52vmin; height: 52vmin; right: -10vmin; top: calc(-16vmin + 6vh);
   background: radial-gradient(circle closest-side,
-    rgba(28,64,132,.22) 0%, rgba(28,64,132,.12) 24%,
-    rgba(28,64,132,.05) 44%, rgba(28,64,132,.014) 61%, transparent 76%);
+    rgba(28,64,132,.30) 0%, rgba(28,64,132,.17) 24%,
+    rgba(28,64,132,.07) 44%, rgba(28,64,132,.02) 61%, transparent 76%);
   animation: nbZug4 68s ease-in-out infinite;
 }
 
@@ -266,15 +272,20 @@ body {
    Der obere Verlauf ist dagegen kein Schmuck, sondern Lesbarkeit: die
    Seitenüberschrift samt Unterzeile steht als einziger Text direkt auf
    dem Hintergrund statt auf einer Karte, und die Unterzeile ist mit
-   --ink-3 bei 12,5 px ohnehin der zarteste Text der App. Genau dort
-   liegt auch die kräftigste Wolke. Ohne das Abdunkeln würde der Nebel
-   den Kontrast dieser Zeile spürbar drücken; Karten sind mit 86 %
-   Deckkraft dagegen praktisch unbeeindruckt. */
+   --ink-3 bei 12,5 px ohnehin der zarteste Text der App. Ohne das
+   Abdunkeln würde der Nebel den Kontrast dieser Zeile spürbar drücken;
+   Karten sind mit 86 % Deckkraft dagegen praktisch unbeeindruckt.
+
+   Reicht bewusst nur bis 16 % der Fensterhöhe statt wie zuvor bis 30 %:
+   der Kopfbereich braucht nicht mehr Schutz, aber bis 30 % lag exakt die
+   hellste Stelle der türkisen und blauen Wolke darunter begraben — genau
+   dort saß am Ende praktisch kein sichtbarer Nebel mehr, ausgerechnet in
+   der Zone, die vom Fenster aus immer zuerst zu sehen ist. */
 .nb-rand {
   inset: 0;
   background:
     radial-gradient(ellipse 105% 80% at 50% 42%, transparent 35%, rgba(4,6,10,.55) 78%, rgba(4,6,10,.82) 100%),
-    linear-gradient(180deg, rgba(4,6,10,.62) 0%, rgba(4,6,10,.34) 14%, transparent 30%);
+    linear-gradient(180deg, rgba(4,6,10,.5) 0%, rgba(4,6,10,.2) 8%, transparent 16%);
 }
 
 /* ══ App-Gerüst ═════════════════════════════════════════════ */
