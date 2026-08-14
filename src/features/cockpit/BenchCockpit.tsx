@@ -8,9 +8,8 @@ import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { SternbildCard } from './SternbildCard'
 import { CountUp } from '../../components/CountUp'
-import { useBenchProgression, benchRowsFor } from '../bench/queries'
+import { baseE1RM } from '../bench/calc'
 import { gesamtWochenVolumen } from '../volume/calc'
-import { baseE1RM, benchLoad } from '../bench/calc'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -23,16 +22,11 @@ interface Props {
 }
 
 export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessions }: Props) {
-  const { data: progression } = useBenchProgression(plan.id)
-
   const tag = naechsterTag(days, setsByExercise)
   const t = trainingszeitDaten(sessions)
   const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
 
   const e1 = baseE1RM(plan)
-  const rowsD1 = progression ? benchRowsFor(progression, 'd1') : []
-  const heuteD1 = rowsD1.find(r => r.week === week)
-  const zielD1 = heuteD1 ? benchLoad(plan, heuteD1) : 0
 
   const wochenTonnage = days.reduce((a, d) => a + tonnageOf((d.exercises.map(ex => setsByExercise.get(ex.id) ?? [])).flat()), 0)
   const gesamtVolumen = gesamtWochenVolumen(days, setsByExercise)
@@ -55,7 +49,6 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
         <NextWorkoutCard tag={tag} />
         <TrainingszeitCard woche={t.woche} />
         <KpiCard cls="c1" label="Geschätztes 1RM" value={<CountUp value={e1} decimals={1} />} unit="kg" />
-        <KpiCard cls="c2" label="Heute auf der Bank" value={<CountUp value={zielD1} decimals={1} />} unit="kg" />
         <KpiCard cls="c3" label={`Tonnage ${wochenLabel(week, plan).split(' ·')[0]}`} value={<CountUp value={Math.round(wochenTonnage / 1000 * 10) / 10} decimals={1} />} unit="t" />
         <KpiCard cls="c4" label="Wochenvolumen" value={<CountUp value={gesamtVolumen} />} unit="Sätze" />
       </div>

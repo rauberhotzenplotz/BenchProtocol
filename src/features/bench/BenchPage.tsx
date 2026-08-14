@@ -1,11 +1,10 @@
-import type { ChangeEvent } from 'react'
 import { useActivePlan } from '../plans/active-plan-context'
-import { useUpdatePlan } from '../plans/queries'
 import { useBenchProgression, benchRowsFor } from './queries'
-import { baseE1RM } from './calc'
+import { baseE1RM, benchLoad } from './calc'
 import { ProgressionTable } from './ProgressionTable'
 import { GoalCard } from './GoalCard'
 import { RechnerCard } from './RechnerCard'
+import { CountUp } from '../../components/CountUp'
 import { cssVars } from '../../lib/style'
 import type { Plan } from '../../types/db'
 
@@ -45,17 +44,13 @@ export function BenchPage() {
 }
 
 function BenchTab({ plan }: { plan: Plan }) {
-  const updatePlan = useUpdatePlan()
   const { data: progression } = useBenchProgression(plan.id)
 
   const bsp = !plan.beruehrt
   const e1 = baseE1RM(plan)
-
-  const feldGeaendert = (key: 'work' | 'reps' | 'rpe' | 'plate') => (e: ChangeEvent<HTMLInputElement>) => {
-    const v = parseFloat(e.target.value.replace(',', '.'))
-    if (isNaN(v) || v <= 0) return
-    updatePlan.mutate({ id: plan.id, patch: { [key]: v, beruehrt: true } })
-  }
+  const rowsD1 = progression ? benchRowsFor(progression, 'd1') : []
+  const heuteD1 = rowsD1.find(r => r.week === plan.week)
+  const zielD1 = heuteD1 ? benchLoad(plan, heuteD1) : 0
 
   return (
     <section className="view on frisch">
@@ -63,7 +58,7 @@ function BenchTab({ plan }: { plan: Plan }) {
         <div>
           <span className="eyebrow">4-Wochen-Block Nr. {plan.block ?? 1}</span>
           <h2>Bankdrücken</h2>
-          <p>Ändere deine Ausgangsdaten — die Kilo-Vorgaben für beide Bank-Einheiten rechnen sofort neu.</p>
+          <p>Läuft vollautomatisch — die Kilo-Vorgaben für beide Bank-Einheiten kommen aus deinem echten Training.</p>
         </div>
       </div>
 
@@ -75,8 +70,8 @@ function BenchTab({ plan }: { plan: Plan }) {
 
       {bsp && (
         <div className="note" style={cssVars({ '--i': 1 })}>
-          Das sind Beispielwerte zur Orientierung — trag unten dein eigenes Arbeitsgewicht ein, dann rechnet der
-          Block mit deinen Zahlen.
+          Das sind Beispielwerte zur Orientierung — sobald du die Deload-Woche dieses Blocks komplett abhakst,
+          rechnet der nächste Block automatisch mit deinen echten Zahlen.
         </div>
       )}
 
@@ -91,45 +86,26 @@ function BenchTab({ plan }: { plan: Plan }) {
         <div className="card">
           <h3>
             <span className="tick" />
-            Ausgangsdaten
+            Heute auf der Bank
           </h3>
           <div className="stack">
-            <div className="field">
-              <label>Aktuelles Arbeitsgewicht</label>
-              <input className="inp big" defaultValue={plan.work ?? ''} onBlur={feldGeaendert('work')} inputMode="decimal" />
-              <small>kg, die du sauber bewegst</small>
-            </div>
-            <div className="grid g2" style={{ gap: 10 }}>
-              <div className="field">
-                <label>Wiederholungen</label>
-                <input className="inp big" defaultValue={plan.reps ?? ''} onBlur={feldGeaendert('reps')} inputMode="numeric" />
+            <div>
+              <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.15em', textTransform: 'uppercase' }}>
+                Bankdrücken schwer{bsp ? <span className="chip mute" style={{ marginLeft: 6 }}>z. B.</span> : null}
               </div>
-              <div className="field">
-                <label>RPE</label>
-                <input className="inp big" defaultValue={plan.rpe ?? ''} onBlur={feldGeaendert('rpe')} inputMode="decimal" placeholder="6–10" />
+              <div style={{ fontFamily: 'var(--f-display)', fontSize: 44, fontWeight: 600, color: bsp ? 'var(--ink-3)' : 'var(--violet)', lineHeight: 1.05 }}>
+                <CountUp value={zielD1} decimals={1} />
+                <span style={{ fontSize: 16, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}> kg</span>
               </div>
-            </div>
-            <div className="field">
-              <label>Kleinste Scheibenstufe</label>
-              <input className="inp big" defaultValue={plan.plate ?? ''} onBlur={feldGeaendert('plate')} inputMode="decimal" />
-              <small>kg — darauf wird jede Vorgabe gerundet</small>
+              <p className="muted tiny" style={{ margin: '5px 0 0' }}>{heuteD1?.scheme ?? '—'}</p>
             </div>
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 13 }}>
               <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.15em', textTransform: 'uppercase' }}>
                 Geschätztes 1RM
               </div>
-              <div
-                style={{
-                  fontFamily: 'var(--f-display)',
-                  fontSize: 44,
-                  fontWeight: 600,
-                  color: bsp ? 'var(--ink-3)' : 'var(--neon)',
-                  lineHeight: 1.05,
-                }}
-              >
-                {bsp && <span style={{ fontSize: 16, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}>z. B. </span>}
+              <div style={{ fontFamily: 'var(--f-display)', fontSize: 28, fontWeight: 600, color: bsp ? 'var(--ink-3)' : 'var(--neon)', lineHeight: 1.05 }}>
                 {e1}
-                <span style={{ fontSize: 16, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}> kg</span>
+                <span style={{ fontSize: 14, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}> kg</span>
               </div>
               <p className="muted tiny" style={{ margin: '5px 0 0' }}>
                 {plan.rpe != null
@@ -158,7 +134,7 @@ function BenchTab({ plan }: { plan: Plan }) {
         </div>
       </div>
 
-      <RechnerCard plate={plan.plate ?? 2.5} />
+      <RechnerCard planId={plan.id} plate={plan.plate ?? 2.5} />
     </section>
   )
 }

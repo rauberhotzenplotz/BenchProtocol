@@ -7,7 +7,9 @@ import { tagFarbe } from './dayColor'
 import { cssVars } from '../../lib/style'
 
 const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
-const ANZAHL_TAGE = 14
+/** Eine volle Woche, heute ganz rechts — passt ohne Scrollen in den
+    Streifen. Für mehr Verlauf gibt es den Kalender-Dialog. */
+const ANZAHL_TAGE = 7
 
 function isoLokal(ms: number): string {
   const d = new Date(ms)

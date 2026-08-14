@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { e1rm, brzycki, round, mround } from './calc'
+import { useUpdatePlan } from '../plans/queries'
 
 const STUFEN = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50]
 
-export function RechnerCard({ plate }: { plate: number }) {
+/** Die Scheibenstufe braucht irgendwo ein Zuhause, seit "Ausgangsdaten"
+    entfallen ist — sie hat mit der RPE-Automatik nichts zu tun, sondern
+    ist eine reine Ausstattungsfrage des Gyms. Hier passt sie thematisch:
+    genau diese Zahl rundet auch die Prozent-Tabelle unten. */
+export function RechnerCard({ planId, plate }: { planId: string; plate: number }) {
+  const updatePlan = useUpdatePlan()
   const [kg, setKg] = useState('100')
   const [reps, setReps] = useState('5')
 
@@ -41,6 +47,20 @@ export function RechnerCard({ plate }: { plate: number }) {
           </div>
           <div style={{ fontFamily: 'var(--f-display)', fontSize: 26, color: 'var(--violet)' }}>{brz} kg</div>
         </div>
+      </div>
+      <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'baseline' }}>
+        <span className="muted tiny">Scheibenstufe, auf die gerundet wird</span>
+        <input
+          className="inp mono"
+          style={{ width: 64 }}
+          defaultValue={plate}
+          inputMode="decimal"
+          onBlur={e => {
+            const v = parseFloat(e.target.value.replace(',', '.'))
+            if (!isNaN(v) && v > 0) updatePlan.mutate({ id: planId, patch: { plate: v } })
+          }}
+        />
+        <span className="muted tiny">kg</span>
       </div>
       <table className="t">
         <thead>

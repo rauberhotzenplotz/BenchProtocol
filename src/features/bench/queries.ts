@@ -121,6 +121,11 @@ export function useAutoAdvanceBlock() {
         patch.reps = REFERENZ_WDH
         patch.rpe = REFERENZ_RPE
         patch.work = round(zielgewicht(ergebnis.neuesE1rm, REFERENZ_WDH, REFERENZ_RPE, plan.plate ?? 2.5) ?? plan.work ?? 0)
+        // Ohne "Ausgangsdaten"-Tab ist das die einzige Stelle, die beruehrt
+        // je setzt — ohne sie bliebe ein ohne Testsatz angelegter Plan für
+        // immer als "Beispielwerte" markiert, auch nachdem der erste Block
+        // echte, gemessene Zahlen geliefert hat.
+        patch.beruehrt = true
       }
       const { error: updateErr } = await supabase.from('plans').update(patch).eq('id', planId)
       if (updateErr) throw updateErr

@@ -852,9 +852,13 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .streifen-kopf .mehr { margin-left: auto; color: var(--neon); font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
 .streifen-fuss { margin-top: 9px; font-family: var(--f-mono); font-size: 10px; color: var(--ink-4); }
 
-.dtage { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 3px; }
+/* overflow-x bleibt als Sicherheitsnetz stehen, greift bei sieben Zellen
+   aber nicht mehr: flex-shrink 1 lässt die Zellen auf sehr schmalen
+   Bildschirmen schrumpfen, statt eine Scrollleiste zu erzwingen — eine
+   ganze Woche soll ohne Wischen sichtbar sein. */
+.dtage { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px; }
 .dtag {
-  flex: 1 0 46px; min-width: 46px; border-radius: var(--r-m); padding: 7px 4px 6px;
+  flex: 1 1 0; min-width: 0; border-radius: var(--r-m); padding: 7px 3px 6px;
   background: rgba(255,255,255,.022); border: 1px solid transparent; text-align: center;
   transition: background .2s, border-color .2s;
 }
