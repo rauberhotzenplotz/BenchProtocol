@@ -497,7 +497,23 @@ function ExerciseBlock({
                 restSeconds={pauseSekunden(exercise.rest)}
                 plate={plate}
                 zeigtRpe={bankdruecken}
-                onChange={patch => upsertSet.mutate({ exercise_id: exercise.id, week, position: s.position, ...patch })}
+                onChange={patch => {
+                  upsertSet.mutate({ exercise_id: exercise.id, week, position: s.position, ...patch })
+                  // Satz 1 einer Übung: Gewicht/Wdh. für die übrigen Sätze
+                  // mitziehen, solange die noch genau auf dem Stand von
+                  // Satz 1 vor dieser Änderung stehen (anfangs beide leer).
+                  // Ein manuell abweichend bearbeiteter Satz bleibt danach
+                  // unabhängig — er "hört auf mitzuziehen", statt weiter
+                  // überschrieben zu werden.
+                  if (s.position === 0 && (patch.kg !== undefined || patch.reps !== undefined)) {
+                    const neuKg = patch.kg !== undefined ? patch.kg : s.kg
+                    const neuReps = patch.reps !== undefined ? patch.reps : s.reps
+                    sets.forEach(other => {
+                      if (other.position === 0 || other.kg !== s.kg || other.reps !== s.reps) return
+                      upsertSet.mutate({ exercise_id: exercise.id, week, position: other.position, kg: neuKg, reps: neuReps })
+                    })
+                  }
+                }}
                 onDelete={() => deleteSetM.mutate(s.id)}
               />
             ))}
