@@ -219,13 +219,16 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
         )}
       </div>
 
-      <div className="stack" style={{ ...cssVars({ '--i': 2 }), marginTop: 14, gap: 10 }}>
-        {day.exercises.map(ex => (
+      {/* Kein eigener Abstand: die Übungskarten bringen ihren Rand selbst
+          mit (.ueb bzw. .ueb:not(.auf) in global.css). */}
+      <div style={{ ...cssVars({ '--i': 2 }), marginTop: 14 }}>
+        {day.exercises.map((ex, i) => (
           <ExerciseBlock
             key={ex.id}
             planId={plan.id}
             planTyp={plan.typ}
             exercise={ex}
+            nummer={i + 1}
             sets={setsByExercise.get(ex.id) ?? []}
             week={week}
             laeuft={laeuft}
@@ -399,6 +402,7 @@ function ExerciseBlock({
   planId,
   planTyp,
   exercise,
+  nummer,
   sets,
   week,
   laeuft,
@@ -409,6 +413,8 @@ function ExerciseBlock({
   planId: string
   planTyp: Plan['typ']
   exercise: Exercise
+  /** Platz in der Tagesreihenfolge, 1-basiert — steht im Nummernkreis. */
+  nummer: number
   sets: LoggedSet[]
   week: number
   muskelgruppen: string[]
@@ -426,6 +432,7 @@ function ExerciseBlock({
     setLetzteVorgabe(aufklappen)
     if (aufklappen) setAuf(true)
   }
+  const [einstellungen, setEinstellungen] = useState(false)
   const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
   const updateExercise = useUpdateExercise(planId)
   const deleteExercise = useDeleteExercise(planId)
@@ -437,43 +444,42 @@ function ExerciseBlock({
   const fertig = sets.length > 0 && ok >= Math.min(soll, sets.length) && ok >= soll
   const naechstePosition = sets.length ? Math.max(...sets.map(s => s.position)) + 1 : 0
   const bankdruecken = istBankdruecken(exercise)
+  const anteil = soll > 0 ? Math.min(1, ok / soll) : 0
 
   return (
-    <div className="card">
-      <div className="row" style={{ cursor: 'pointer' }} onClick={() => setAuf(a => !a)}>
-        <div style={{ flex: 1 }}>
-          <b>{exercise.name}</b>
-          <div className="row" style={{ gap: 6, marginTop: 4 }}>
-            {exercise.scheme && <span className="chip mute">{exercise.scheme}</span>}
-            {exercise.rest && <span className="chip mute">Pause {exercise.rest}</span>}
-            {exercise.bench_slot && <span className="chip mute">Bank {exercise.bench_slot === 'd1' ? 'schwer' : 'leicht'}</span>}
-            {exercise.muscle_group && <span className="chip mute">{exercise.muscle_group}</span>}
-          </div>
-        </div>
-        {fertig && <span className="chip ok">fertig</span>}
-        {loeschenBestaetigen ? (
-          <div className="row" style={{ gap: 6 }} onClick={e => e.stopPropagation()}>
-            <button className="btn ghost sm" onClick={() => setLoeschenBestaetigen(false)}>
-              Abbrechen
-            </button>
-            <button className="btn sm danger" onClick={() => deleteExercise.mutate(exercise.id)}>
-              Löschen
-            </button>
-          </div>
-        ) : (
-          <button
-            className="rowbtn del"
-            title="Übung löschen"
-            onClick={e => {
-              e.stopPropagation()
-              setLoeschenBestaetigen(true)
-            }}
-          >
+    <div className={'ueb' + (auf ? ' auf' : '') + (fertig ? ' fertig' : '') + (bankdruecken ? ' bank' : '')}>
+      {/* Zugeklappt ist jede Übung nur eine Zeile hoch — Nummer, Name, die
+          wichtigsten Vorgaben als Marken und der Satzstand. Alles Weitere
+          erscheint erst beim Aufklappen. */}
+      <div className="ueb-leiste">
+        <button className="ueb-kopf" aria-expanded={auf} onClick={() => setAuf(a => !a)}>
+          <span className="ueb-nr">{nummer}</span>
+          <span className="ueb-titel">
+            <b>{exercise.name}</b>
+            {/* Zugeklappt nur das Schema: auf einem Handy bleiben neben
+                Nummer, Satzstand und Pfeil keine 150 px für vier Marken —
+                sie liefen bloß in die Ausblendkante. Pause, Bank und
+                Muskelgruppe kommen beim Aufklappen dazu. */}
+            <span className="ueb-meta">
+              {exercise.scheme && <em className="mk schema">{exercise.scheme}</em>}
+              {auf && exercise.rest && <em className="mk">Pause {exercise.rest}</em>}
+              {auf && exercise.bench_slot && <em className="mk">Bank {exercise.bench_slot === 'd1' ? 'schwer' : 'leicht'}</em>}
+              {auf && exercise.muscle_group && <em className="mk">{exercise.muscle_group}</em>}
+            </span>
+          </span>
+          <span className={'ueb-fort' + (fertig ? ' voll' : '')}>
+            {ok}
+            <i>/{soll}</i>
+          </span>
+          <span className="ueb-pfeil">
             <svg viewBox="0 0 24 24">
-              <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
+              <path d="M6 9l6 6 6-6" />
             </svg>
-          </button>
-        )}
+          </span>
+        </button>
+      </div>
+      <div className="ueb-fortschritt">
+        <i style={{ width: `${(anteil * 100).toFixed(0)}%` }} />
       </div>
 
       {auf && (
@@ -548,56 +554,94 @@ function ExerciseBlock({
               </button>
             )}
             <span className="spacer" />
-            <input
-              className="inp voll dim"
-              placeholder="Notiz"
-              defaultValue={exercise.note ?? ''}
-              onBlur={e => updateExercise.mutate({ id: exercise.id, patch: { note: e.target.value } })}
-              style={{ maxWidth: 220 }}
-            />
+            <button
+              className="rowbtn einst"
+              aria-pressed={einstellungen}
+              title="Einstellungen der Übung"
+              aria-label="Einstellungen der Übung"
+              onClick={() => setEinstellungen(e => !e)}
+            >
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+              </svg>
+            </button>
           </div>
-          {planTyp === 'bench' && (
-            <div className="row" style={{ gap: 6, marginTop: 8 }}>
-              <span className="muted tiny">Bank-Zuordnung (Aufwärmsätze im Gym-Modus):</span>
-              <button
-                type="button"
-                className={'chip' + (exercise.bench_slot === null ? ' neon' : ' mute')}
-                onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: null } })}
-              >
-                Keine
-              </button>
-              <button
-                type="button"
-                className={'chip' + (exercise.bench_slot === 'd1' ? ' neon' : ' mute')}
-                onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: 'd1' } })}
-              >
-                Schwer
-              </button>
-              <button
-                type="button"
-                className={'chip' + (exercise.bench_slot === 'd3' ? ' neon' : ' mute')}
-                onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: 'd3' } })}
-              >
-                Leicht
-              </button>
-            </div>
-          )}
-          {muskelgruppen.length > 0 && (
-            <div className="row" style={{ gap: 6, marginTop: 8 }}>
-              <span className="muted tiny">Muskelgruppe (fürs Wochenvolumen):</span>
-              <select
-                className="inp mono"
-                style={{ width: 'auto' }}
-                value={exercise.muscle_group ?? ''}
-                onChange={e => updateExercise.mutate({ id: exercise.id, patch: { muscle_group: e.target.value || null } })}
-              >
-                <option value="">Keine</option>
-                {muskelgruppen.map(g => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
+
+          {/* Selten Gebrauchtes liegt hinter dem Zahnrad: die geöffnete
+              Übung zeigt sonst nur ihre Sätze. */}
+          {einstellungen && (
+            <div className="ueb-einst">
+              <label className="ueb-einst-feld">
+                <span>Notiz</span>
+                <input
+                  className="inp"
+                  placeholder="z. B. Griffbreite, Sitzposition"
+                  defaultValue={exercise.note ?? ''}
+                  onBlur={e => updateExercise.mutate({ id: exercise.id, patch: { note: e.target.value } })}
+                />
+              </label>
+              {planTyp === 'bench' && (
+                <div className="ueb-einst-feld">
+                  <span>Bank-Zuordnung · steuert die Aufwärmsätze</span>
+                  <div className="ueb-einst-reihe">
+                    <button
+                      type="button"
+                      className={'chip' + (exercise.bench_slot === null ? ' neon' : ' mute')}
+                      onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: null } })}
+                    >
+                      Keine
+                    </button>
+                    <button
+                      type="button"
+                      className={'chip' + (exercise.bench_slot === 'd1' ? ' neon' : ' mute')}
+                      onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: 'd1' } })}
+                    >
+                      Schwer
+                    </button>
+                    <button
+                      type="button"
+                      className={'chip' + (exercise.bench_slot === 'd3' ? ' neon' : ' mute')}
+                      onClick={() => updateExercise.mutate({ id: exercise.id, patch: { bench_slot: 'd3' } })}
+                    >
+                      Leicht
+                    </button>
+                  </div>
+                </div>
+              )}
+              {muskelgruppen.length > 0 && (
+                <label className="ueb-einst-feld">
+                  <span>Muskelgruppe · fürs Wochenvolumen</span>
+                  <select
+                    className="inp"
+                    value={exercise.muscle_group ?? ''}
+                    onChange={e => updateExercise.mutate({ id: exercise.id, patch: { muscle_group: e.target.value || null } })}
+                  >
+                    <option value="">Keine</option>
+                    {muskelgruppen.map(g => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="ueb-einst-reihe">
+                {loeschenBestaetigen ? (
+                  <>
+                    <button className="btn ghost sm" onClick={() => setLoeschenBestaetigen(false)}>
+                      Abbrechen
+                    </button>
+                    <button className="btn sm danger" onClick={() => deleteExercise.mutate(exercise.id)}>
+                      Wirklich löschen
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn sm danger" onClick={() => setLoeschenBestaetigen(true)}>
+                    Übung löschen
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -1131,6 +1131,12 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px;
   cursor: pointer; border-radius: var(--r-m); margin: -6px -8px; padding: 6px 8px;
   transition: background .2s;
+  /* Als <button> gebaut (aria-expanded, Tastaturbedienung) — ohne diese
+     Angabe zöge die Browservorgabe text-align:center den Übungsnamen in
+     die Mitte der Zeile. */
+  appearance: none; -webkit-appearance: none; border: 0; background: none;
+  text-align: left; color: inherit; font: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 .ueb-kopf:hover { background: rgba(255,255,255,.035); }
 .ueb-kopf:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
@@ -1205,6 +1211,23 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .ueb .setkopf, .ueb .setgrid { margin-top: 11px; }
 .ueb-fuss { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
 
+/* Notiz, Bank-Zuordnung, Muskelgruppe und Löschen sind Einstellungen, die
+   man einmal setzt und dann jahrelang nicht mehr anfasst — sie liegen
+   hinter dem Zahnrad im Fuß, damit die geöffnete Übung im Training nur
+   ihre Sätze zeigt. */
+.ueb-einst {
+  margin-top: 12px; padding-top: 13px; border-top: 1px solid var(--line-soft);
+  display: flex; flex-direction: column; gap: 13px;
+  animation: uebAuf .25s cubic-bezier(.22,1,.36,1) both;
+}
+.ueb-einst-feld { display: flex; flex-direction: column; gap: 6px; }
+.ueb-einst-feld > span {
+  font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .15em;
+  text-transform: uppercase; color: var(--ink-4);
+}
+.ueb-einst-feld .inp { border: 1px solid var(--line); background: rgba(8,11,16,.6); }
+.ueb-einst-reihe { display: flex; gap: 6px; flex-wrap: wrap; }
+
 /* ── Satzweise Erfassung ────────────────────────────────────── */
 .setgrid { display: flex; flex-direction: column; gap: 6px; }
 .setline {
@@ -1264,6 +1287,11 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 
 .rowbtn.sets { color: var(--ink-3); }
 .rowbtn.sets[aria-pressed="true"] { color: var(--neon); border-color: rgba(53,240,208,.35); background: rgba(53,240,208,.1); opacity: 1; }
+/* Zahnrad im Übungsfuß — leuchtet auf, solange die Einstellungen offen sind. */
+.rowbtn.einst { color: var(--ink-3); }
+.rowbtn.einst[aria-pressed="true"] { color: var(--neon); border-color: rgba(53,240,208,.35); background: rgba(53,240,208,.1); opacity: 1; }
+.rowbtn.einst[aria-pressed="true"] svg { transform: rotate(60deg); }
+.rowbtn.einst svg { transition: transform .3s cubic-bezier(.22,1,.36,1); }
 
 @media (max-width: 760px) {
   .setline, .setkopf { grid-template-columns: 24px 1.3fr 1fr .8fr 42px 24px; gap: 5px; }
