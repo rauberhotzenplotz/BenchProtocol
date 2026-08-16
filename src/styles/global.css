@@ -1212,6 +1212,9 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   padding: 7px 8px; border-radius: var(--r-m); background: rgba(8,11,16,.6);
   border: 1px solid var(--line-soft); transition: border-color .2s, background .2s;
 }
+/* RPE ist nur beim Bankdrücken sinnvoll (einzige Übung mit RPE-Automatik)
+   — bei anderen Übungen fällt die Spalte ganz weg statt leer zu bleiben. */
+.setline.ohne-rpe, .setkopf.ohne-rpe { grid-template-columns: 30px 1.3fr 1fr 46px 26px; }
 .setline:hover { border-color: var(--line); }
 .setline.ok { border-color: rgba(63,224,138,.32); background: rgba(63,224,138,.06); }
 .setline .nr {
@@ -1262,6 +1265,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 
 @media (max-width: 760px) {
   .setline, .setkopf { grid-template-columns: 24px 1.3fr 1fr .8fr 42px 24px; gap: 5px; }
+  .setline.ohne-rpe, .setkopf.ohne-rpe { grid-template-columns: 24px 1.3fr 1fr 42px 24px; }
   .ueb-titel b { font-size: 15.5px; }
   .ueb-nr { width: 27px; height: 27px; font-size: 11px; }
 }

@@ -12,7 +12,7 @@ import {
   useUpdateExercise,
   useUpsertSet,
 } from './queries'
-import { setsOf, tonnageOf, wochenLabel } from './calc'
+import { setsOf, tonnageOf, wochenLabel, istBankdruecken } from './calc'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
 import { GymMode } from './GymMode'
@@ -407,6 +407,7 @@ function ExerciseBlock({
   const ok = sets.filter(s => s.done).length
   const fertig = sets.length > 0 && ok >= Math.min(soll, sets.length) && ok >= soll
   const naechstePosition = sets.length ? Math.max(...sets.map(s => s.position)) + 1 : 0
+  const bankdruecken = istBankdruecken(exercise)
 
   return (
     <div className="card">
@@ -448,11 +449,11 @@ function ExerciseBlock({
 
       {auf && (
         <div className="ueb-koerper geoeffnet">
-          <div className="setkopf">
+          <div className={'setkopf' + (bankdruecken ? '' : ' ohne-rpe')}>
             <span>#</span>
             <span>Gewicht</span>
             <span>Wdh.</span>
-            <span>RPE</span>
+            {bankdruecken && <span>RPE</span>}
             <span>OK</span>
             <span />
           </div>
@@ -466,6 +467,7 @@ function ExerciseBlock({
                 exerciseName={exercise.name}
                 restSeconds={pauseSekunden(exercise.rest)}
                 plate={plate}
+                zeigtRpe={bankdruecken}
                 onChange={patch => upsertSet.mutate({ exercise_id: exercise.id, week, position: s.position, ...patch })}
                 onDelete={() => deleteSetM.mutate(s.id)}
               />
@@ -565,6 +567,7 @@ function SetRow({
   exerciseName,
   restSeconds,
   plate,
+  zeigtRpe,
   onChange,
   onDelete,
 }: {
@@ -573,6 +576,7 @@ function SetRow({
   exerciseName: string
   restSeconds: number
   plate: number
+  zeigtRpe: boolean
   onChange: (patch: { kg?: number | null; reps?: number | null; rpe?: number | null; done?: boolean; done_at?: string | null }) => void
   onDelete: () => void
 }) {
@@ -586,11 +590,11 @@ function SetRow({
   }
 
   return (
-    <div className={'setline' + (set.done ? ' ok' : '')}>
+    <div className={'setline' + (set.done ? ' ok' : '') + (zeigtRpe ? '' : ' ohne-rpe')}>
       <span className="nr">{set.position + 1}</span>
       <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" className="mono" leerOption onWahl={kg => onChange({ kg })} />
       <ZahlEingabe wert={set.reps} werte={REP_WERTE} titel="Wiederholungen" className="mono" leerOption onWahl={reps => onChange({ reps })} />
-      <ZahlEingabe wert={set.rpe} werte={RPE_WERTE} titel="RPE" className="mono" leerOption onWahl={rpe => onChange({ rpe })} />
+      {zeigtRpe && <ZahlEingabe wert={set.rpe} werte={RPE_WERTE} titel="RPE" className="mono" leerOption onWahl={rpe => onChange({ rpe })} />}
       <button
         className="sethaken"
         aria-pressed={set.done}

@@ -211,7 +211,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       position: satzIdx,
       kg,
       reps,
-      rpe: rpe || null,
+      rpe: istBankdruecken(exercise) && rpe ? rpe : null,
       done: true,
       done_at: new Date().toISOString(),
     })
@@ -383,16 +383,18 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
               +
             </button>
           </div>
-          <div className="gym-kzeile" style={{ marginTop: 14, width: '100%', maxWidth: 380 }}>
-            <span className="lab">RPE</span>
-            <button className="gym-pm" onClick={() => setRpe(r => Math.max(0, Math.round((r - 0.5) * 2) / 2))} aria-label="RPE verringern">
-              −
-            </button>
-            <span className={'wert' + (rpe ? '' : ' leer')}>{rpe || '—'}</span>
-            <button className="gym-pm" onClick={() => setRpe(r => Math.round((r + 0.5) * 2) / 2)} aria-label="RPE erhöhen">
-              +
-            </button>
-          </div>
+          {istBankdruecken(exercise) && (
+            <div className="gym-kzeile" style={{ marginTop: 14, width: '100%', maxWidth: 380 }}>
+              <span className="lab">RPE</span>
+              <button className="gym-pm" onClick={() => setRpe(r => Math.max(0, Math.round((r - 0.5) * 2) / 2))} aria-label="RPE verringern">
+                −
+              </button>
+              <span className={'wert' + (rpe ? '' : ' leer')}>{rpe || '—'}</span>
+              <button className="gym-pm" onClick={() => setRpe(r => Math.round((r + 0.5) * 2) / 2)} aria-label="RPE erhöhen">
+                +
+              </button>
+            </div>
+          )}
           {exercise.rest && <div className="gym-hinweis">Pause {exercise.rest}</div>}
         </div>
 
