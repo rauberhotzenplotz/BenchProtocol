@@ -1,18 +1,16 @@
 import { GymZiffer, GymDoppelpunkt } from './GymZiffer'
-
-function zeitText(s: number): string {
-  const m = Math.floor(s / 60)
-  const r = s % 60
-  return `${m}:${String(r).padStart(2, '0')}`
-}
+import { zeitText } from '../lib/zeit'
 
 export function GymRing({ secondsLeft, totalSeconds }: { secondsLeft: number; totalSeconds: number }) {
+  const ueberzogen = secondsLeft <= 0
   const anteil = totalSeconds > 0 ? Math.max(0, Math.min(1, secondsLeft / totalSeconds)) : 0
   const r = 45
   const umfang = 2 * Math.PI * r
   const offset = umfang * (1 - anteil)
-  const stufe = secondsLeft <= 5 ? 'crit' : secondsLeft <= 15 ? 'warn' : ''
-  const text = zeitText(Math.max(0, secondsLeft))
+  // Überzogen schlägt crit/warn — sobald die Pause vorbei ist, ist sie
+  // nicht mehr dringend, sondern einfach nur noch offen (grau statt rot).
+  const stufe = ueberzogen ? 'ueberzogen' : secondsLeft <= 5 ? 'crit' : secondsLeft <= 15 ? 'warn' : ''
+  const text = zeitText(secondsLeft)
 
   return (
     <div className="gym-ringbox">
@@ -30,7 +28,7 @@ export function GymRing({ secondsLeft, totalSeconds }: { secondsLeft: number; to
           <circle className="mond" cx="50" cy={50 - r} r={2.6} />
         </g>
       </svg>
-      <div className="gym-zeit" role="timer" aria-label={`${text} verbleibend`}>
+      <div className={'gym-zeit' + (ueberzogen ? ' ueberzogen' : '')} role="timer" aria-label={`${text} verbleibend`}>
         {[...text].map((zeichen, i) =>
           zeichen === ':' ? <GymDoppelpunkt key={i} /> : <GymZiffer key={i} zeichen={zeichen} />,
         )}

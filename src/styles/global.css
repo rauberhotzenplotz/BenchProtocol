@@ -1675,7 +1675,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 }
 .zahlrad {
   position: relative;
-  width: min(420px, 100%); max-height: min(64vh, 480px);
+  width: min(420px, 100%); max-height: min(90vh, 640px);
   /* Zwei Nebelschwaden über dem Grundton — dieselben Farben wie die
      Wolken im Hintergrund (siehe .nb-w1/.nb-w2), nur enger gefasst. */
   background:
@@ -1685,7 +1685,12 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   border: 1px solid var(--line); border-bottom: none;
   border-radius: var(--r-l) var(--r-l) 0 0;
   box-shadow: 0 -26px 70px -28px rgba(0,0,0,.95), 0 -1px 0 rgba(53,240,208,.1);
-  display: flex; flex-direction: column; overflow: hidden;
+  display: flex; flex-direction: column;
+  /* Sicherheitsnetz für sehr kurze Bildschirme: Liste und Numpad stehen
+     zusammen auf derselben Fläche (kein Tab mehr, siehe ZahlRad.tsx) —
+     normalerweise passt beides ohne dass hier gescrollt werden muss, aber
+     falls doch, soll nichts unerreichbar unter dem Bildschirmrand landen. */
+  overflow-x: hidden; overflow-y: auto;
   animation: zahlradRein .34s cubic-bezier(.22,1,.36,1) both;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -1707,7 +1712,6 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   font-family: var(--f-display); font-size: 12.5px; letter-spacing: .18em; text-transform: uppercase;
   color: var(--neon); flex: none;
 }
-.zahlrad-kopf-knoepfe { display: flex; gap: 8px; }
 /* Diese App hat bewusst keinen globalen Knopf-Reset — jede Schaltfläche
    setzt ihr Aussehen selbst. Ohne appearance/background/border hier bliebe
    das graue Systemgrau mit outset-Rahmen stehen. */
@@ -1726,13 +1730,18 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
    die Liste als gekrümmtes Rad, das sich hinter dem Rahmen weiterdreht —
    und man sieht auf einen Blick, dass es in beide Richtungen weitergeht.
    scroll-snap auf "proximity" statt "mandatory": es rastet spürbar ein,
-   blockiert aber kein freies Durchziehen über viele Werte. */
+   blockiert aber kein freies Durchziehen über viele Werte.
+
+   Feste Höhe statt flex:1 — das Numpad darunter braucht ebenfalls
+   garantierten Platz, beide teilen sich jetzt dieselbe Fläche statt sich
+   per Tab abzuwechseln (siehe ZahlRad.tsx). */
 .zahlrad-liste {
+  flex: none; height: 150px;
   /* Der großzügige Rand oben und unten ist Rollweg, keine Luft: ohne ihn
      kann der erste bzw. letzte Wert nie aus der Ausblendzone heraus in die
      Mitte gerollt werden und bliebe halb durchsichtig, obwohl er der
      gewählte ist. */
-  overflow-y: auto; padding: 54px 10px; display: flex; flex-direction: column; gap: 2px;
+  overflow-y: auto; padding: 40px 10px; display: flex; flex-direction: column; gap: 2px;
   overscroll-behavior: contain; scroll-snap-type: y proximity;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 11%, #000 89%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 11%, #000 89%, transparent 100%);
@@ -1767,25 +1776,29 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .zahlrad-wert.an::before { left: 8px; }
 .zahlrad-wert.an::after { right: 8px; }
 
-/* Numpad-Modus: derselbe Rahmen (Griff, Kopf), aber freie Zifferneingabe
-   statt Listenauswahl — für Werte, die keinen eigenen Listeneintrag haben
-   (z. B. 83,7 kg). Die Anzeige sitzt bewusst so groß wie die Ringziffern
-   im Gym-Modus (.gym-kg), damit sich das Numpad wie ein Ausschnitt
-   derselben Konsole anfühlt statt wie ein fremdes Formular. */
-.zahltast { padding: 4px 18px 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+/* Numpad, immer sichtbar unter der Liste (kein Tab-Umschalter mehr) — für
+   Werte, die keinen eigenen Listeneintrag haben (z. B. 83,7 kg). Die
+   Trennlinie oben grenzt es von der Ausblendzone der Liste ab, sonst
+   liefe die Maske optisch direkt in die Zifferntasten über. Etwas
+   kompakter als ein eigenständiger Vollbild-Numpad wäre, weil Liste und
+   Numpad sich jetzt dieselbe Sheet-Höhe teilen. */
+.zahltast {
+  padding: 12px 18px 16px; border-top: 1px solid var(--line-soft);
+  display: flex; flex-direction: column; gap: 11px; flex: none;
+}
 .zahltast-anzeige {
   text-align: center; font-family: var(--f-display); font-variant-numeric: tabular-nums;
-  font-size: 40px; color: var(--neon); letter-spacing: .02em;
+  font-size: 32px; color: var(--neon); letter-spacing: .02em;
   text-shadow: 0 0 24px rgba(53,240,208,.4);
   min-height: 1.1em; display: flex; align-items: baseline; justify-content: center; gap: .12em;
 }
 .zahltast-anzeige em { font-style: normal; font-family: var(--f-body); font-size: .38em; color: var(--ink-3); }
 .zahltast-platzhalter { color: var(--ink-4); text-shadow: none; }
-.zahltast-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.zahltast-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .zahltast-taste {
   appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
   border: 1px solid var(--line-soft); background: rgba(255,255,255,.03); border-radius: var(--r-m);
-  height: 52px; color: var(--ink); font-family: var(--f-mono); font-size: 19px;
+  height: 44px; color: var(--ink); font-family: var(--f-mono); font-size: 17px;
   font-variant-numeric: tabular-nums; transition: background .15s, border-color .15s, transform .1s;
 }
 .zahltast-taste:hover { border-color: var(--line); background: rgba(255,255,255,.06); }
@@ -1794,7 +1807,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .zahltast-taste.loeschen { color: var(--ink-3); font-size: 16px; }
 .zahltast-uebernehmen {
   appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
-  height: 50px; border-radius: var(--r-m); border: 1.5px solid rgba(53,240,208,.5);
+  height: 46px; flex: none; border-radius: var(--r-m); border: 1.5px solid rgba(53,240,208,.5);
   background: rgba(53,240,208,.12); color: var(--neon);
   font-family: var(--f-display); font-size: 14px; letter-spacing: .12em; text-transform: uppercase;
   transition: background .2s, box-shadow .2s, opacity .2s;
@@ -1869,20 +1882,32 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
     linear-gradient(180deg, rgba(19,26,36,.98), rgba(10,13,19,.99));
   box-shadow: 0 16px 40px -18px rgba(0,0,0,.9), 0 0 0 1px rgba(53,240,208,.07);
   animation: resttimerRein .32s cubic-bezier(.22,1,.36,1) both;
-  transition: border-color .3s, box-shadow .3s;
+  transition: border-color .3s, box-shadow .3s, background .3s;
+  /* Die ganze Leiste ist jetzt ein Knopf zurück in den Gym-Modus (siehe
+     RestTimerBar.tsx) — +15s/Stop stoppen die Ausbreitung selbst. */
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
+.resttimer:hover { border-color: var(--ink-4); }
+.resttimer:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
 @keyframes resttimerRein { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
-.resttimer.fertig { border-color: rgba(63,224,138,.5); box-shadow: 0 16px 40px -18px rgba(0,0,0,.9), 0 0 26px -8px rgba(63,224,138,.45); }
+/* Überzogen ist bewusst grau, nicht rot/grün — die Pause ist einfach nur
+   vorbei, das ist weder ein Erfolg noch eine Warnung. */
+.resttimer.ueberzogen {
+  border-color: var(--line-soft);
+  background:
+    linear-gradient(180deg, rgba(19,26,36,.98), rgba(10,13,19,.99));
+  box-shadow: 0 16px 40px -18px rgba(0,0,0,.9);
+}
 .resttimer-ring { flex: none; line-height: 0; }
 .resttimer-info { flex: 1; min-width: 0; }
 .resttimer-lab {
   font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
 }
-.resttimer.fertig .resttimer-lab { color: var(--good); }
 .resttimer-name {
   margin-top: 1px; font-family: var(--f-display); font-size: 14.5px; letter-spacing: .02em; color: var(--ink);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.resttimer.ueberzogen .resttimer-name { color: var(--ink-3); }
 .resttimer-tasten { flex: none; display: flex; align-items: center; gap: 7px; }
 .resttimer-plus, .resttimer-stop {
   appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
@@ -1897,8 +1922,8 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   padding: 8px 14px; color: var(--neon); border: 1px solid rgba(53,240,208,.45); background: rgba(53,240,208,.1);
 }
 .resttimer-stop:hover { background: rgba(53,240,208,.18); box-shadow: 0 0 18px -6px var(--neon); }
-.resttimer.fertig .resttimer-stop { color: var(--good); border-color: rgba(63,224,138,.5); background: rgba(63,224,138,.14); }
-.resttimer.fertig .resttimer-stop:hover { background: rgba(63,224,138,.22); box-shadow: 0 0 18px -6px var(--good); }
+.resttimer.ueberzogen .resttimer-stop { color: var(--ink-2); border-color: var(--line); background: rgba(255,255,255,.04); }
+.resttimer.ueberzogen .resttimer-stop:hover { color: var(--ink); border-color: var(--ink-4); background: rgba(255,255,255,.07); }
 .resttimer-plus:active, .resttimer-stop:active { transform: scale(.96); }
 .resttimer-plus:focus-visible, .resttimer-stop:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
 
@@ -2142,6 +2167,14 @@ body:has(.gym) .nebel { display: none; }
 .gym-wdh span { color: var(--ink-3); font-size: .5em; margin-left: .2em; }
 .gym-hinweis { margin-top: 14px; font-family: var(--f-mono); font-size: 10.5px;
   letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4); text-align: center; }
+/* Läuft die Pause vor diesem Satz über, zählt hier weiter, wie lange schon
+   — bewusst grau statt in einer Warnfarbe: die Pause ist vorbei, das ist
+   nur noch eine Information, keine Dringlichkeit mehr. */
+.gym-ueberzogen {
+  margin-top: 14px; display: flex; align-items: center; gap: 7px; justify-content: center;
+  font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3);
+}
+.gym-ueberzogen b { font-family: var(--f-display); font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ink-2); letter-spacing: .02em; }
 
 /* Gewicht feinjustieren, ohne die Korrekturzeile zu öffnen */
 .gym-kgtaste {
@@ -2258,6 +2291,9 @@ body:has(.gym) .nebel { display: none; }
 .gym-ring .halo { stroke: var(--neon); stroke-width: 12; opacity: .14; transition: stroke .3s, stroke-dashoffset .3s linear; }
 .gym-ring.warn .fg, .gym-ring.warn .halo { stroke: var(--warn); }
 .gym-ring.crit .fg, .gym-ring.crit .halo { stroke: var(--crit); }
+/* Überzogen ist keine Dringlichkeits-Farbe (rot/gelb), sondern schlicht
+   grau — die Pause ist vorbei, das ist keine Warnung mehr, nur ein Hinweis. */
+.gym-ring.ueberzogen .fg, .gym-ring.ueberzogen .halo { stroke: var(--ink-3); }
 /* Mond auf der Ringbahn (siehe GymRing.tsx). Dieselbe Übergangszeit wie
    der Bogen, damit beide im Sekundentakt gemeinsam gleiten statt zu
    springen. Die Drehung braucht einen eigenen transform-origin — die
@@ -2270,6 +2306,7 @@ body:has(.gym) .nebel { display: none; }
 .gym-ring .mondhof { fill: var(--neon); opacity: .22; }
 .gym-ring.warn .mond, .gym-ring.warn .mondhof { fill: var(--warn); }
 .gym-ring.crit .mond, .gym-ring.crit .mondhof { fill: var(--crit); }
+.gym-ring.ueberzogen .mond, .gym-ring.ueberzogen .mondhof { fill: var(--ink-3); }
 /* Die Ziffern sind echter Text in der App-eigenen Anzeigeschrift (siehe
    GymZiffer.tsx), nur deutlich fetter als sonst in der App — auf den
    ersten Blick soll man eine Uhr sehen, nicht einen Schriftzug. Beim
@@ -2283,7 +2320,9 @@ body:has(.gym) .nebel { display: none; }
   font-size: calc(var(--ring) * .24); line-height: 1;
   display: flex; align-items: center; gap: .02em;
   filter: drop-shadow(0 0 .14em rgba(53,240,208,.5));
+  transition: color .3s;
 }
+.gym-zeit.ueberzogen { color: var(--ink-3); filter: none; }
 .gz-box { position: relative; display: inline-block; overflow: hidden; height: 1em; }
 .gz-glyph { display: flex; align-items: center; justify-content: center; height: 1em; }
 .gz-roll { display: block; height: 2em; animation: gzDreh .38s cubic-bezier(.3,.7,.2,1) both; }

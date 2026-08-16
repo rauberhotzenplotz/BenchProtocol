@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { BenchSlot, Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
@@ -15,7 +15,7 @@ import {
 import { setsOf, tonnageOf, wochenLabel, istBankdruecken } from './calc'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
-import { GymMode } from './GymMode'
+import { GymMode, type GymPosition } from './GymMode'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useAutoAdvanceBlock } from '../bench/queries'
@@ -51,6 +51,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
   const updateDay = useUpdateDay(plan.id)
   const { data: volumeRows } = useVolumeRows(plan.id)
   const muskelgruppen = (volumeRows ?? []).map(r => r.muscle_group)
+  const restTimer = useRestTimer()
 
   const [nameBearbeiten, setNameBearbeiten] = useState(false)
   const [neuerName, setNeuerName] = useState(day.name)
@@ -93,6 +94,31 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
   // Kommt man aus dem Gym-Modus zum Prüfen zurück, sollen die Sätze nicht
   // erst einzeln aufgeklappt werden müssen.
   const [saetzeOffen, setSaetzeOffen] = useState(false)
+
+  // Zuletzt bekannte Position im Gym-Modus dieser Einheit — hier statt in
+  // GymMode selbst gehalten, damit sie ein Schließen und Wiederöffnen
+  // übersteht (GymMode wird dabei komplett ab- und neu aufgebaut). Bei
+  // einer neuen Session (z. B. "Erneut starten") beginnt die Zählung
+  // wieder bei null, sonst startete die frische Einheit mitten in der
+  // alten Position der vorigen.
+  const [gymPos, setGymPos] = useState<GymPosition | null>(null)
+  const [letzteSessionId, setLetzteSessionId] = useState(session?.id ?? null)
+  if ((session?.id ?? null) !== letzteSessionId) {
+    setLetzteSessionId(session?.id ?? null)
+    setGymPos(null)
+  }
+  const onGymPositionChange = useCallback((pos: GymPosition) => setGymPos(pos), [])
+
+  // Solange diese Einheit offen ist, kann die schwebende Pausenleiste
+  // (außerhalb des Gym-Modus) über einen Tap direkt wieder in den
+  // Gym-Modus springen — auch wenn man gerade nur die Sätze ohne
+  // Gym-Modus prüft. Ein Effekt ist hier richtig: es wird kein eigener
+  // State gesetzt, nur der (externe) RestTimer-Context benachrichtigt.
+  useEffect(() => {
+    restTimer.setReopenGym(() => setGymOffen(true))
+    return () => restTimer.setReopenGym(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restTimer.setReopenGym ist über den Context stabil, nur beim Mounten/Unmounten registrieren
+  }, [])
 
   const gesamtTonnage = day.exercises.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
   const gesamtGeplant = day.exercises.reduce((a, ex) => a + setsOf(ex.scheme), 0)
@@ -175,14 +201,14 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
         {laeuft ? (
           <>
             {day.exercises.length > 0 && (
-              <button className="btn" onClick={gymStarten}>
+              <button className="btn primary" onClick={gymStarten}>
                 <svg viewBox="0 0 24 24">
                   <path d="M5 8v8M19 8v8M2 10v4M22 10v4M5 12h14" />
                 </svg>
                 Gym
               </button>
             )}
-            <button className="btn" onClick={() => void beenden()}>
+            <button className="btn danger" onClick={() => void beenden()}>
               Beenden
             </button>
           </>
@@ -255,6 +281,8 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
             alleSaetzeJemals={alleSaetzeJemals}
             alleSaetzeJemalsBereit={alleSaetzeJemalsBereit}
             session={session}
+            initialPosition={gymPos}
+            onPositionChange={onGymPositionChange}
             onClose={() => setGymOffen(false)}
             onPruefen={() => {
               setGymOffen(false)

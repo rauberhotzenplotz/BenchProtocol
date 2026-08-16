@@ -18,14 +18,13 @@ interface ZahlRadProps {
 const TASTEN = ['7', '8', '9', '4', '5', '6', '1', '2', '3', ',', '0', '⌫']
 
 /** Tastatureingabe für Zahlen ersetzt durch eine antippbare Liste — kein
-    Zahlenfeld, in das man sich vertippen kann. Für Werte außerhalb der
-    Listenschritte (z. B. 83,7 kg) gibt es zusätzlich ein Numpad als
-    zweiten Modus, umschaltbar über den Kopf. Als Bottom-Sheet mit eigenem
-    Scrollbereich, damit auch lange Listen (Gewicht in 2,5-kg-Schritten
-    bis 300 kg) bequem erreichbar bleiben. */
+    Zahlenfeld, in das man sich vertippen kann. Darunter, immer sichtbar
+    (kein Umschalter, kein zweiter Tab), ein Numpad für Werte außerhalb der
+    Listenschritte (z. B. 83,7 kg). Als Bottom-Sheet mit eigenem
+    Scrollbereich für die Liste, damit auch lange Listen (Gewicht in
+    2,5-kg-Schritten bis 300 kg) bequem erreichbar bleiben. */
 export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einheit, onWahl, onSchliessen }: ZahlRadProps) {
   const listeRef = useRef<HTMLDivElement>(null)
-  const [modus, setModus] = useState<'liste' | 'tastatur'>('liste')
   const [eingabe, setEingabe] = useState('')
 
   useEffect(() => {
@@ -35,28 +34,25 @@ export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einh
     return () => document.removeEventListener('keydown', onEsc)
   }, [offen, onSchliessen])
 
-  // Bei jedem Öffnen frisch anfangen: sonst bliebe der Modus (und ein
-  // angefangener Zahlentext) vom letzten Mal stehen — ZahlRad bleibt über
-  // "offen" nur aus- statt abgehängt, das Öffnen ist kein echtes Neu-Mounten.
+  // Bei jedem Öffnen frisch anfangen: sonst bliebe ein angefangener
+  // Zahlentext vom letzten Mal stehen — ZahlRad bleibt über "offen" nur
+  // aus- statt abgehängt, das Öffnen ist kein echtes Neu-Mounten.
   // Abgeleiteter Zustand beim Rendern statt Effekt (dasselbe Muster wie
   // sonst in der App), damit der Reset im selben Durchlauf steht, in dem
   // "offen" auf true kippt.
   const [warOffen, setWarOffen] = useState(offen)
   if (offen !== warOffen) {
     setWarOffen(offen)
-    if (offen) {
-      setModus('liste')
-      setEingabe(aktuell != null ? String(aktuell).replace('.', ',') : '')
-    }
+    if (offen) setEingabe(aktuell != null ? String(aktuell).replace('.', ',') : '')
   }
 
   useEffect(() => {
-    if (!offen || modus !== 'liste') return
+    if (!offen) return
     const liste = listeRef.current
     if (!liste) return
     const aktiv = liste.querySelector<HTMLElement>('[data-an="true"]')
     aktiv?.scrollIntoView({ block: 'center' })
-  }, [offen, modus])
+  }, [offen])
 
   if (!offen) return null
 
@@ -81,87 +77,65 @@ export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einh
         <span className="zahlrad-griff" aria-hidden="true" />
         <div className="zahlrad-kopf">
           <span>{titel}</span>
-          <div className="zahlrad-kopf-knoepfe">
-            <button
-              type="button"
-              className="zahlrad-schliessen"
-              onClick={() => setModus(m => (m === 'liste' ? 'tastatur' : 'liste'))}
-              aria-label={modus === 'liste' ? 'Manuell eingeben' : 'Liste anzeigen'}
-              title={modus === 'liste' ? 'Manuell eingeben' : 'Liste anzeigen'}
-            >
-              {modus === 'liste' ? (
-                <svg viewBox="0 0 24 24">
-                  <rect x="3" y="6" width="18" height="12" rx="2.5" />
-                  <path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 14h9" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24">
-                  <path d="M4 7h16M4 12h16M4 17h16" />
-                </svg>
-              )}
-            </button>
-            <button type="button" className="zahlrad-schliessen" onClick={onSchliessen} aria-label="Schließen">
-              <svg viewBox="0 0 24 24">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </div>
+          <button type="button" className="zahlrad-schliessen" onClick={onSchliessen} aria-label="Schließen">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
         </div>
 
-        {modus === 'tastatur' ? (
-          <div className="zahltast">
-            <div className="zahltast-anzeige">
-              {eingabe === '' ? <span className="zahltast-platzhalter">0</span> : eingabe}
-              {einheit && <em>{einheit}</em>}
-            </div>
-            <div className="zahltast-grid">
-              {TASTEN.map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  className={'zahltast-taste' + (t === '⌫' ? ' loeschen' : '')}
-                  onClick={() => taste(t)}
-                  aria-label={t === '⌫' ? 'Letzte Ziffer löschen' : t === ',' ? 'Komma' : t}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            <button type="button" className="zahltast-uebernehmen" disabled={!gueltig} onClick={uebernehmen}>
-              Übernehmen
+        <div className="zahlrad-liste" ref={listeRef}>
+          {leerOption && (
+            <button
+              type="button"
+              className={'zahlrad-wert' + (aktuell == null ? ' an' : '')}
+              data-an={aktuell == null}
+              onClick={() => {
+                onWahl(null)
+                onSchliessen()
+              }}
+            >
+              —
             </button>
+          )}
+          {werte.map(w => (
+            <button
+              key={w}
+              type="button"
+              className={'zahlrad-wert' + (w === aktuell ? ' an' : '')}
+              data-an={w === aktuell}
+              onClick={() => {
+                onWahl(w)
+                onSchliessen()
+              }}
+            >
+              {format(w)}
+            </button>
+          ))}
+        </div>
+
+        <div className="zahltast">
+          <div className="zahltast-anzeige">
+            {eingabe === '' ? <span className="zahltast-platzhalter">0</span> : eingabe}
+            {einheit && <em>{einheit}</em>}
           </div>
-        ) : (
-          <div className="zahlrad-liste" ref={listeRef}>
-            {leerOption && (
+          <div className="zahltast-grid">
+            {TASTEN.map(t => (
               <button
+                key={t}
                 type="button"
-                className={'zahlrad-wert' + (aktuell == null ? ' an' : '')}
-                data-an={aktuell == null}
-                onClick={() => {
-                  onWahl(null)
-                  onSchliessen()
-                }}
+                className={'zahltast-taste' + (t === '⌫' ? ' loeschen' : '')}
+                onClick={() => taste(t)}
+                aria-label={t === '⌫' ? 'Letzte Ziffer löschen' : t === ',' ? 'Komma' : t}
               >
-                —
-              </button>
-            )}
-            {werte.map(w => (
-              <button
-                key={w}
-                type="button"
-                className={'zahlrad-wert' + (w === aktuell ? ' an' : '')}
-                data-an={w === aktuell}
-                onClick={() => {
-                  onWahl(w)
-                  onSchliessen()
-                }}
-              >
-                {format(w)}
+                {t}
               </button>
             ))}
           </div>
-        )}
+          <button type="button" className="zahltast-uebernehmen" disabled={!gueltig} onClick={uebernehmen}>
+            Übernehmen
+          </button>
+        </div>
       </div>
     </div>,
     document.body,

@@ -8,6 +8,7 @@ import { useUpsertSet, useEndSession } from './queries'
 import { useBenchProgression, benchRowsFor, useAutoAdvanceBlock } from '../bench/queries'
 import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
+import { zeitText } from '../../lib/zeit'
 import { GymUebungsWahl } from '../../components/GymUebungsWahl'
 import { SatzQuittung } from './SatzQuittung'
 import { GymFertig } from './GymFertig'
@@ -44,6 +45,15 @@ function ersteOffenePosition(
   return { uebIdx: uebungen.length - 1, satzIdx: 0, fertig: true }
 }
 
+/** Wo genau man in der Übungsliste steht — wird bei SessionView gehalten,
+    nicht in GymMode selbst, damit Schließen und Wiederöffnen des
+    Gym-Modus an derselben Stelle weitergeht (siehe initialPosition unten). */
+export interface GymPosition {
+  uebIdx: number
+  satzIdx: number
+  fertig: boolean
+}
+
 interface Props {
   plan: Plan
   day: DayWithExercises
@@ -57,9 +67,28 @@ interface Props {
       man einen versehentlich gesetzten Haken gleich wieder lösen kann. Die
       Einheit läuft dabei weiter — es wird nichts neu gestartet. */
   onPruefen: () => void
+  /** Zuletzt bekannte Position aus einem vorherigen Aufenthalt im
+      Gym-Modus dieser Einheit — null beim allerersten Öffnen (dann wird
+      die erste offene Position aus den Sätzen bestimmt). */
+  initialPosition: GymPosition | null
+  /** Meldet jede Positionsänderung an SessionView, damit sie beim nächsten
+      Öffnen wieder als initialPosition hereinkommt. */
+  onPositionChange: (pos: GymPosition) => void
 }
 
-export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, session, onClose, onPruefen }: Props) {
+export function GymMode({
+  plan,
+  day,
+  week,
+  setsByExercise,
+  alleSaetzeJemals,
+  alleSaetzeJemalsBereit,
+  session,
+  onClose,
+  onPruefen,
+  initialPosition,
+  onPositionChange,
+}: Props) {
   const upsertSet = useUpsertSet()
   const endSession = useEndSession()
   const autoAdvanceBlock = useAutoAdvanceBlock()
@@ -84,14 +113,13 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
 
   const uebungen = day.exercises
 
-  // Nicht immer bei Übung 1 / Satz 1 anfangen: kommt man aus "Sätze
-  // prüfen" zurück, soll es beim ersten noch offenen Satz weitergehen —
-  // oder, wenn zwischenzeitlich schon alles abgehakt wurde, direkt beim
-  // Abschlussbildschirm stehen, statt die Einheit noch mal von vorn
-  // durchzuzählen. Nur einmal beim Aufbau ausgewertet (Lazy-Initializer),
-  // nicht bei jeder Satzänderung — sonst risse ein frisch gesetzter Haken
-  // mitten aus der laufenden Bewegung.
-  const [start] = useState(() => ersteOffenePosition(uebungen, setsByExercise, sollFuer))
+  // Wo weitermachen: erst die von SessionView gemerkte Position (voriger
+  // Aufenthalt im Gym-Modus dieser Einheit, auch nach manuellem
+  // Übungswechsel), sonst die erste noch offene Position aus den Sätzen.
+  // Nur einmal beim Aufbau ausgewertet (Lazy-Initializer), nicht bei jeder
+  // Satzänderung — sonst risse ein frisch gesetzter Haken mitten aus der
+  // laufenden Bewegung.
+  const [start] = useState(() => initialPosition ?? ersteOffenePosition(uebungen, setsByExercise, sollFuer))
   const [uebIdx, setUebIdx] = useState(start.uebIdx)
   const [satzIdx, setSatzIdx] = useState(start.satzIdx)
   const [aufgewaermt, setAufgewaermt] = useState<Set<string>>(new Set())
@@ -104,11 +132,14 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   // beim Bestimmen von "start" oben der Fall, einmalig nachbessern, sobald
   // sie eintrifft. Nur, solange der Nutzer in der Zwischenzeit nicht schon
   // selbst weitergeklickt hat — sonst überschriebe die Korrektur echten
-  // Fortschritt. Abgeleiteter Zustand direkt beim Rendern, nicht in einem
-  // Effekt: sonst bliebe die falsche Startposition für einen zusätzlichen
-  // Render-Zyklus sichtbar.
+  // Fortschritt. Und nur beim allerersten Öffnen (initialPosition null) —
+  // eine gemerkte Position aus einem vorigen Aufenthalt (ggf. nach
+  // manuellem Übungswechsel) soll dieselbe Korrektur nicht wieder
+  // rückgängig machen. Abgeleiteter Zustand direkt beim Rendern, nicht in
+  // einem Effekt: sonst bliebe die falsche Startposition für einen
+  // zusätzlichen Render-Zyklus sichtbar.
   const progressionNoetig = uebungen.some(ex => ex.bench_slot != null || istBankdruecken(ex))
-  const positionBereit = !progressionNoetig || progression != null
+  const positionBereit = initialPosition != null || !progressionNoetig || progression != null
   const [positionKorrigiert, setPositionKorrigiert] = useState(positionBereit)
   if (!positionKorrigiert && positionBereit) {
     setPositionKorrigiert(true)
@@ -120,6 +151,18 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       if (echt.fertig !== fertig) setFertig(echt.fertig)
     }
   }
+
+  // Jede Positionsänderung an SessionView melden, damit sie beim nächsten
+  // Öffnen als initialPosition wieder hereinkommt (siehe Props oben) —
+  // Schließen und Wiederöffnen soll immer an der richtigen Stelle
+  // weitergehen, auch nach einem manuellen Übungswechsel. Ein Effekt ist
+  // hier richtig: es wird kein eigener State gesetzt, nur ein Elternteil
+  // benachrichtigt (dasselbe Muster wie restTimer.setGymActive unten).
+  useEffect(() => {
+    onPositionChange({ uebIdx, satzIdx, fertig })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onPositionChange ist eine in SessionView per useCallback stabile Referenz
+  }, [uebIdx, satzIdx, fertig])
+
   // Zählt hoch statt umzuschalten: hakt man zwei Sätze schnell nacheinander
   // ab, erzwingt der neue Wert über key= einen Neuaufbau, damit die
   // Quittung von vorn läuft statt die erste Bewegung weiterlaufen zu lassen.
@@ -190,6 +233,12 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   const istLetzterSatz = satzIdx + 1 >= soll && uebIdx + 1 >= uebungen.length
 
   const naechster = () => {
+    // Eine bereits abgelaufene (ggf. schon negativ zählende) Pause räumt
+    // sich beim Weitergehen ab — sie gehörte zum Satz, den man gerade
+    // verlässt. Eine frische, noch laufende Pause (secondsLeft > 0) bleibt
+    // unangetastet: erledigt() ruft naechster() direkt nach dem Start der
+    // nächsten Pause auf, die soll natürlich weiterlaufen.
+    if (restTimer.label != null && restTimer.secondsLeft <= 0) restTimer.stop()
     if (satzIdx + 1 < soll) {
       setSatzIdx(satzIdx + 1)
     } else if (uebIdx + 1 < uebungen.length) {
@@ -254,6 +303,11 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
     setQuittung(n => n + 1)
 
     if (istLetzterSatz) {
+      // Eine noch offene (ggf. schon negativ zählende) Pause vom vorigen
+      // Satz gehört jetzt zu keiner Übung mehr — sonst zählte die
+      // schwebende Leiste außerhalb des Gym-Modus munter weiter, obwohl
+      // die Einheit längst fertig ist.
+      restTimer.stop()
       // Bei einer Bestleistung im letzten Satz soll die Supernova ihren
       // eigenen Moment bekommen, statt gleichzeitig mit dem Abschluss-
       // bildschirm (eigener Haken, eigene Funken, eigene Zahlen) um
@@ -272,6 +326,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   }
 
   const beenden = () => {
+    restTimer.stop()
     if (session) endSession.mutate({ id: session.id, startedAt: session.started_at })
     if (plan.typ === 'bench') autoAdvanceBlock.mutate(plan.id)
     onClose()
@@ -330,10 +385,11 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
         onBeenden={beenden}
       />
     )
-  } else if (restTimer.label != null) {
-    // Pause: solange ein Timer läuft (oder gerade fertig ist und noch
-    // ausgeblendet wird), zeigt der Gym-Modus großflächig denselben Ring wie
-    // die kleine Leiste sonst — "derselbe Timer, nur im Vollbild".
+  } else if (restTimer.label != null && restTimer.secondsLeft > 0) {
+    // Pause: nur solange sie noch läuft. Ist die Zeit um, springt der
+    // Gym-Modus sofort zum Satz weiter (nächster Zweig unten) statt auf
+    // ein "Weiter" zu warten — der Countdown läuft dort grau und negativ
+    // weiter, bis der Satz abgehakt ist.
     inhalt = (
       <>
         <div className="gym-pause">
@@ -439,7 +495,14 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
               </button>
             </div>
           )}
-          {exercise.rest && <div className="gym-hinweis">Pause {exercise.rest}</div>}
+          {restTimer.label != null && restTimer.secondsLeft <= 0 ? (
+            <div className="gym-ueberzogen">
+              Pause überzogen
+              <b>{zeitText(restTimer.secondsLeft)}</b>
+            </div>
+          ) : (
+            exercise.rest && <div className="gym-hinweis">Pause {exercise.rest}</div>
+          )}
         </div>
 
         <div className="gym-tasten zwei">
