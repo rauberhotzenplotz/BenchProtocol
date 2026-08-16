@@ -21,6 +21,16 @@ import { DeloadBanner } from './DeloadBanner'
 import { useAutoAdvanceBlock } from '../bench/queries'
 import { useVolumeRows } from '../volume/queries'
 import { cssVars } from '../../lib/style'
+import { ZahlEingabe } from '../../components/ZahlRad'
+import { zahlenBereich } from '../../lib/zahlen'
+
+const REP_WERTE = zahlenBereich(1, 30, 1)
+const RPE_WERTE = zahlenBereich(5, 10, 0.5)
+const PAUSE_MINUTEN = zahlenBereich(0.5, 6, 0.5)
+
+function formatPause(min: number): string {
+  return (Number.isInteger(min) ? String(min) : min.toFixed(1).replace('.', ',')) + ' min'
+}
 
 interface Props {
   plan: Plan
@@ -195,6 +205,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
             laeuft={laeuft}
             aufklappen={saetzeOffen}
             muskelgruppen={muskelgruppen}
+            plate={plan.plate ?? 2.5}
           />
         ))}
       </div>
@@ -269,7 +280,7 @@ function NeueUebungForm({
 }) {
   const [name, setName] = useState('')
   const [scheme, setScheme] = useState('3 × 10')
-  const [rest, setRest] = useState('2 min')
+  const [restMin, setRestMin] = useState(2)
   const [benchSlot, setBenchSlot] = useState<BenchSlot | null>(null)
   const [muscleGroup, setMuscleGroup] = useState<string | null>(null)
 
@@ -287,7 +298,14 @@ function NeueUebungForm({
           </div>
           <div className="field">
             <label>Pause</label>
-            <input className="inp mono" value={rest} onChange={e => setRest(e.target.value)} />
+            <ZahlEingabe
+              wert={restMin}
+              werte={PAUSE_MINUTEN}
+              format={formatPause}
+              titel="Pause"
+              className="mono"
+              onWahl={n => setRestMin(n ?? 2)}
+            />
           </div>
         </div>
         {planTyp === 'bench' && (
@@ -338,7 +356,7 @@ function NeueUebungForm({
           <button
             className="btn primary sm"
             disabled={!name.trim()}
-            onClick={() => void onAnlegen({ name: name.trim(), scheme, rest, note: '', bench_slot: benchSlot, muscle_group: muscleGroup })}
+            onClick={() => void onAnlegen({ name: name.trim(), scheme, rest: formatPause(restMin), note: '', bench_slot: benchSlot, muscle_group: muscleGroup })}
           >
             Anlegen
           </button>
@@ -357,6 +375,7 @@ function ExerciseBlock({
   laeuft,
   aufklappen,
   muskelgruppen,
+  plate,
 }: {
   planId: string
   planTyp: Plan['typ']
@@ -368,6 +387,7 @@ function ExerciseBlock({
   /** Von außen angestoßenes Aufklappen (Rückkehr aus dem Gym-Modus). Danach
       bleibt das Auf- und Zuklappen wieder ganz beim Nutzer. */
   aufklappen: boolean
+  plate: number
 }) {
   const [auf, setAuf] = useState(aufklappen)
   // Abgeleiteter Zustand beim Rendern nachgezogen — dasselbe Muster wie
@@ -445,6 +465,7 @@ function ExerciseBlock({
                 laeuft={laeuft}
                 exerciseName={exercise.name}
                 restSeconds={pauseSekunden(exercise.rest)}
+                plate={plate}
                 onChange={patch => upsertSet.mutate({ exercise_id: exercise.id, week, position: s.position, ...patch })}
                 onDelete={() => deleteSetM.mutate(s.id)}
               />
@@ -543,6 +564,7 @@ function SetRow({
   laeuft,
   exerciseName,
   restSeconds,
+  plate,
   onChange,
   onDelete,
 }: {
@@ -550,21 +572,12 @@ function SetRow({
   laeuft: boolean
   exerciseName: string
   restSeconds: number
+  plate: number
   onChange: (patch: { kg?: number | null; reps?: number | null; rpe?: number | null; done?: boolean; done_at?: string | null }) => void
   onDelete: () => void
 }) {
-  const [kg, setKg] = useState(set.kg?.toString() ?? '')
-  const [reps, setReps] = useState(set.reps?.toString() ?? '')
-  const [rpe, setRpe] = useState(set.rpe?.toString() ?? '')
   const restTimer = useRestTimer()
-
-  const commit = () => {
-    onChange({
-      kg: kg.trim() ? parseFloat(kg.replace(',', '.')) : null,
-      reps: reps.trim() ? parseInt(reps, 10) : null,
-      rpe: rpe.trim() ? parseFloat(rpe.replace(',', '.')) : null,
-    })
-  }
+  const kgWerte = zahlenBereich(plate, 300, plate)
 
   const haken = () => {
     const wirdErledigt = !set.done
@@ -575,23 +588,9 @@ function SetRow({
   return (
     <div className={'setline' + (set.done ? ' ok' : '')}>
       <span className="nr">{set.position + 1}</span>
-      <input className="inp mono" value={kg} placeholder="kg" inputMode="decimal" onChange={e => setKg(e.target.value)} onBlur={commit} />
-      <input
-        className="inp mono"
-        value={reps}
-        placeholder="Wdh"
-        inputMode="numeric"
-        onChange={e => setReps(e.target.value)}
-        onBlur={commit}
-      />
-      <input
-        className="inp mono"
-        value={rpe}
-        placeholder="RPE"
-        inputMode="decimal"
-        onChange={e => setRpe(e.target.value)}
-        onBlur={commit}
-      />
+      <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" className="mono" leerOption onWahl={kg => onChange({ kg })} />
+      <ZahlEingabe wert={set.reps} werte={REP_WERTE} titel="Wiederholungen" className="mono" leerOption onWahl={reps => onChange({ reps })} />
+      <ZahlEingabe wert={set.rpe} werte={RPE_WERTE} titel="RPE" className="mono" leerOption onWahl={rpe => onChange({ rpe })} />
       <button
         className="sethaken"
         aria-pressed={set.done}

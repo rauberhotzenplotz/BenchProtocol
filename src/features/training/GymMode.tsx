@@ -251,12 +251,14 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
 
   const plate = plan.plate ?? 2.5
 
-  // Aufwärmen: vor dem ersten Satz einer Übung, wenn sie entweder an die
-  // Bank-Progression gekoppelt ist, ein schweres Gewicht hat oder als
-  // erste Übung der Einheit drankommt (siehe aufwaermPlan) — einmal je
-  // Übung. Bezieht sich auf das tatsächlich vorbelegte Arbeitsgewicht,
-  // nicht auf ein fixes 1RM, damit die Leiter mit der Woche mitwächst.
-  const warmSaetze = aufwaermPlan(istBankdruecken(exercise), kg, uebIdx === 0, plate)
+  // Aufwärmen: vor dem ersten Satz einer Übung, ausschließlich beim
+  // Bankdrücken (siehe aufwaermPlan) — einmal je Übung. Das Arbeitsgewicht
+  // kommt direkt aus Satz/Vorschlag statt aus dem kg-State: der State wird
+  // erst über den schluessel-Effekt oben nachgezogen, sobald Historie bzw.
+  // Bank-Progression geladen sind, und stünde beim allerersten Render sonst
+  // noch auf 0 — die Aufwärmleiter müsste sonst auf einen zweiten Render
+  // warten, statt gleich beim Öffnen zu erscheinen.
+  const warmSaetze = aufwaermPlan(istBankdruecken(exercise), aktuellerSatz?.kg ?? vorschlagKg ?? kg, plate)
   const zeigtAufwaermen = satzIdx === 0 && warmSaetze.length > 0 && !aufgewaermt.has(exercise.id)
 
   // Alle vier Bildschirme teilen sich dieselbe Hülle (Schließen-Knopf,

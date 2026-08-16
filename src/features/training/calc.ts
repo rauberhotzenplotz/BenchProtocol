@@ -143,7 +143,6 @@ export interface AufwaermSatz {
 }
 
 const AUFWAERM_STANGE = 20 // leere Langhantel
-const AUFWAERM_SCHWER_AB = 40 // ab hier lohnt eine Rampe auch ohne Bank-Zuordnung
 
 /** Ob eine Übung die volle Bankdrücken-Aufwärmleiter (mit leerer Stange)
     bekommt: entweder explizit über die Bank-Zuordnung markiert, oder der
@@ -154,27 +153,20 @@ export function istBankdruecken(exercise: Pick<Exercise, 'bench_slot' | 'name'>)
   return exercise.bench_slot != null || /bankdr[üu]ck|bench\s*press/i.test(exercise.name)
 }
 
-/** Aufwärmleiter vor dem Arbeitssatz — fürs Bankdrücken die volle Leiter
-    aus der Anleitung (leere Stange, 50/65/75 %), für andere schwere
-    Übungen (≥ 40 kg) eine kurze Rampe, für die erste Übung der Einheit
-    unabhängig vom Gewicht eine minimale Aufwärmung — man ist noch kalt.
-    Leichte, spätere Isolationsübungen bekommen keine. */
-export function aufwaermPlan(mitStange: boolean, kgRoh: number, istErste: boolean, plate: number): AufwaermSatz[] {
-  if (!(kgRoh > 0)) return []
+/** Aufwärmleiter vor dem Arbeitssatz — ausschließlich fürs Bankdrücken, die
+    volle Leiter aus der Anleitung (leere Stange, 50/65/75 %). Alle anderen
+    Übungen bekommen keine Aufwärmsätze. */
+export function aufwaermPlan(mitStange: boolean, kgRoh: number, plate: number): AufwaermSatz[] {
+  if (!mitStange || !(kgRoh > 0)) return []
   const auf = (pct: number, wdh: number, label: string): AufwaermSatz => ({
     label,
     wdh,
     kg: Math.max(plate, mround(kgRoh * pct, plate)),
   })
 
-  if (mitStange) {
-    return [{ label: 'Leere Stange', kg: AUFWAERM_STANGE, wdh: 10 }].concat(
-      [auf(0.5, 5, '50 %'), auf(0.65, 3, '65 %'), auf(0.75, 1, '75 %')].filter(s => s.kg > AUFWAERM_STANGE),
-    )
-  }
-  if (kgRoh >= AUFWAERM_SCHWER_AB) return [auf(0.5, 5, '50 %'), auf(0.7, 3, '70 %')]
-  if (istErste) return [auf(0.5, 8, '50 %')]
-  return []
+  return [{ label: 'Leere Stange', kg: AUFWAERM_STANGE, wdh: 10 }].concat(
+    [auf(0.5, 5, '50 %'), auf(0.65, 3, '65 %'), auf(0.75, 1, '75 %')].filter(s => s.kg > AUFWAERM_STANGE),
+  )
 }
 
 export function gruppeSetsByExercise(sets: LoggedSet[]): Map<string, LoggedSet[]> {
