@@ -1707,6 +1707,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   font-family: var(--f-display); font-size: 12.5px; letter-spacing: .18em; text-transform: uppercase;
   color: var(--neon); flex: none;
 }
+.zahlrad-kopf-knoepfe { display: flex; gap: 8px; }
 /* Diese App hat bewusst keinen globalen Knopf-Reset — jede Schaltfläche
    setzt ihr Aussehen selbst. Ohne appearance/background/border hier bliebe
    das graue Systemgrau mit outset-Rahmen stehen. */
@@ -1765,6 +1766,134 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 }
 .zahlrad-wert.an::before { left: 8px; }
 .zahlrad-wert.an::after { right: 8px; }
+
+/* Numpad-Modus: derselbe Rahmen (Griff, Kopf), aber freie Zifferneingabe
+   statt Listenauswahl — für Werte, die keinen eigenen Listeneintrag haben
+   (z. B. 83,7 kg). Die Anzeige sitzt bewusst so groß wie die Ringziffern
+   im Gym-Modus (.gym-kg), damit sich das Numpad wie ein Ausschnitt
+   derselben Konsole anfühlt statt wie ein fremdes Formular. */
+.zahltast { padding: 4px 18px 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.zahltast-anzeige {
+  text-align: center; font-family: var(--f-display); font-variant-numeric: tabular-nums;
+  font-size: 40px; color: var(--neon); letter-spacing: .02em;
+  text-shadow: 0 0 24px rgba(53,240,208,.4);
+  min-height: 1.1em; display: flex; align-items: baseline; justify-content: center; gap: .12em;
+}
+.zahltast-anzeige em { font-style: normal; font-family: var(--f-body); font-size: .38em; color: var(--ink-3); }
+.zahltast-platzhalter { color: var(--ink-4); text-shadow: none; }
+.zahltast-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.zahltast-taste {
+  appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
+  border: 1px solid var(--line-soft); background: rgba(255,255,255,.03); border-radius: var(--r-m);
+  height: 52px; color: var(--ink); font-family: var(--f-mono); font-size: 19px;
+  font-variant-numeric: tabular-nums; transition: background .15s, border-color .15s, transform .1s;
+}
+.zahltast-taste:hover { border-color: var(--line); background: rgba(255,255,255,.06); }
+.zahltast-taste:active { transform: scale(.94); background: rgba(53,240,208,.12); border-color: rgba(53,240,208,.4); }
+.zahltast-taste:focus-visible { outline: 2px solid var(--neon); outline-offset: -2px; }
+.zahltast-taste.loeschen { color: var(--ink-3); font-size: 16px; }
+.zahltast-uebernehmen {
+  appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
+  height: 50px; border-radius: var(--r-m); border: 1.5px solid rgba(53,240,208,.5);
+  background: rgba(53,240,208,.12); color: var(--neon);
+  font-family: var(--f-display); font-size: 14px; letter-spacing: .12em; text-transform: uppercase;
+  transition: background .2s, box-shadow .2s, opacity .2s;
+}
+.zahltast-uebernehmen:hover:not(:disabled) { background: rgba(53,240,208,.2); box-shadow: 0 0 24px -8px var(--neon); }
+.zahltast-uebernehmen:active:not(:disabled) { transform: scale(.98); }
+.zahltast-uebernehmen:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
+.zahltast-uebernehmen:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Übungswechsel im Gym-Modus: teilt sich die Sheet-Hülle mit dem ZahlRad,
+   bekommt aber eine eigene, ungemaskte Liste — Übungen sind meist eine
+   Handvoll Zeilen, nicht die lange Skala eines Zahlenrads, und mit
+   Zielmaske sähe eine kurze Liste nur seltsam abgeschnitten aus. */
+.uebwahl-liste { padding: 6px 12px 16px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+.uebwahl-zeile {
+  appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
+  border: 1px solid var(--line-soft); background: rgba(255,255,255,.03); border-radius: var(--r-m);
+  padding: 11px 14px; display: flex; align-items: center; gap: 12px; text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.uebwahl-zeile:hover { border-color: var(--line); background: rgba(255,255,255,.06); }
+.uebwahl-zeile:active { transform: scale(.99); }
+.uebwahl-zeile:focus-visible { outline: 2px solid var(--neon); outline-offset: -2px; }
+.uebwahl-nr {
+  flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); background: rgba(255,255,255,.06);
+}
+.uebwahl-name {
+  flex: 1; min-width: 0; font-family: var(--f-display); font-size: 14.5px; letter-spacing: .03em;
+  text-transform: uppercase; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.uebwahl-status { flex: none; font-family: var(--f-mono); font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.uebwahl-zeile.an { border-color: rgba(53,240,208,.5); background: rgba(53,240,208,.1); }
+.uebwahl-zeile.an .uebwahl-nr { background: var(--neon); color: var(--ground); }
+.uebwahl-zeile.an .uebwahl-name { color: var(--neon); }
+.uebwahl-zeile.fertig .uebwahl-nr { background: rgba(63,224,138,.15); color: var(--good); }
+.uebwahl-zeile.fertig .uebwahl-status { color: var(--good); }
+
+/* Übungsname im Kopf wird zum Auslöser, sobald es mehr als eine Übung
+   gibt — der Text bleibt exakt wie zuvor, nur der Pfeil kommt dazu, das
+   Ellipsis sitzt jetzt auf einem inneren span statt dem Button selbst. */
+.gym-ueb.wahl {
+  appearance: none; -webkit-appearance: none; background: none; border: none; padding: 0;
+  display: inline-flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.gym-ueb.wahl:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; border-radius: var(--r-s); }
+.gym-ueb-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.gym-ueb-pfeil { flex: none; width: .55em; height: .55em; stroke: currentColor; stroke-width: 2.6; fill: none; opacity: .55; transition: opacity .15s; }
+.gym-ueb.wahl:hover .gym-ueb-pfeil, .gym-ueb.wahl:active .gym-ueb-pfeil { opacity: 1; }
+
+/* ── Schwebende Pausenleiste (außerhalb des Gym-Modus) ─────────────
+   Vorher eine generische .card mit Balken — jetzt derselbe Nebel-Kopf wie
+   ZahlRad/Übungswahl und derselbe Ring wie die Vollbild-Pause im
+   Gym-Modus (siehe GymRing/.gym-pause), nur kompakt. Dieselbe Uhr, nur
+   kleiner, statt einer eigenen zweiten Optik für denselben Timer. */
+.resttimer {
+  position: fixed; left: 14px; right: 14px; bottom: 14px; max-width: 420px; margin: 0 auto;
+  z-index: 130; /* über dem Gym-Modus, .gym z-index 120 */
+  display: flex; align-items: center; gap: 13px; padding: 10px 14px 10px 10px;
+  border-radius: var(--r-l); border: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse 90% 120% at 0% 50%, rgba(53,240,208,.13), transparent 62%),
+    radial-gradient(ellipse 70% 120% at 100% 50%, rgba(139,124,255,.1), transparent 64%),
+    linear-gradient(180deg, rgba(19,26,36,.98), rgba(10,13,19,.99));
+  box-shadow: 0 16px 40px -18px rgba(0,0,0,.9), 0 0 0 1px rgba(53,240,208,.07);
+  animation: resttimerRein .32s cubic-bezier(.22,1,.36,1) both;
+  transition: border-color .3s, box-shadow .3s;
+}
+@keyframes resttimerRein { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
+.resttimer.fertig { border-color: rgba(63,224,138,.5); box-shadow: 0 16px 40px -18px rgba(0,0,0,.9), 0 0 26px -8px rgba(63,224,138,.45); }
+.resttimer-ring { flex: none; line-height: 0; }
+.resttimer-info { flex: 1; min-width: 0; }
+.resttimer-lab {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+}
+.resttimer.fertig .resttimer-lab { color: var(--good); }
+.resttimer-name {
+  margin-top: 1px; font-family: var(--f-display); font-size: 14.5px; letter-spacing: .02em; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.resttimer-tasten { flex: none; display: flex; align-items: center; gap: 7px; }
+.resttimer-plus, .resttimer-stop {
+  appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
+  font-family: var(--f-display); font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase;
+  border-radius: 999px; transition: background .2s, border-color .2s, color .2s, transform .1s;
+}
+.resttimer-plus {
+  padding: 8px 11px; color: var(--ink-2); border: 1px solid var(--line); background: rgba(255,255,255,.03);
+}
+.resttimer-plus:hover { color: var(--neon); border-color: rgba(53,240,208,.4); background: rgba(53,240,208,.08); }
+.resttimer-stop {
+  padding: 8px 14px; color: var(--neon); border: 1px solid rgba(53,240,208,.45); background: rgba(53,240,208,.1);
+}
+.resttimer-stop:hover { background: rgba(53,240,208,.18); box-shadow: 0 0 18px -6px var(--neon); }
+.resttimer.fertig .resttimer-stop { color: var(--good); border-color: rgba(63,224,138,.5); background: rgba(63,224,138,.14); }
+.resttimer.fertig .resttimer-stop:hover { background: rgba(63,224,138,.22); box-shadow: 0 0 18px -6px var(--good); }
+.resttimer-plus:active, .resttimer-stop:active { transform: scale(.96); }
+.resttimer-plus:focus-visible, .resttimer-stop:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
 
 /* ── Toast ──────────────────────────────────────────────────── */
 .toasts { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }

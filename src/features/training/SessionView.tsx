@@ -303,6 +303,7 @@ function NeueUebungForm({
               werte={PAUSE_MINUTEN}
               format={formatPause}
               titel="Pause"
+              einheit="min"
               className="mono"
               onWahl={n => setRestMin(n ?? 2)}
             />
@@ -592,7 +593,7 @@ function SetRow({
   return (
     <div className={'setline' + (set.done ? ' ok' : '') + (zeigtRpe ? '' : ' ohne-rpe')}>
       <span className="nr">{set.position + 1}</span>
-      <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" className="mono kgw" leerOption onWahl={kg => onChange({ kg })} />
+      <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" einheit="kg" className="mono kgw" leerOption onWahl={kg => onChange({ kg })} />
       <ZahlEingabe wert={set.reps} werte={REP_WERTE} titel="Wiederholungen" className="mono repw" leerOption onWahl={reps => onChange({ reps })} />
       {zeigtRpe && <ZahlEingabe wert={set.rpe} werte={RPE_WERTE} titel="RPE" className="mono rpew" leerOption onWahl={rpe => onChange({ rpe })} />}
       <button

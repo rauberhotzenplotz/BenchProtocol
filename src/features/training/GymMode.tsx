@@ -8,6 +8,7 @@ import { useUpsertSet, useEndSession } from './queries'
 import { useBenchProgression, benchRowsFor, useAutoAdvanceBlock } from '../bench/queries'
 import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
+import { GymUebungsWahl } from '../../components/GymUebungsWahl'
 import { SatzQuittung } from './SatzQuittung'
 import { GymFertig } from './GymFertig'
 import { Supernova } from './Supernova'
@@ -95,6 +96,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   const [satzIdx, setSatzIdx] = useState(start.satzIdx)
   const [aufgewaermt, setAufgewaermt] = useState<Set<string>>(new Set())
   const [fertig, setFertig] = useState(start.fertig)
+  const [uebWahlOffen, setUebWahlOffen] = useState(false)
 
   // sollFuer() rechnet ohne geladene Bank-Progression mit dem statischen
   // Übungsschema statt der Wochenvorgabe — bei einem frischen Seitenaufruf
@@ -198,6 +200,32 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
     }
   }
 
+  // Übungswechsel außer der Reihe: springt zum ersten noch offenen Satz der
+  // gewählten Übung — oder zu Satz 1, falls dort schon alles abgehakt ist
+  // (dann sieht man wenigstens den letzten Stand statt irgendeine Lücke).
+  const uebungWaehlen = (index: number) => {
+    const ex = uebungen[index]
+    const exSets = setsByExercise.get(ex.id) ?? []
+    const exSoll = sollFuer(ex)
+    let offenePosition = 0
+    for (let si = 0; si < exSoll; si++) {
+      if (!exSets.find(s => s.position === si)?.done) {
+        offenePosition = si
+        break
+      }
+    }
+    setUebIdx(index)
+    setSatzIdx(offenePosition)
+    setFertig(false)
+  }
+
+  const uebwahlEintraege = uebungen.map(ex => ({
+    id: ex.id,
+    name: ex.name,
+    erledigt: (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length,
+    soll: sollFuer(ex),
+  }))
+
   const erledigt = () => {
     // Vor dem Speichern prüfen: danach stünde der neue Satz selbst schon
     // in der Historie und schlüge damit seinen eigenen Bestwert nie.
@@ -261,6 +289,22 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
   const warmSaetze = aufwaermPlan(istBankdruecken(exercise), aktuellerSatz?.kg ?? vorschlagKg ?? kg, plate)
   const zeigtAufwaermen = satzIdx === 0 && warmSaetze.length > 0 && !aufgewaermt.has(exercise.id)
 
+  // Übungsname im Kopf: bei mehr als einer Übung ein Auslöser für den
+  // Wechsel außer der Reihe (z. B. Bank belegt, Gerät gerade frei) statt
+  // eines starren Textes. Einmal gebaut, weil derselbe Kopf in zwei der
+  // vier Bildschirme auftaucht (Aufwärmen und Arbeitssatz).
+  const uebTitel =
+    uebungen.length > 1 ? (
+      <button type="button" className="gym-ueb wahl" onClick={() => setUebWahlOffen(true)}>
+        <span className="gym-ueb-text">{exercise.name}</span>
+        <svg className="gym-ueb-pfeil" viewBox="0 0 24 24">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+    ) : (
+      <div className="gym-ueb">{exercise.name}</div>
+    )
+
   // Alle vier Bildschirme teilen sich dieselbe Hülle (Schließen-Knopf,
   // Inhaltsrahmen). Hier entsteht nur der Inhalt — gerendert wird einmal
   // weiter unten. Dadurch liegt auch die Satz-Quittung an einer Stelle,
@@ -311,7 +355,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
       <>
         <div className="gym-kopf">
           <div className="gym-fort">Vor den Arbeitssätzen</div>
-          <div className="gym-ueb">{exercise.name}</div>
+          {uebTitel}
         </div>
         <div className="gym-warm">
           <div className="gym-wtitel">Aufwärmen</div>
@@ -352,7 +396,7 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
           <div className="gym-fort">
             Übung {uebIdx + 1} von {uebungen.length} · Satz {satzIdx + 1} von {soll}
           </div>
-          <div className="gym-ueb">{exercise.name}</div>
+          {uebTitel}
           <div className="gym-balken">
             <i style={{ width: `${(anteil * 100).toFixed(0)}%` }} />
           </div>
@@ -425,6 +469,13 @@ export function GymMode({ plan, day, week, setsByExercise, alleSaetzeJemals, all
 
       {quittung > 0 && <SatzQuittung key={quittung} onEnde={quittungFertig} />}
       {nova && <Supernova key={nova.nr} text={nova.text} onEnde={novaFertig} />}
+      <GymUebungsWahl
+        offen={uebWahlOffen}
+        uebungen={uebwahlEintraege}
+        aktiverIndex={uebIdx}
+        onWahl={uebungWaehlen}
+        onSchliessen={() => setUebWahlOffen(false)}
+      />
     </div>
   )
 }
