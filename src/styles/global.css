@@ -1834,14 +1834,21 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .uebwahl-zeile.fertig .uebwahl-status { color: var(--good); }
 
 /* Übungsname im Kopf wird zum Auslöser, sobald es mehr als eine Übung
-   gibt — der Text bleibt exakt wie zuvor, nur der Pfeil kommt dazu, das
-   Ellipsis sitzt jetzt auf einem inneren span statt dem Button selbst. */
+   gibt. Die Schrift allein ist nur gut 19px hoch — deutlich unter dem
+   Mindestmaß für Touch-Ziele (siehe .rowbtn weiter oben) und in der Praxis
+   zu knapp, um den ganzen Namen zuverlässig zu treffen statt nur den
+   kleinen Pfeil daneben. Padding + gleich große negative margin holen das
+   nach, ohne den Text im Kopf zu verschieben: die Trefffläche wächst, die
+   sichtbare Position bleibt exakt wie vorher. */
 .gym-ueb.wahl {
-  appearance: none; -webkit-appearance: none; background: none; border: none; padding: 0;
+  appearance: none; -webkit-appearance: none; background: none; border: none;
   display: inline-flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
+  padding: 11px 14px; margin: -11px -14px; border-radius: var(--r-m);
+  transition: background .15s;
 }
-.gym-ueb.wahl:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; border-radius: var(--r-s); }
+.gym-ueb.wahl:hover, .gym-ueb.wahl:active { background: rgba(255,255,255,.05); }
+.gym-ueb.wahl:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
 .gym-ueb-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .gym-ueb-pfeil { flex: none; width: .55em; height: .55em; stroke: currentColor; stroke-width: 2.6; fill: none; opacity: .55; transition: opacity .15s; }
 .gym-ueb.wahl:hover .gym-ueb-pfeil, .gym-ueb.wahl:active .gym-ueb-pfeil { opacity: 1; }
