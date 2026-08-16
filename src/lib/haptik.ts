@@ -30,3 +30,8 @@ export const SATZ_ERLEDIGT = 22
 
 /** Einheit geschafft: kurz-kurz-lang, deutlich als Abschluss erkennbar. */
 export const TRAINING_FERTIG = [26, 70, 26, 70, 120]
+
+/** Sprung in den Gym-Modus: die Impulse werden länger, die Pausen kürzer.
+    Fühlt sich nach Beschleunigung an und liegt damit auf derselben
+    Bewegung wie die Strahlen auf dem Schirm (siehe Warp.tsx). */
+export const WARP_SPRUNG = [10, 50, 16, 40, 26, 28, 80]

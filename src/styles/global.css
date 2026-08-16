@@ -675,13 +675,21 @@ select.inp option { background: var(--surface-2); color: var(--ink); }
 .field label { font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .15em; text-transform: uppercase; color: var(--ink-3); }
 .field small { color: var(--ink-4); font-size: 10.5px; }
 
+/* 24px Kantenlänge war unter dem Mindestmaß für Touch-Ziele (Apple/Google
+   empfehlen ~40px) — direkt neben großem Überschriftstext (siehe Tagesname
+   in SessionView.tsx) reichte das nicht, um ihn mit dem Daumen zuverlässig
+   zu treffen statt danebenzutippen. Das Icon selbst bleibt bei 13px (siehe
+   .rowbtn svg unten), nur die Fläche drumherum wächst. */
 .rowbtn {
-  width: 24px; height: 24px; border-radius: var(--r-s); border: 1px solid transparent;
+  width: 38px; height: 38px; border-radius: var(--r-s); border: 1px solid transparent;
   background: transparent; color: var(--ink-4); cursor: pointer; display: inline-flex;
   align-items: center; justify-content: center; transition: all .2s;
-  opacity: .42;
+  opacity: .55;
 }
-tr:hover .rowbtn, .rowbtn:focus, .rowbtn:focus-visible, .rowbtn:hover { opacity: 1; }
+/* :active zusätzlich zu :hover/:focus — :hover feuert auf einem
+   Touchscreen nie, ohne :active gäbe es beim Antippen also gar keine
+   sichtbare Rückmeldung. */
+tr:hover .rowbtn, .rowbtn:focus, .rowbtn:focus-visible, .rowbtn:hover, .rowbtn:active { opacity: 1; }
 .rowbtn.del { color: var(--ink-3); }
 .rowbtn:hover { color: var(--crit); border-color: rgba(255,92,92,.3); background: rgba(255,92,92,.1); }
 .rowbtn.mv:hover { color: var(--neon); border-color: rgba(53,240,208,.3); background: rgba(53,240,208,.1); }
@@ -2068,32 +2076,81 @@ body:has(.gym) .nebel { display: none; }
 @media (max-width: 560px) { .sb-hinweis { display: none; } }
 
 /* ── Warp-Sprung ins Training ───────────────────────────────────
-   Siehe Warp.tsx. Liegt über dem Gym-Vollbild (z-index 120), aber unter
-   der Satzquittung (135), und lässt keine Klicks abfangen — der
-   Gym-Modus ist währenddessen schon bedienbar. */
+   Siehe Warp.tsx. Läuft ab, bevor der Gym-Modus überhaupt eingehängt
+   wird, und deckt dabei die Einheit darunter ab.
+
+   pointer-events bewusst an: der Sprung verdeckt die Einheit, aber der
+   Gym-Modus steht noch nicht — ohne das Abfangen ginge ein Fehltipp an
+   die Karten darunter, die man gar nicht mehr sieht. */
 .warp {
   position: fixed; inset: 0; z-index: 132;
-  pointer-events: none; overflow: hidden;
-  animation: warpAus .62s ease-out both;
+  pointer-events: auto; overflow: hidden;
 }
-@keyframes warpAus { 0%, 62% { opacity: 1; } 100% { opacity: 0; } }
 
-/* Der Lichtkern in der Mitte: kurzer Blitz, aus dem die Strahlen kommen.
+/* Deckt die Einheit ab und bleibt am Ende deckend stehen: SessionView
+   hängt den Gym-Modus im selben React-Commit ein, in dem der Sprung
+   verschwindet, und beide sind dunkel. Würde der Grund zum Schluss
+   ausblenden, blitzte dazwischen für ein Bild die Einheit durch. */
+.warp-grund {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 50%, #0B1622 0%, var(--ground) 55%, #04060A 100%);
+  animation: warpGrund .82s ease-out both;
+}
+@keyframes warpGrund {
+  0%   { opacity: 0; }
+  14%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* Das Aufladen: ein weiter Ring zieht sich auf einen Punkt zusammen.
+   Erst diese Vorspannung macht aus dem Blitz ein Ereignis — ohne sie
+   beginnt der Sprung mit seinem lautesten Moment und wirkt dadurch
+   beliebig statt angekündigt. */
+.warp-ladung {
+  position: absolute; left: 50%; top: 50%;
+  width: 130vmax; height: 130vmax; margin: -65vmax 0 0 -65vmax;
+  border-radius: 50%;
+  border: 3px solid rgba(53,240,208,.5);
+  box-shadow: 0 0 70px rgba(53,240,208,.3), inset 0 0 70px rgba(53,240,208,.22);
+  animation: warpLadung .82s cubic-bezier(.55,0,.8,.35) both;
+}
+@keyframes warpLadung {
+  0%        { opacity: 0; transform: scale(1); }
+  10%       { opacity: .95; }
+  33%       { opacity: 1; transform: scale(.02); border-width: 12px; }
+  38%, 100% { opacity: 0; transform: scale(.02); border-width: 12px; }
+}
+
+/* Die Zündung: weißglühender Kern genau dort, wo der Ring zusammenfällt.
    Er füllt zugleich das Loch, das in der Mitte bleibt, weil alle Strahlen
    nach außen unterwegs sind. */
 .warp-kern {
   position: absolute; left: 50%; top: 50%;
-  width: 44vmax; height: 44vmax; margin: -22vmax 0 0 -22vmax;
+  width: 62vmax; height: 62vmax; margin: -31vmax 0 0 -31vmax;
   border-radius: 50%;
   background: radial-gradient(circle closest-side,
-    rgba(120,255,238,.55) 0%, rgba(53,240,208,.26) 26%,
-    rgba(53,240,208,.08) 48%, transparent 72%);
-  animation: warpKern .62s cubic-bezier(.2,.7,.4,1) both;
+    #fff 0%, rgba(196,255,248,.88) 11%, rgba(53,240,208,.44) 30%,
+    rgba(53,240,208,.12) 54%, transparent 74%);
+  animation: warpKern .82s cubic-bezier(.12,.75,.3,1) both;
 }
 @keyframes warpKern {
-  0%   { opacity: 0; transform: scale(.12); }
-  14%  { opacity: 1; }
-  100% { opacity: 0; transform: scale(2.6); }
+  0%, 29% { opacity: 0; transform: scale(.04); }
+  37%     { opacity: 1; transform: scale(.6); }
+  100%    { opacity: 0; transform: scale(3); }
+}
+
+/* Druckwelle aus der Zündung — läuft den Strahlen voraus nach außen. */
+.warp-welle {
+  position: absolute; left: 50%; top: 50%;
+  width: 26vmax; height: 26vmax; margin: -13vmax 0 0 -13vmax;
+  border-radius: 50%;
+  border: 3px solid rgba(170,255,246,.9);
+  animation: warpWelle .82s cubic-bezier(.1,.72,.25,1) both;
+}
+@keyframes warpWelle {
+  0%, 32% { opacity: 0; transform: scale(.04); border-width: 9px; }
+  40%     { opacity: 1; }
+  100%    { opacity: 0; transform: scale(6.5); border-width: .5px; }
 }
 
 /* Ein Strahl: waagerechter Streifen, dessen Drehpunkt in der Mitte des
@@ -2102,20 +2159,23 @@ body:has(.gym) .nebel { display: none; }
    transform-origin links, damit das Strecken nach außen wächst und der
    Strahl nicht nach beiden Seiten auseinanderläuft.
 
+   Setzt erst bei 29 % ein, also mit der Zündung: vorher gehört der
+   Bildschirm dem sich zusammenziehenden Ring.
+
    Start, Ziel, Streckung und Helligkeit kommen als Variablen je Strahl
    aus Warp.tsx — siehe dort, warum die Streuung nötig ist. */
 .warp-strahl {
   position: absolute; left: 50%; top: 50%;
-  width: 12vmax; height: 1.7px; margin-top: -.85px;
+  width: 14vmax; height: 2.2px; margin-top: -1.1px;
   transform-origin: 0 50%;
-  background: linear-gradient(90deg, transparent, rgba(180,255,244,.85) 70%, #fff 100%);
-  animation: warpStrahl .62s cubic-bezier(.45,0,.85,.5) both;
+  background: linear-gradient(90deg, transparent, rgba(196,255,248,.9) 68%, #fff 100%);
+  animation: warpStrahl .82s cubic-bezier(.4,0,.78,.45) both;
 }
 @keyframes warpStrahl {
-  0%   { opacity: 0; transform: rotate(var(--wa)) translateX(var(--ws)) scaleX(.1); }
-  16%  { opacity: var(--wo); }
-  72%  { opacity: var(--wo); }
-  100% { opacity: 0; transform: rotate(var(--wa)) translateX(var(--ww)) scaleX(var(--wx)); }
+  0%, 29% { opacity: 0; transform: rotate(var(--wa)) translateX(var(--ws)) scaleX(.08); }
+  39%     { opacity: var(--wo); }
+  84%     { opacity: var(--wo); }
+  100%    { opacity: 0; transform: rotate(var(--wa)) translateX(var(--ww)) scaleX(var(--wx)); }
 }
 
 /* ── Supernova bei neuer Bestleistung ───────────────────────────

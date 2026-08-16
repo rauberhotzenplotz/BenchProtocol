@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { BenchSlot, Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
@@ -16,6 +16,7 @@ import { setsOf, tonnageOf, wochenLabel } from './calc'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
 import { GymMode } from './GymMode'
+import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useAutoAdvanceBlock } from '../bench/queries'
 import { useVolumeRows } from '../volume/queries'
@@ -59,6 +60,26 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
   const laeuft = !!session && !session.ended_at
   const [neueUebung, setNeueUebung] = useState(false)
   const [gymOffen, setGymOffen] = useState(false)
+  const [warpLaeuft, setWarpLaeuft] = useState(false)
+
+  // Der Sprung läuft vor dem Gym-Modus, nicht darüber: er deckt die
+  // Einheit ab und gibt am Ende die fertige Trainingskonsole frei.
+  const gymStarten = () => {
+    // Steht der Bewegungsschalter auf aus, entsteht der Sprung gar nicht
+    // erst — sonst bliebe eine knappe Sekunde schwarzer Bildschirm ohne
+    // erkennbaren Grund, weil die globale Regel nur die Dauer staucht.
+    if (document.documentElement.dataset.motion === 'off') setGymOffen(true)
+    else setWarpLaeuft(true)
+  }
+
+  // Beide Zustände im selben Handler: React fasst sie zu einem Commit
+  // zusammen, der Sprung verschwindet also in genau dem Bild, in dem der
+  // Gym-Modus erscheint. Nacheinander gäbe es ein Bild dazwischen, in dem
+  // die Einheit wieder durchblitzt.
+  const warpFertig = useCallback(() => {
+    setWarpLaeuft(false)
+    setGymOffen(true)
+  }, [])
   // Kommt man aus dem Gym-Modus zum Prüfen zurück, sollen die Sätze nicht
   // erst einzeln aufgeklappt werden müssen.
   const [saetzeOffen, setSaetzeOffen] = useState(false)
@@ -144,7 +165,7 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
         {laeuft ? (
           <>
             {day.exercises.length > 0 && (
-              <button className="btn" onClick={() => setGymOffen(true)}>
+              <button className="btn" onClick={gymStarten}>
                 <svg viewBox="0 0 24 24">
                   <path d="M5 8v8M19 8v8M2 10v4M22 10v4M5 12h14" />
                 </svg>
@@ -202,6 +223,8 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
           </button>
         )}
       </div>
+
+      {warpLaeuft && <Warp onEnde={warpFertig} />}
 
       {gymOffen &&
         day.exercises.length > 0 &&
