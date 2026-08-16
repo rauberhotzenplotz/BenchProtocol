@@ -2,6 +2,7 @@ import { useActivePlan } from '../plans/active-plan-context'
 import { useBenchProgression, benchRowsFor } from './queries'
 import { baseE1RM, benchLoad } from './calc'
 import { ProgressionTable } from './ProgressionTable'
+import { AusgangsdatenCard } from './AusgangsdatenCard'
 import { GoalCard } from './GoalCard'
 import { RechnerCard } from './RechnerCard'
 import { CountUp } from '../../components/CountUp'
@@ -80,6 +81,8 @@ function BenchTab({ plan }: { plan: Plan }) {
         Einheit beendest.
       </div>
 
+      <AusgangsdatenCard plan={plan} />
+
       <GoalCard plan={plan} />
 
       <div className="grid g-12" style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
@@ -91,7 +94,7 @@ function BenchTab({ plan }: { plan: Plan }) {
           <div className="stack">
             <div>
               <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.15em', textTransform: 'uppercase' }}>
-                Bankdrücken schwer{bsp ? <span className="chip mute" style={{ marginLeft: 6 }}>z. B.</span> : null}
+                Bankdrücken schwer
               </div>
               <div style={{ fontFamily: 'var(--f-display)', fontSize: 44, fontWeight: 600, color: bsp ? 'var(--ink-3)' : 'var(--violet)', lineHeight: 1.05 }}>
                 <CountUp value={zielD1} decimals={1} />
@@ -120,14 +123,14 @@ function BenchTab({ plan }: { plan: Plan }) {
           <div className="card">
             <h3>
               <span className="tick" />
-              Bankdrücken schwer{bsp ? <span className="chip mute" style={{ marginLeft: 6 }}>z. B.</span> : null}
+              Bankdrücken schwer
             </h3>
             {progression && <ProgressionTable plan={plan} rows={benchRowsFor(progression, 'd1')} dim={bsp} />}
           </div>
           <div className="card">
             <h3>
               <span className="tick" style={{ background: 'var(--violet)' }} />
-              Bankdrücken mit Pause{bsp ? <span className="chip mute" style={{ marginLeft: 6 }}>z. B.</span> : null}
+              Bankdrücken mit Pause
             </h3>
             {progression && <ProgressionTable plan={plan} rows={benchRowsFor(progression, 'd3')} dim={bsp} />}
           </div>

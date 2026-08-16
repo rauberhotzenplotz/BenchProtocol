@@ -1293,6 +1293,22 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .rowbtn.einst[aria-pressed="true"] svg { transform: rotate(60deg); }
 .rowbtn.einst svg { transition: transform .3s cubic-bezier(.22,1,.36,1); }
 
+/* Schloss-Knopf (SperrKnopf.tsx): schützt selten geänderte Werte vor
+   versehentlichem Antippen — Ausgangsdaten, Ziel. Offen leuchtet neon,
+   als eigener kleiner Hinweis, dass hier gerade scharf geschaltet ist. */
+.sperrknopf {
+  appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
+  width: 28px; height: 28px; flex: none; border-radius: 50%;
+  border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--ink-4);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.sperrknopf:hover { color: var(--ink-2); border-color: var(--ink-4); }
+.sperrknopf:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
+.sperrknopf.offen { color: var(--neon); border-color: rgba(53,240,208,.4); background: rgba(53,240,208,.1); }
+.sperrknopf svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.sperr-wert { font-family: var(--f-display); font-size: 22px; font-weight: 600; color: var(--ink-2); }
+
 @media (max-width: 760px) {
   .setline, .setkopf { grid-template-columns: 24px 1.3fr 1fr .8fr 42px 24px; gap: 5px; }
   .setline.ohne-rpe, .setkopf.ohne-rpe { grid-template-columns: 24px 1.3fr 1fr 42px 24px; }
@@ -1814,6 +1830,9 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   padding: 12px 18px 16px; border-top: 1px solid var(--line-soft);
   display: flex; flex-direction: column; gap: 11px; flex: none;
 }
+/* Ohne Werteliste darüber (nurNumpad) braucht es die Trennlinie nicht —
+   der Kopf trennt hier schon genug, eine zweite Linie wirkte doppelt. */
+.zahltast.voll { border-top: 0; padding-top: 6px; }
 .zahltast-anzeige {
   text-align: center; font-family: var(--f-display); font-variant-numeric: tabular-nums;
   font-size: 32px; color: var(--neon); letter-spacing: .02em;
