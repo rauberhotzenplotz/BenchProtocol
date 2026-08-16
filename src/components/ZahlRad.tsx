@@ -41,6 +41,7 @@ export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, onWa
   return createPortal(
     <div className="zahlrad-overlay" onClick={e => e.target === e.currentTarget && onSchliessen()}>
       <div className="zahlrad" role="dialog" aria-modal="true" aria-label={titel}>
+        <span className="zahlrad-griff" aria-hidden="true" />
         <div className="zahlrad-kopf">
           <span>{titel}</span>
           <button type="button" className="zahlrad-schliessen" onClick={onSchliessen} aria-label="Schließen">

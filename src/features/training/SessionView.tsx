@@ -592,9 +592,9 @@ function SetRow({
   return (
     <div className={'setline' + (set.done ? ' ok' : '') + (zeigtRpe ? '' : ' ohne-rpe')}>
       <span className="nr">{set.position + 1}</span>
-      <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" className="mono" leerOption onWahl={kg => onChange({ kg })} />
-      <ZahlEingabe wert={set.reps} werte={REP_WERTE} titel="Wiederholungen" className="mono" leerOption onWahl={reps => onChange({ reps })} />
-      {zeigtRpe && <ZahlEingabe wert={set.rpe} werte={RPE_WERTE} titel="RPE" className="mono" leerOption onWahl={rpe => onChange({ rpe })} />}
+      <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" className="mono kgw" leerOption onWahl={kg => onChange({ kg })} />
+      <ZahlEingabe wert={set.reps} werte={REP_WERTE} titel="Wiederholungen" className="mono repw" leerOption onWahl={reps => onChange({ reps })} />
+      {zeigtRpe && <ZahlEingabe wert={set.rpe} werte={RPE_WERTE} titel="RPE" className="mono rpew" leerOption onWahl={rpe => onChange({ rpe })} />}
       <button
         className="sethaken"
         aria-pressed={set.done}
