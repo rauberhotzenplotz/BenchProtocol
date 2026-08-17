@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessions }: Props) {
+  const navigate = useNavigate()
   const tag = naechsterTag(days, setsByExercise)
   const t = trainingszeitDaten(sessions)
   const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
@@ -46,7 +48,7 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
       </div>
 
       <div className="grid g3" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
-        <NextWorkoutCard tag={tag} />
+        <NextWorkoutCard tag={tag} onStart={tag ? () => navigate('/training', { state: { autoStartDayId: tag.id } }) : undefined} />
         <TrainingszeitCard woche={t.woche} />
         <KpiCard cls="c1" label="Geschätztes 1RM" value={<CountUp value={e1} decimals={1} />} unit="kg" />
         <KpiCard cls="c3" label={`Tonnage ${wochenLabel(week, plan).split(' ·')[0]}`} value={<CountUp value={Math.round(wochenTonnage / 1000 * 10) / 10} decimals={1} />} unit="t" />

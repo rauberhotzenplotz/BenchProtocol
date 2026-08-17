@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { BenchSlot, Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
@@ -41,9 +41,24 @@ interface Props {
   alleSaetzeJemalsBereit: boolean
   session: TrainingSession | null | undefined
   onBack: () => void
+  /** Kommt man aus dem Cockpit über "Als Nächstes": Session sofort starten
+   *  und direkt in den Gym-Modus springen, ohne Zwischenklick. */
+  autoStartGym?: boolean
+  onAutoStartConsumed?: () => void
 }
 
-export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals, alleSaetzeJemalsBereit, session, onBack }: Props) {
+export function SessionView({
+  plan,
+  day,
+  week,
+  setsByExercise,
+  alleSaetzeJemals,
+  alleSaetzeJemalsBereit,
+  session,
+  onBack,
+  autoStartGym,
+  onAutoStartConsumed,
+}: Props) {
   const startSession = useStartSession()
   const endSession = useEndSession()
   const autoAdvanceBlock = useAutoAdvanceBlock()
@@ -91,6 +106,30 @@ export function SessionView({ plan, day, week, setsByExercise, alleSaetzeJemals,
     setWarpLaeuft(false)
     setGymOffen(true)
   }, [])
+  // Auto-Start aus dem Cockpit: erst die Session anstoßen (falls sie noch
+  // nicht läuft), dann — sobald sie da ist — den Warp-Sprung in den
+  // Gym-Modus auslösen. Zwei Ref-Wächter statt Zustand, damit jeder
+  // Schritt trotz mehrfacher Renders während der Mutation nur einmal
+  // ausgelöst wird.
+  const autoSessionAngestossen = useRef(false)
+  const autoGymAusgeloest = useRef(false)
+  useEffect(() => {
+    if (!autoStartGym || day.exercises.length === 0) return
+    if (!laeuft) {
+      if (!autoSessionAngestossen.current) {
+        autoSessionAngestossen.current = true
+        startSession.mutate({ dayId: day.id, week })
+      }
+      return
+    }
+    if (!autoGymAusgeloest.current) {
+      autoGymAusgeloest.current = true
+      gymStarten()
+      onAutoStartConsumed?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- gymStarten/startSession sind pro Render neue Referenzen, sollen die Wächter-Logik hier aber nicht erneut auslösen
+  }, [autoStartGym, laeuft, day.id, day.exercises.length, week])
+
   // Kommt man aus dem Gym-Modus zum Prüfen zurück, sollen die Sätze nicht
   // erst einzeln aufgeklappt werden müssen.
   const [saetzeOffen, setSaetzeOffen] = useState(false)

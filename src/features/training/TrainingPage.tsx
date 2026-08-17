@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useActivePlan } from '../plans/active-plan-context'
 import { useDays, useSession, useSetsForExercises, useSessionsForDays, useAllSetsForExercises, useAllSessionsForDays } from './queries'
 import { gruppeSetsByExercise } from './calc'
@@ -8,7 +9,14 @@ import { PlanPicker } from '../plans/PlanPicker'
 
 export function TrainingPage() {
   const { activePlan } = useActivePlan()
-  const [offenerTag, setOffenerTag] = useState<string | null>(null)
+  // Kommt man aus dem Cockpit über "Als Nächstes" hierher, steckt die
+  // Zieltag-ID im Navigations-State — einmalig als Startwert übernehmen,
+  // damit ein späteres manuelles Öffnen desselben Tages nicht erneut den
+  // Gym-Modus aufreißt.
+  const location = useLocation()
+  const autoStartDayId = (location.state as { autoStartDayId?: string } | null)?.autoStartDayId
+  const [offenerTag, setOffenerTag] = useState<string | null>(() => autoStartDayId ?? null)
+  const [autoStartGym, setAutoStartGym] = useState(() => !!autoStartDayId)
 
   const { data: days } = useDays(activePlan?.id)
   const alleExerciseIds = (days ?? []).flatMap(d => d.exercises.map(ex => ex.id))
@@ -49,6 +57,8 @@ export function TrainingPage() {
         alleSaetzeJemalsBereit={saetzeJemals !== undefined}
         session={session}
         onBack={() => setOffenerTag(null)}
+        autoStartGym={autoStartGym}
+        onAutoStartConsumed={() => setAutoStartGym(false)}
       />
     )
   }

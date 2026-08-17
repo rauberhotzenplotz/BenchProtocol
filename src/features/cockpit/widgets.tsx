@@ -32,8 +32,23 @@ export function KpiCard({
   )
 }
 
-export function NextWorkoutCard({ tag }: { tag: DayWithExercises | null }) {
-  return <KpiCard cls="c1" label="Als Nächstes" value={<span style={{ fontSize: 22 }}>{tag ? tag.name : '—'}</span>} />
+export function NextWorkoutCard({ tag, onStart }: { tag: DayWithExercises | null; onStart?: () => void }) {
+  if (!tag || !onStart) {
+    return <KpiCard cls="c1" label="Als Nächstes" value={<span style={{ fontSize: 22 }}>{tag ? tag.name : '—'}</span>} />
+  }
+  return (
+    <button className="card kpi c1 kpi-go" onClick={onStart}>
+      <div className="lab">Als Nächstes</div>
+      <div className="val">
+        <span style={{ fontSize: 22 }}>{tag.name}</span>
+      </div>
+      <span className="kpi-go-pfeil">
+        <svg viewBox="0 0 24 24">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </span>
+    </button>
+  )
 }
 
 export function TrainingszeitCard({ woche }: { woche: number }) {

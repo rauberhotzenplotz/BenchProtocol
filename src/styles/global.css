@@ -526,6 +526,19 @@ body {
 .kpi.c4 .val { color: var(--ink); }
 .kpi .spark { position: absolute; right: 0; bottom: 0; left: 0; height: 46px; opacity: .5; pointer-events: none; }
 
+.kpi-go {
+  appearance: none; -webkit-appearance: none; background: none; border: none;
+  display: block; width: 100%; text-align: left; font: inherit; color: inherit;
+  cursor: pointer;
+}
+.kpi-go-pfeil {
+  position: absolute; right: 15px; bottom: 13px;
+  display: inline-flex; color: var(--neon);
+}
+.kpi-go-pfeil svg { width: 16px; height: 16px; stroke: currentColor; fill: none;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s; }
+.kpi-go:hover .kpi-go-pfeil svg, .kpi-go:focus-visible .kpi-go-pfeil svg { transform: translateX(4px); }
+
 /* ── Chips / Pills ──────────────────────────────────────────── */
 .pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .pill {

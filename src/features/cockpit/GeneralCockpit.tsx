@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sessions }: Props) {
+  const navigate = useNavigate()
   const tag = naechsterTag(days, setsByExercise)
   const t = trainingszeitDaten(sessions)
   const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
@@ -50,7 +52,7 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
       </div>
 
       <div className="grid g3" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
-        <NextWorkoutCard tag={tag} />
+        <NextWorkoutCard tag={tag} onStart={tag ? () => navigate('/training', { state: { autoStartDayId: tag.id } }) : undefined} />
         <TrainingszeitCard woche={t.woche} />
         <KpiCard
           cls="c3"
