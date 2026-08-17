@@ -85,7 +85,6 @@ export function SettingsPage() {
         <div>
           <span className="eyebrow">App</span>
           <h2>Einstellungen</h2>
-          <p>Konto und Speicher.</p>
         </div>
       </div>
 

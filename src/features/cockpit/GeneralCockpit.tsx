@@ -3,8 +3,8 @@ import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, trainingszeitDaten, einheitenDaten, startInfo, wochenPensum } from './calc'
-import { TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard, WochenpensumCard } from './widgets'
+import { naechsterTag, trainingszeitDaten, einheitenDaten, ruhetage, startInfo, wochenPensum } from './calc'
+import { TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard, RuhetageCard, WochenpensumCard } from './widgets'
 import { StartCard } from './StartCard'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
@@ -47,7 +47,6 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
             {plan.name} · {wochenLabel(week, plan)}
           </span>
           <h2>Cockpit</h2>
-          <p>Überblick über diesen Plan — was ansteht, wie oft und wie lange du trainierst.</p>
         </div>
         <PlanPicker />
       </div>
@@ -69,13 +68,11 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
           unit="t"
           spark={serie.length > 1 ? serie : undefined}
         />
+        <RuhetageCard tage={ruhetage(sessions)} />
       </div>
 
-      <div style={{ ...cssVars({ '--i': 3 }), marginBottom: 14 }}>
+      <div className="kachelgrid" style={cssVars({ '--i': 3 })}>
         <LetzteEinheitenCard sessions={sessions} days={days} />
-      </div>
-
-      <div className="stack" style={{ ...cssVars({ '--i': 4 }), gap: 14 }}>
         <SternbildCard punkte={einheiten} />
         <TonnageEinheitenCard punkte={einheiten} />
         <DauerEinheitenCard punkte={einheiten} />

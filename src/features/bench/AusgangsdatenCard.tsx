@@ -26,10 +26,6 @@ export function AusgangsdatenCard({ plan }: { plan: Plan }) {
         <span className="spacer" />
         <SperrKnopf gesperrt={gesperrt} onToggle={() => setGesperrt(g => !g)} />
       </h3>
-      <p className="muted tiny" style={{ margin: '0 0 13px' }}>
-        Ein echter Testsatz ersetzt die Platzhalterwerte sofort — ohne auf den nächsten automatischen Blockwechsel zu
-        warten.
-      </p>
       <div className="row" style={{ gap: 20 }}>
         <div className="field" style={{ maxWidth: 110 }}>
           <label>Gewicht</label>

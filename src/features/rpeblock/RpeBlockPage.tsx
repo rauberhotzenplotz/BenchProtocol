@@ -44,7 +44,6 @@ export function RpeBlockPage() {
         <div>
           <span className="eyebrow">RPE-basierte Blockprogression</span>
           <h2>Blöcke</h2>
-          <p>Ein Block gehört zu einer Übung — e1RM aus Gewicht, Wdh. und RPE, Empfehlung am Ende aus dem Verlauf.</p>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { EinheitPunkt } from './calc'
 import { sternbild } from './sternbild'
+import { KachelKarte } from './KachelKarte'
 
 const W = 660
 const H = 190
@@ -23,17 +24,7 @@ export function SternbildCard({ punkte }: { punkte: EinheitPunkt[] }) {
   const sterne = sternbild(punkte)
 
   if (sterne.length < 2) {
-    return (
-      <div className="card">
-        <h3>
-          <span className="tick" />
-          Sternbild des Blocks
-        </h3>
-        <p className="muted tiny" style={{ padding: '22px 0', textAlign: 'center', margin: 0 }}>
-          Ab der zweiten beendeten Einheit zeichnet sich hier dein Sternbild.
-        </p>
-      </div>
-    )
+    return <KachelKarte titel="Sternbild des Blocks" wert="—" hinweis="ab zwei Einheiten" />
   }
 
   const iw = W - P.l - P.r
@@ -46,11 +37,7 @@ export function SternbildCard({ punkte }: { punkte: EinheitPunkt[] }) {
   const staerkster = sterne.reduce((a, s, i) => (s.punkt.tonnage > sterne[a].punkt.tonnage ? i : a), 0)
 
   return (
-    <div className="card">
-      <h3>
-        <span className="tick" />
-        Sternbild des Blocks
-      </h3>
+    <KachelKarte titel="Sternbild des Blocks" wert={sterne.length} einheit="Einheiten" hinweis="Abstand zeigt die Pausen">
       <div className="chartwrap">
         <svg
           viewBox={`0 0 ${W} ${H}`}
@@ -106,6 +93,6 @@ export function SternbildCard({ punkte }: { punkte: EinheitPunkt[] }) {
         <span className="sb-hinweis">{sterne.length} Einheiten · Abstand zeigt die Pausen</span>
         <span>{sterne[sterne.length - 1].punkt.datumLabel}</span>
       </div>
-    </div>
+    </KachelKarte>
   )
 }

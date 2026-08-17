@@ -1,6 +1,6 @@
 import type { EinheitPunkt } from './calc'
-import { BarChart } from './BarChart'
-import { cssVars } from '../../lib/style'
+import { KachelKarte } from './KachelKarte'
+import { ListChart } from './ListChart'
 
 function minText(m: number): string {
   const h = Math.floor(m / 60)
@@ -10,59 +10,32 @@ function minText(m: number): string {
 
 export function DauerEinheitenCard({ punkte }: { punkte: EinheitPunkt[] }) {
   if (punkte.length < 2) {
-    return (
-      <div className="card">
-        <h3>
-          <span className="tick" />
-          Trainingsdauer
-        </h3>
-        <p className="muted tiny" style={{ padding: '26px 0', textAlign: 'center', margin: 0 }}>
-          Sobald du mindestens zwei Einheiten beendet hast, steht hier ihre Dauer im Verlauf.
-        </p>
-      </div>
-    )
+    return <KachelKarte titel="Trainingsdauer" wert="—" hinweis="ab zwei Einheiten" />
   }
 
   const schnitt = punkte.reduce((a, p) => a + p.minuten, 0) / punkte.length
-  const tage = [...new Map(punkte.map(p => [p.tagName, p.farbe])).entries()]
+  // einheitenDaten() liefert aufsteigend nach Datum — für die Liste
+  // umgedreht, damit die neueste Einheit ganz oben steht.
+  const neuesteZuerst = [...punkte].reverse()
 
   return (
-    <div className="card">
-      <h3>
-        <span className="tick" />
-        Trainingsdauer · letzte {punkte.length} Einheiten
-      </h3>
-      <BarChart
-        ariaLabel="Trainingsdauer der letzten Einheiten"
-        schrittRunden={15}
-        yLabel={v => Math.round(v).toString()}
-        schnittLabel={v => minText(v)}
-        punkte={punkte.map(p => ({
-          label: p.datumLabel,
+    <KachelKarte
+      titel="Trainingsdauer"
+      wert={Math.round(schnitt)}
+      einheit="min"
+      hinweis={`Ø über ${punkte.length} Einheiten`}
+    >
+      <ListChart
+        ariaLabel="Trainingsdauer der letzten Einheiten, neueste zuerst"
+        zeilen={neuesteZuerst.map(p => ({
+          id: p.sessionId,
+          name: p.tagName,
+          neben: `${p.datumLabel} · ${p.wochenLabel}`,
           wert: p.minuten,
+          wertText: minText(p.minuten),
           farbe: p.farbe,
-          tipTitel: minText(p.minuten),
-          tipZeilen: [`${p.tagName} · ${p.wochenLabel}`],
         }))}
       />
-      <div className="legend" style={{ marginTop: 9 }}>
-        {tage.map(([name, farbe]) => (
-          <span key={name}>
-            <i style={{ background: farbe }} />
-            {name}
-          </span>
-        ))}
-      </div>
-      <div className="dstats" style={{ gridTemplateColumns: 'minmax(0,1fr)', maxWidth: 220 }}>
-        <div className="dstat gesamt" style={cssVars({ '--f': 'var(--ink)' })}>
-          <div className="k">Ø je Einheit</div>
-          <div className="v">
-            <span className="zahlglow">{Math.round(schnitt)}</span>
-            <u> min</u>
-          </div>
-          <div className="n">über {punkte.length} Einheiten</div>
-        </div>
-      </div>
-    </div>
+    </KachelKarte>
   )
 }

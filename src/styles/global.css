@@ -426,7 +426,13 @@ body {
 .topbar {
   position: sticky; top: 0; z-index: 25;
   display: flex; align-items: center; gap: 18px;
-  padding: 0 22px; height: 62px;
+  /* env(safe-area-inset-top) ist 0 auf Geräten ohne Kerbe/erzwungenes
+     Edge-to-edge (z. B. das aktuelle Testgerät) — greift erst, falls die
+     StatusBar-Konfiguration (capacitor.config.ts) mal nicht mehr wirkt,
+     etwa auf Android 15+, wo overlaysWebView laut Capacitor-Doku nicht
+     mehr unterstützt wird. */
+  padding: calc(0px + env(safe-area-inset-top, 0px)) 22px 0;
+  height: calc(62px + env(safe-area-inset-top, 0px));
   background: rgba(8,11,16,.80);
   backdrop-filter: blur(14px) saturate(1.3);
   border-bottom: 1px solid var(--line);
@@ -561,7 +567,7 @@ body {
    stehen dadurch zwei schmale Kacheln nebeneinander statt einer Kette
    bildschirmfüllender Blöcke; auf dem Schreibtisch passen so viele hin, wie
    Platz haben. Ohne eigene Umbruchpunkte, weil die Zahl der Kacheln je
-   Plantyp verschieden ist (Bank fünf, Standard drei). */
+   Plantyp verschieden ist (Bank sechs, Standard vier). */
 .kpirow { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); }
 @media (max-width: 640px) {
   .kpirow { gap: 10px; }
@@ -570,6 +576,84 @@ body {
   .kpirow .kpi .val u { font-size: 12px; }
   .kpirow .kpi .sub { font-size: 10.5px; }
 }
+
+/* ── Auswertungs-Kacheln (Cockpit) ──────────────────────────────
+   Die Grafiken stehen nicht mehr ausgeklappt untereinander, sondern als
+   kurze Kacheln mit je einer Zahl; die vollständige Grafik kommt beim
+   Antippen im Vollbild. Ohne diesen Umbau war das Cockpit auf dem Handy
+   ein mehrere Bildschirme langer Scrollweg. */
+.kachelgrid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(152px, 1fr)); }
+
+/* Vollständiger Reset: die App hat keinen globalen Button-Reset, ohne
+   appearance/background/border/color käme hier der graue Systemknopf. */
+.kachel {
+  appearance: none; -webkit-appearance: none;
+  position: relative; width: 100%; text-align: left;
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 14px 16px 13px;
+  border: 1px solid var(--line); border-radius: var(--r-l);
+  background: linear-gradient(160deg, rgba(20,27,38,.72), rgba(12,17,25,.72));
+  color: var(--ink); font: inherit; cursor: pointer;
+  transition: border-color .2s, transform .2s;
+}
+.kachel.leer { cursor: default; }
+.kachel:not(.leer):hover { border-color: rgba(53,240,208,.4); transform: translateY(-2px); }
+.kachel:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
+.kachel-tit {
+  font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .17em; text-transform: uppercase;
+  color: var(--ink-3); padding-right: 18px;
+}
+.kachel-wert {
+  font-family: var(--f-display); font-size: 30px; font-weight: 600; line-height: 1.05;
+  margin-top: 7px; display: flex; align-items: baseline; gap: 5px; min-width: 0;
+}
+.kachel-wert u { text-decoration: none; font-size: 13px; color: var(--ink-3); font-family: var(--f-body); }
+.kachel-hin {
+  font-family: var(--f-mono); font-size: 10px; color: var(--ink-4); margin-top: 5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.kachel-pfeil {
+  position: absolute; top: 13px; right: 12px; width: 14px; height: 14px;
+  stroke: var(--ink-4); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transition: stroke .2s, transform .2s;
+}
+.kachel:hover .kachel-pfeil { stroke: var(--neon); transform: translateX(2px); }
+
+/* Vollbild mit der ganzen Grafik — gleiche Bauart wie das
+   Trainingsfenster (.tfenster), nur ohne dessen Fußraum für den
+   Gym-Modus. */
+.dfenster {
+  position: fixed; inset: 0; z-index: 86;
+  background: linear-gradient(180deg, #0A0E14 0%, var(--ground) 100%);
+  display: flex; flex-direction: column;
+  animation: tfAuf .26s cubic-bezier(.22,1,.36,1) both;
+}
+.df-kopf {
+  display: flex; align-items: center; gap: 12px; flex: none;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  border-bottom: 1px solid var(--line); background: rgba(8,11,16,.7); backdrop-filter: blur(12px);
+}
+.df-kopf b { font-family: var(--f-display); font-size: 15px; letter-spacing: .07em; text-transform: uppercase; }
+.df-koerper { flex: 1; overflow-y: auto; padding: 16px 16px calc(26px + env(safe-area-inset-bottom, 0px)); }
+
+/* ── Balkenliste (Detailansicht der Kacheln) ────────────────────
+   Zeilen von oben nach unten statt stehender Balken: die Namen bleiben
+   waagerecht lesbar, und die Reihenfolge trägt die Aussage. */
+.lchart { display: flex; flex-direction: column; gap: 12px; }
+.lz { animation: slideIn .4s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(var(--i, 0) * 34ms); }
+.lz-kopf { display: flex; align-items: baseline; gap: 8px; }
+.lz-name { font-size: 12.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lz-neben { font-family: var(--f-mono); font-size: 10px; color: var(--ink-4); flex: none; }
+.lz-wert {
+  margin-left: auto; flex: none; font-family: var(--f-mono); font-size: 12px;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.lz-bahn { height: 8px; margin-top: 5px; border-radius: 99px; background: rgba(255,255,255,.05); overflow: hidden; }
+.lz-bahn i {
+  display: block; height: 100%; border-radius: 99px; transform-origin: left;
+  animation: lzAuf .5s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes lzAuf { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* ── Startkarte ─────────────────────────────────────────────────
    Die einzige Handlung des Cockpits — alles andere darunter ist
@@ -896,18 +980,7 @@ tr:hover .rowbtn, .rowbtn:focus, .rowbtn:focus-visible, .rowbtn:hover, .rowbtn:a
 }
 .goalnum u { text-decoration: none; font-size: 15px; color: var(--ink-3); font-family: var(--f-body); }
 
-/* ── Trainingsdauer ─────────────────────────────────────────── */
-.dbar {
-  transform-origin: 50% 100%; transform-box: fill-box;
-  animation: barGrow .75s cubic-bezier(.22,1,.36,1) both;
-}
-@keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-.dbar-hit { fill: transparent; cursor: crosshair; }
-.dchart .avg { stroke-dasharray: 5 5; stroke-width: 1.2; opacity: .75; }
-.dchart .avgtxt { font-family: var(--f-mono); font-size: 10px; letter-spacing: .06em; }
-.dchart .cursorbar { fill: rgba(255,255,255,.09); opacity: 0; }
-.dchart .cursorbar.on { opacity: 1; }
-
+/* ── Kennzahlen unter einer Grafik ──────────────────────────── */
 .dstats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 15px; }
 .dstat {
   background: rgba(8,11,16,.55); border: 1px solid var(--line-soft); border-radius: var(--r-m);
@@ -932,8 +1005,6 @@ tr:hover .rowbtn, .rowbtn:focus, .rowbtn:focus-visible, .rowbtn:hover, .rowbtn:a
 
 /* ── Charts ─────────────────────────────────────────────────── */
 .chart { width: 100%; height: auto; display: block; overflow: visible; }
-.chart .gridline { stroke: rgba(255,255,255,.055); stroke-width: 1; }
-.chart .axis { fill: var(--ink-4); font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .05em; }
 .chart .ser { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1.5s cubic-bezier(.22,1,.36,1) forwards; }
 @keyframes draw { to { stroke-dashoffset: 0; } }
@@ -970,10 +1041,6 @@ input[type="date"].inp {
 }
 input[type="date"].inp:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 3px rgba(53,240,208,.11); }
 input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); cursor: pointer; }
-
-.legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
-.legend i { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
-.legend span { display: inline-flex; align-items: center; gap: 7px; font-family: var(--f-mono); font-size: 10px; letter-spacing: .06em; color: var(--ink-3); text-transform: uppercase; }
 
 /* ── Bank-Block-Tabelle ─────────────────────────────────────── */
 .bench-tbl { width: 100%; border-collapse: collapse; }

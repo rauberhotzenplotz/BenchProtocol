@@ -3,8 +3,8 @@ import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung, gruppeSetsByExercise } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, trainingszeitDaten, einheitenDaten, prozentAenderung, startInfo, wochenPensum } from './calc'
-import { TrainingszeitCard, UebungsdauerCard, KpiCard, WochenpensumCard, LetzteEinheitenCard } from './widgets'
+import { naechsterTag, trainingszeitDaten, einheitenDaten, prozentAenderung, ruhetage, startInfo, wochenPensum } from './calc'
+import { TrainingszeitCard, UebungsdauerCard, KpiCard, RuhetageCard, WochenpensumCard, LetzteEinheitenCard } from './widgets'
 import { StartCard } from './StartCard'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
@@ -49,7 +49,6 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
             Block {plan.block ?? 1} · {wochenLabel(week, plan)}
           </span>
           <h2>Cockpit</h2>
-          <p>Alles, was du vor der Einheit wissen musst.</p>
         </div>
         <PlanPicker />
       </div>
@@ -78,13 +77,11 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
           deltaPct={prozentAenderung(gesamtVolumen, gesamtVolumenVorwoche)}
         />
         <TrainingszeitCard woche={t.woche} vorwoche={t.vorwoche} />
+        <RuhetageCard tage={ruhetage(sessions)} />
       </div>
 
-      <div style={{ ...cssVars({ '--i': 3 }), marginBottom: 14 }}>
+      <div className="kachelgrid" style={cssVars({ '--i': 3 })}>
         <LetzteEinheitenCard sessions={sessions} days={days} />
-      </div>
-
-      <div className="stack" style={{ ...cssVars({ '--i': 4 }), gap: 14 }}>
         <SternbildCard punkte={einheiten} />
         <TonnageEinheitenCard punkte={einheiten} />
         <DauerEinheitenCard punkte={einheiten} />

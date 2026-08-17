@@ -6,7 +6,8 @@ import { prozentAenderung } from './calc'
 import type { TrainingSession } from '../../types/db'
 import { Sparkline } from '../../components/Sparkline'
 import { CountUp } from '../../components/CountUp'
-import { BarChart } from './BarChart'
+import { KachelKarte } from './KachelKarte'
+import { ListChart } from './ListChart'
 
 /** Ein Kennwert der Kopfzeile. Die Kacheln tragen keine eigene Farbe mehr
     (früher c1–c4): Farbe bedeutet in dieser App Trainingstag, und ein
@@ -67,6 +68,14 @@ export function WochenpensumCard({ erledigt, geplant }: { erledigt: number; gepl
   )
 }
 
+/** Tage seit der letzten Einheit — die einzige Kennzahl im Cockpit, die
+    beantwortet, ob man noch im Rhythmus liegt. Bewusst ohne Einheit: die
+    Beschriftung sagt schon "Tage", und ein zweites Wort neben der großen
+    Zahl passt in der schmalsten Kachel (146 px) nicht mehr daneben. */
+export function RuhetageCard({ tage }: { tage: number | null }) {
+  return <KpiCard label="Ruhetage" value={tage == null ? '—' : <CountUp value={tage} />} />
+}
+
 export function TrainingszeitCard({ woche, vorwoche }: { woche: number; vorwoche?: number }) {
   return (
     <KpiCard
@@ -78,63 +87,44 @@ export function TrainingszeitCard({ woche, vorwoche }: { woche: number; vorwoche
   )
 }
 
+/** durchschnittsDauerJeUebung() liefert bereits absteigend sortiert — die
+    längste Übung steht damit von selbst ganz oben, genau wie gewünscht. */
 export function UebungsdauerCard({ eintraege }: { eintraege: UebungsDauerSchnitt[] }) {
   if (eintraege.length < 2) {
-    return (
-      <div className="card">
-        <h3>
-          <span className="tick" />Ø Dauer je Übung
-        </h3>
-        <p className="muted tiny" style={{ padding: '22px 0', textAlign: 'center', margin: 0 }}>
-          Sobald du Sätze mit Haken abschließt, steht hier, wie lange jede Übung im Schnitt dauert.
-        </p>
-      </div>
-    )
+    return <KachelKarte titel="Ø Dauer je Übung" wert="—" hinweis="noch zu wenig abgehakt" />
   }
-  const liste = eintraege.slice(0, 8)
+
+  const liste = eintraege.slice(0, 12)
+  const laengste = liste[0]
+
   return (
-    <div className="card">
-      <h3>
-        <span className="tick" />Ø Dauer je Übung
-      </h3>
-      <BarChart
-        ariaLabel="Durchschnittliche Dauer je Übung"
-        schrittRunden={1}
-        yLabel={v => Math.round(v).toString()}
-        schnittLabel={v => `${v.toFixed(1)} min`}
-        punkte={liste.map(e => ({
-          label: e.name.length > 9 ? e.name.slice(0, 8) + '…' : e.name,
+    <KachelKarte titel="Ø Dauer je Übung" wert={laengste.minuten.toFixed(1)} einheit="min" hinweis={`längste: ${laengste.name}`}>
+      <ListChart
+        ariaLabel="Durchschnittliche Dauer je Übung, längste zuerst"
+        zeilen={liste.map(e => ({
+          id: e.id,
+          name: e.name,
           wert: e.minuten,
+          wertText: `${e.minuten.toFixed(1)} min`,
           farbe: '#8B7CFF',
-          tipTitel: `${e.minuten.toFixed(1)} min`,
-          tipZeilen: [e.name],
         }))}
       />
-    </div>
+    </KachelKarte>
   )
 }
 
 export function LetzteEinheitenCard({ sessions, days }: { sessions: TrainingSession[]; days: DayWithExercises[] }) {
-  const liste = sessions.filter(s => s.status === 'completed').slice(0, 6)
+  // useAllSessionsForDays sortiert bereits absteigend nach Startzeit —
+  // die jüngste Einheit steht dadurch oben.
+  const liste = sessions.filter(s => s.status === 'completed').slice(0, 10)
   if (!liste.length) {
-    return (
-      <div className="card">
-        <h3>
-          <span className="tick" />
-          Letzte Einheiten
-        </h3>
-        <p className="muted tiny" style={{ padding: '22px 0', textAlign: 'center', margin: 0 }}>
-          Sobald du eine Einheit beendest, steht sie hier.
-        </p>
-      </div>
-    )
+    return <KachelKarte titel="Letzte Einheiten" wert="—" hinweis="noch keine beendet" />
   }
+
+  const zuletzt = days.find(d => d.id === liste[0].day_id)?.name ?? '—'
+
   return (
-    <div className="card">
-      <h3>
-        <span className="tick" />
-        Letzte Einheiten
-      </h3>
+    <KachelKarte titel="Letzte Einheiten" wert={liste.length} hinweis={`zuletzt ${zuletzt}`}>
       <div className="kalliste" style={{ maxHeight: 'none' }}>
         {liste.map(s => (
           <div key={s.id}>
@@ -145,6 +135,6 @@ export function LetzteEinheitenCard({ sessions, days }: { sessions: TrainingSess
           </div>
         ))}
       </div>
-    </div>
+    </KachelKarte>
   )
 }

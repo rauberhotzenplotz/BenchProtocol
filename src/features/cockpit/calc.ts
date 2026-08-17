@@ -52,6 +52,22 @@ export function trainingszeitDaten(sessions: TrainingSession[]) {
   }
 }
 
+/** Tage seit der zuletzt beendeten Einheit — null, solange keine
+    aufgezeichnet ist. Gezählt werden Kalendertage, nicht 24-Stunden-
+    Blöcke: eine Einheit von gestern Abend ist "1 Tag her", auch wenn erst
+    zwölf Stunden vergangen sind. Der Umweg über Date.UTC mit den lokalen
+    Datumsteilen schneidet die Uhrzeit sauber ab und ist gegen Sommerzeit-
+    Sprünge immun (ein 23- oder 25-Stunden-Tag zählt trotzdem als einer). */
+export function ruhetage(sessions: TrainingSession[], jetzt: number = Date.now()): number | null {
+  const zeiten = sessions.filter(s => s.status === 'completed' && s.ended_at).map(s => new Date(s.started_at).getTime())
+  if (!zeiten.length) return null
+  const kalendertag = (ms: number) => {
+    const d = new Date(ms)
+    return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+  }
+  return Math.max(0, Math.round((kalendertag(jetzt) - kalendertag(Math.max(...zeiten))) / 864e5))
+}
+
 /** Veränderung in Prozent ggü. einem Vorwert — ohne Vorwert (0 oder nichts
     geloggt) gibt es keine sinnvolle Prozentzahl, dann lieber nichts zeigen
     als eine unendliche/verzerrte Angabe. */

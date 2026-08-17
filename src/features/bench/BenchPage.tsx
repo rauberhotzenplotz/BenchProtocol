@@ -6,6 +6,7 @@ import { AusgangsdatenCard } from './AusgangsdatenCard'
 import { GoalCard } from './GoalCard'
 import { RechnerCard } from './RechnerCard'
 import { CountUp } from '../../components/CountUp'
+import { wochenLabel } from '../training/calc'
 import { cssVars } from '../../lib/style'
 import type { Plan } from '../../types/db'
 
@@ -57,9 +58,10 @@ function BenchTab({ plan }: { plan: Plan }) {
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
-          <span className="eyebrow">4-Wochen-Block Nr. {plan.block ?? 1}</span>
+          <span className="eyebrow">
+            Block {plan.block ?? 1} · {wochenLabel(plan.week, plan)}
+          </span>
           <h2>Bankdrücken</h2>
-          <p>Läuft vollautomatisch — die Kilo-Vorgaben für beide Bank-Einheiten kommen aus deinem echten Training.</p>
         </div>
       </div>
 
@@ -68,18 +70,6 @@ function BenchTab({ plan }: { plan: Plan }) {
           <strong>Letzter automatischer Blockwechsel:</strong> {plan.last_delta_note}
         </div>
       )}
-
-      {bsp && (
-        <div className="note" style={cssVars({ '--i': 1 })}>
-          Das sind Beispielwerte zur Orientierung — sobald du die Deload-Woche dieses Blocks komplett abhakst,
-          rechnet der nächste Block automatisch mit deinen echten Zahlen.
-        </div>
-      )}
-
-      <div className="note" style={cssVars({ '--i': 1 })}>
-        Der nächste Block wird automatisch berechnet, sobald du die Deload-Woche komplett abhakst und die letzte
-        Einheit beendest.
-      </div>
 
       <AusgangsdatenCard plan={plan} />
 

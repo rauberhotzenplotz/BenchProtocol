@@ -37,7 +37,6 @@ export function VolumePage() {
         <div>
           <span className="eyebrow">Kontrollblatt</span>
           <h2>Volumen</h2>
-          <p>Abgehakte Arbeitssätze diese Woche je Muskelgruppe und Trainingstag — Zielband 8–20 Sätze pro Woche.</p>
         </div>
       </div>
 

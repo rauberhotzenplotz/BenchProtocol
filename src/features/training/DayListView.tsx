@@ -36,7 +36,6 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
         <div>
           <span className="eyebrow">{plan.typ === 'bench' ? `Block ${plan.block ?? 1}` : wochenLabel(plan.week, plan)}</span>
           <h2>Training</h2>
-          <p>Tippe auf einen Tag, um die Einheit zu öffnen.</p>
         </div>
         <PlanPicker />
       </div>

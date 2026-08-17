@@ -7,7 +7,6 @@ export function GuidePage() {
         <div>
           <span className="eyebrow">Bedienung</span>
           <h2>Anleitung</h2>
-          <p>Kurzer Überblick über die Bereiche und die Bankdrücken-Progression.</p>
         </div>
       </div>
 

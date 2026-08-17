@@ -115,7 +115,6 @@ export function ImportPage() {
         <div>
           <span className="eyebrow">Excel-Import</span>
           <h2>Import</h2>
-          <p>Eine .xlsx-Datei mit „Tag N“-Blättern einlesen und daraus einen neuen Plan anlegen.</p>
         </div>
       </div>
 
