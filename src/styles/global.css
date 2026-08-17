@@ -450,6 +450,10 @@ body {
 .upd .pt { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: live 1.9s ease-in-out infinite; }
 @keyframes updIn { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
 
+/* Warteschlange für offline gepufferte Trainings-Mutationen — gleiches
+   Pillen-Muster wie .upd, nur in der Warnfarbe statt Neon. */
+.upd.offline { border-color: var(--warn); background: rgba(255,196,77,.1); color: var(--warn); cursor: default; }
+
 .clock { font-family: var(--f-mono); font-size: 12px; color: var(--ink-3); letter-spacing: .06em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .stage { flex: 1; padding: 24px 26px 92px; max-width: 1420px; width: 100%; }

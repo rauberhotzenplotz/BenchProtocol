@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import type { Exercise, LoggedSet, PlanDay, TrainingSession } from '../../types/db'
+import type { Exercise, LoggedSet, PlanDay, PlanTyp, TrainingSession } from '../../types/db'
+import { MUTATION_KEYS } from '../../lib/offlineMutations'
 
 export type DayWithExercises = PlanDay & { exercises: Exercise[] }
 
@@ -137,46 +138,21 @@ export function useAllSetsForExercises(exerciseIds: string[]) {
   })
 }
 
+// mutationFn/onMutate/onError/onSuccess sind zentral in
+// src/lib/offlineMutations.ts registriert (registerOfflineMutationDefaults,
+// aufgerufen in main.tsx) — nötig, damit eine offline pausierte Mutation
+// auch nach einem Reload noch weiß, was sie beim Wiederverbinden tun soll
+// (Mutationsfunktionen sind nicht serialisierbar, mutationKey schon).
 export function useUpsertSet() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (row: {
-      exercise_id: string
-      week: number
-      position: number
-      kg?: number | null
-      reps?: number | null
-      rpe?: number | null
-      done?: boolean
-      done_at?: string | null
-    }) => {
-      const { data, error } = await supabase
-        .from('logged_sets')
-        .upsert(row, { onConflict: 'exercise_id,week,position' })
-        .select()
-        .single()
-      if (error) throw error
-      return data as LoggedSet
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sets'] })
-      qc.invalidateQueries({ queryKey: ['sets-all'] })
-    },
-  })
+  return useMutation<
+    LoggedSet,
+    Error,
+    { exercise_id: string; week: number; position: number; kg?: number | null; reps?: number | null; rpe?: number | null; done?: boolean; done_at?: string | null }
+  >({ mutationKey: MUTATION_KEYS.upsertSet })
 }
 
 export function useDeleteSet() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('logged_sets').delete().eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sets'] })
-      qc.invalidateQueries({ queryKey: ['sets-all'] })
-    },
-  })
+  return useMutation<void, Error, string>({ mutationKey: MUTATION_KEYS.deleteSet })
 }
 
 // ── Einheiten (Start/Ende) ───────────────────────────────────────────
@@ -236,48 +212,16 @@ export function useSession(dayId: string | undefined, week: number) {
 }
 
 export function useStartSession() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ dayId, week }: { dayId: string; week: number }) => {
-      const { data, error } = await supabase
-        .from('sessions')
-        .upsert(
-          // status ausdrücklich zurücksetzen — falls diese Woche vorher als
-          // "übersprungen" markiert war, macht ein echter Trainingsstart
-          // das rückgängig.
-          { day_id: dayId, week, started_at: new Date().toISOString(), ended_at: null, minutes: null, status: 'completed' },
-          { onConflict: 'day_id,week' },
-        )
-        .select()
-        .single()
-      if (error) throw error
-      return data as TrainingSession
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['session'] })
-      qc.invalidateQueries({ queryKey: ['sessions'] })
-      qc.invalidateQueries({ queryKey: ['sessions-all'] })
-    },
-  })
+  return useMutation<TrainingSession, Error, { dayId: string; week: number }>({ mutationKey: MUTATION_KEYS.startSession })
 }
 
+/** dayId/week/planId/planTyp werden nur für den offline-optimistischen
+    Cache-Write bzw. den automatischen Block-Check nach Erfolg gebraucht
+    (siehe registerOfflineMutationDefaults) — der eigentliche Supabase-
+    Aufruf nutzt weiterhin nur id/startedAt. */
 export function useEndSession() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, startedAt }: { id: string; startedAt: string }) => {
-      const minutes = Math.max(1, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000))
-      const { error } = await supabase
-        .from('sessions')
-        .update({ ended_at: new Date().toISOString(), minutes })
-        .eq('id', id)
-      if (error) throw error
-      return minutes
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['session'] })
-      qc.invalidateQueries({ queryKey: ['sessions'] })
-      qc.invalidateQueries({ queryKey: ['sessions-all'] })
-    },
+  return useMutation<number, Error, { id: string; startedAt: string; dayId: string; week: number; planId: string; planTyp: PlanTyp }>({
+    mutationKey: MUTATION_KEYS.endSession,
   })
 }
 
@@ -306,19 +250,5 @@ export function useDeleteSession() {
     zählt nicht in Frequenz/Trainingszeit, taucht aber im Kalender auf,
     statt so auszusehen, als sei der Tag nie angefasst worden. */
 export function useSkipSession() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ dayId, week }: { dayId: string; week: number }) => {
-      const jetzt = new Date().toISOString()
-      const { error } = await supabase
-        .from('sessions')
-        .upsert({ day_id: dayId, week, started_at: jetzt, ended_at: jetzt, minutes: 0, status: 'skipped' }, { onConflict: 'day_id,week' })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['session'] })
-      qc.invalidateQueries({ queryKey: ['sessions'] })
-      qc.invalidateQueries({ queryKey: ['sessions-all'] })
-    },
-  })
+  return useMutation<void, Error, { dayId: string; week: number }>({ mutationKey: MUTATION_KEYS.skipSession })
 }

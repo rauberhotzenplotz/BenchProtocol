@@ -5,7 +5,7 @@ import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken, tonnageOf } from '.
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
 import { useUpsertSet, useEndSession } from './queries'
-import { useBenchProgression, benchRowsFor, useAutoAdvanceBlock } from '../bench/queries'
+import { useBenchProgression, benchRowsFor } from '../bench/queries'
 import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
 import { zeitText } from '../../lib/zeit'
@@ -91,7 +91,6 @@ export function GymMode({
 }: Props) {
   const upsertSet = useUpsertSet()
   const endSession = useEndSession()
-  const autoAdvanceBlock = useAutoAdvanceBlock()
   const restTimer = useRestTimer()
   const { data: progression } = useBenchProgression(plan.id)
 
@@ -327,8 +326,11 @@ export function GymMode({
 
   const beenden = () => {
     restTimer.stop()
-    if (session) endSession.mutate({ id: session.id, startedAt: session.started_at })
-    if (plan.typ === 'bench') autoAdvanceBlock.mutate(plan.id)
+    // Der automatische Block-Check läuft nicht mehr hier, sondern im
+    // registrierten onSuccess von endSession (src/lib/offlineMutations.ts)
+    // — vorher lief er ohne auf endSession zu warten, also potenziell noch
+    // vor dessen Bestätigung; jetzt garantiert erst danach, auch offline.
+    if (session) endSession.mutate({ id: session.id, startedAt: session.started_at, dayId: day.id, week, planId: plan.id, planTyp: plan.typ })
     onClose()
   }
 

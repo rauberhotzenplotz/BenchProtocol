@@ -18,7 +18,6 @@ import { useRestTimer } from './rest-timer-context'
 import { GymMode, type GymPosition } from './GymMode'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
-import { useAutoAdvanceBlock } from '../bench/queries'
 import { useVolumeRows } from '../volume/queries'
 import { cssVars } from '../../lib/style'
 import { ZahlEingabe } from '../../components/ZahlRad'
@@ -61,7 +60,6 @@ export function SessionView({
 }: Props) {
   const startSession = useStartSession()
   const endSession = useEndSession()
-  const autoAdvanceBlock = useAutoAdvanceBlock()
   const createExercise = useCreateExercise(plan.id)
   const updateDay = useUpdateDay(plan.id)
   const { data: volumeRows } = useVolumeRows(plan.id)
@@ -79,8 +77,11 @@ export function SessionView({
 
   const beenden = async () => {
     if (!session) return
-    await endSession.mutateAsync({ id: session.id, startedAt: session.started_at })
-    if (plan.typ === 'bench') autoAdvanceBlock.mutate(plan.id)
+    // Der automatische Block-Check läuft nicht mehr hier, sondern im
+    // registrierten onSuccess von endSession (src/lib/offlineMutations.ts)
+    // — so greift er garantiert erst nach bestätigtem Sync, auch wenn
+    // endSession offline pausiert und erst später nachgeholt wird.
+    await endSession.mutateAsync({ id: session.id, startedAt: session.started_at, dayId: day.id, week, planId: plan.id, planTyp: plan.typ })
   }
 
   const laeuft = !!session && !session.ended_at

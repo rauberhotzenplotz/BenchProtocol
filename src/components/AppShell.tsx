@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { useIsMutating } from '@tanstack/react-query'
 import { Nav } from './Nav'
 import { UpdateBanner } from './UpdateBanner'
+import { OfflineBanner } from './OfflineBanner'
 import { RestTimerBar } from './RestTimerBar'
 import { Mark } from './Mark'
 import { BootScreen } from './BootScreen'
@@ -77,6 +78,7 @@ export function AppShell() {
             Bench<em>Protocol</em>
           </h1>
           <UpdateBanner />
+          <OfflineBanner />
           <span className="spacer" />
           <div className="clock">{uhrzeit}</div>
           <button className="btn ghost sm" onClick={() => void signOut()}>
