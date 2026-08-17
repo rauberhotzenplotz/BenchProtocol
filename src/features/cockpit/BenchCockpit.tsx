@@ -3,8 +3,9 @@ import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung, gruppeSetsByExercise } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, trainingszeitDaten, einheitenDaten, prozentAenderung } from './calc'
-import { NextWorkoutCard, TrainingszeitCard, UebungsdauerCard, KpiCard } from './widgets'
+import { naechsterTag, trainingszeitDaten, einheitenDaten, prozentAenderung, startInfo, wochenPensum } from './calc'
+import { TrainingszeitCard, UebungsdauerCard, KpiCard, WochenpensumCard, LetzteEinheitenCard } from './widgets'
+import { StartCard } from './StartCard'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { SternbildCard } from './SternbildCard'
@@ -53,27 +54,37 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
         <PlanPicker />
       </div>
 
-      <div className="grid g3" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
-        <NextWorkoutCard tag={tag} onStart={tag ? () => navigate('/training', { state: { autoStartDayId: tag.id } }) : undefined} />
-        <TrainingszeitCard woche={t.woche} vorwoche={t.vorwoche} />
-        <KpiCard cls="c1" label="Geschätztes 1RM" value={<CountUp value={e1} decimals={1} />} unit="kg" />
+      <div style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
+        <StartCard
+          tag={tag}
+          info={startInfo(tag, sessions)}
+          onStart={tag ? () => navigate('/training', { state: { autoStartDayId: tag.id } }) : undefined}
+        />
+      </div>
+
+      <div className="kpirow" style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
+        <KpiCard label="Geschätztes 1RM" value={<CountUp value={e1} decimals={1} />} unit="kg" />
+        <WochenpensumCard {...wochenPensum(days, sessions, week)} />
         <KpiCard
-          cls="c3"
           label={`Tonnage ${wochenLabel(week, plan).split(' ·')[0]}`}
           value={<CountUp value={Math.round(wochenTonnage / 1000 * 10) / 10} decimals={1} />}
           unit="t"
           deltaPct={prozentAenderung(wochenTonnage, wochenTonnageVorwoche)}
         />
         <KpiCard
-          cls="c4"
           label="Wochenvolumen"
           value={<CountUp value={gesamtVolumen} />}
           unit="Sätze"
           deltaPct={prozentAenderung(gesamtVolumen, gesamtVolumenVorwoche)}
         />
+        <TrainingszeitCard woche={t.woche} vorwoche={t.vorwoche} />
       </div>
 
-      <div className="stack" style={{ ...cssVars({ '--i': 2 }), marginTop: 14, gap: 14 }}>
+      <div style={{ ...cssVars({ '--i': 3 }), marginBottom: 14 }}>
+        <LetzteEinheitenCard sessions={sessions} days={days} />
+      </div>
+
+      <div className="stack" style={{ ...cssVars({ '--i': 4 }), gap: 14 }}>
         <SternbildCard punkte={einheiten} />
         <TonnageEinheitenCard punkte={einheiten} />
         <DauerEinheitenCard punkte={einheiten} />

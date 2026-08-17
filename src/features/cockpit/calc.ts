@@ -1,10 +1,38 @@
 import type { DayWithExercises } from '../training/queries'
-import { tagFortschritt, tonnageOf, gruppeSetsByExercise, type TagFortschritt } from '../training/calc'
+import { tagFortschritt, tonnageOf, gruppeSetsByExercise, setsOf, type TagFortschritt } from '../training/calc'
 import { tagFarbe } from '../training/dayColor'
 import type { LoggedSet, TrainingSession } from '../../types/db'
 
 export function naechsterTag(days: DayWithExercises[], setsByExercise: Map<string, LoggedSet[]>) {
   return days.find(d => !tagFortschritt(d.exercises, setsByExercise).fertig) ?? days[0] ?? null
+}
+
+export interface StartInfo {
+  uebungen: string[]
+  saetze: number
+  /** Erfahrungswert aus beendeten Einheiten genau dieses Tages. Ohne eine
+      einzige beendete Einheit bleibt er null — dann steht in der Startkarte
+      keine Dauer statt einer erfundenen Schätzung. */
+  minuten: number | null
+}
+
+/** Was in der nächsten Einheit ansteht: Übungsnamen, geplante Sätze und die
+    übliche Dauer. Grundlage der Startkarte im Cockpit. */
+export function startInfo(tag: DayWithExercises | null, sessions: TrainingSession[]): StartInfo | null {
+  if (!tag) return null
+  const beendet = sessions.filter(s => s.day_id === tag.id && s.status === 'completed' && s.minutes != null)
+  return {
+    uebungen: tag.exercises.map(ex => ex.name),
+    saetze: tag.exercises.reduce((a, ex) => a + setsOf(ex.scheme), 0),
+    minuten: beendet.length ? Math.round(beendet.reduce((a, s) => a + (s.minutes ?? 0), 0) / beendet.length) : null,
+  }
+}
+
+/** Beendete Einheiten dieser Woche gegen die Zahl der Trainingstage des
+    Plans — das Soll/Ist der laufenden Woche für den Fortschrittsmesser. */
+export function wochenPensum(days: DayWithExercises[], sessions: TrainingSession[], week: number) {
+  const erledigt = sessions.filter(s => s.week === week && s.status === 'completed' && s.ended_at).length
+  return { erledigt: Math.min(erledigt, days.length), geplant: days.length }
 }
 
 export function trainingszeitDaten(sessions: TrainingSession[]) {

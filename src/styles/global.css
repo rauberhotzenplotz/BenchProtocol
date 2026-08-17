@@ -513,9 +513,12 @@ body {
 /* ── KPI ────────────────────────────────────────────────────── */
 .kpi { padding: 15px 17px 14px; }
 .kpi .lab { font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .17em; text-transform: uppercase; color: var(--ink-3); }
+/* Proportionale Ziffern, kein tabular-nums: gleich breite Ziffern lassen
+   eine Zahl wie 121 auf Anzeigengröße auseinandergezogen wirken, und
+   ausgerichtet werden muss hier nichts — jede Kachel steht für sich. */
 .kpi .val {
   font-family: var(--f-display); font-size: 40px; font-weight: 600; line-height: 1.02;
-  letter-spacing: .01em; margin-top: 7px; font-variant-numeric: tabular-nums;
+  letter-spacing: .01em; margin-top: 7px;
   display: flex; align-items: baseline; gap: 6px; color: var(--ink);
 }
 .kpi .val u { text-decoration: none; font-size: 14px; color: var(--ink-3); font-family: var(--f-body); letter-spacing: 0; }
@@ -537,18 +540,99 @@ body {
 .kpi .sub.down { color: var(--crit); }
 .kpi .spark { position: absolute; right: 0; bottom: 0; left: 0; height: 46px; opacity: .5; pointer-events: none; }
 
-.kpi-go {
-  appearance: none; -webkit-appearance: none;
-  display: block; width: 100%; text-align: left; font: inherit; color: inherit;
-  cursor: pointer;
+/* Soll/Ist der Woche als Balken statt als zweite Zahl — die Kachel sagt
+   damit auf einen Blick, wie viel noch offen ist. */
+.kpi-meter {
+  margin-top: 10px; height: 5px; border-radius: 99px;
+  background: rgba(6,9,13,.8); border: 1px solid var(--line-soft); overflow: hidden;
 }
-.kpi-go-pfeil {
-  position: absolute; right: 15px; bottom: 13px;
+.kpi-meter i {
+  display: block; height: 100%; border-radius: 99px; width: 0;
+  background: var(--neon); box-shadow: 0 0 10px var(--neon);
+  transition: width .9s cubic-bezier(.22,1,.36,1);
+}
+.kpi-meter.voll i { background: var(--good); box-shadow: 0 0 10px var(--good); }
+
+/* Kennzahlen-Reihe: auto-fit statt fester Spaltenzahl. Auf Handybreite
+   stehen dadurch zwei schmale Kacheln nebeneinander statt einer Kette
+   bildschirmfüllender Blöcke; auf dem Schreibtisch passen so viele hin, wie
+   Platz haben. Ohne eigene Umbruchpunkte, weil die Zahl der Kacheln je
+   Plantyp verschieden ist (Bank fünf, Standard drei). */
+.kpirow { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); }
+@media (max-width: 640px) {
+  .kpirow { gap: 10px; }
+  .kpirow .kpi { padding: 12px 13px 11px; }
+  .kpirow .kpi .val { font-size: 30px; margin-top: 5px; }
+  .kpirow .kpi .val u { font-size: 12px; }
+  .kpirow .kpi .sub { font-size: 10.5px; }
+}
+
+/* ── Startkarte ─────────────────────────────────────────────────
+   Die einzige Handlung des Cockpits — alles andere darunter ist
+   Rückschau. Sie bekommt deshalb als Einzige die volle Breite, den
+   Akzentrand und den Startschein, statt sich als vierte Kachel zwischen
+   den Kennzahlen zu verstecken. */
+.startklar {
+  position: relative; width: 100%; text-align: left;
+  display: flex; flex-direction: column; align-items: stretch;
+  appearance: none; -webkit-appearance: none;
+  background: linear-gradient(158deg, rgba(22,31,43,.9), rgba(13,18,26,.92));
+  border: 1px solid var(--line); border-radius: var(--r-l);
+  padding: 16px 60px 16px 21px;
+  color: inherit; font: inherit; cursor: pointer; overflow: hidden;
+  transition: border-color .3s, transform .3s, box-shadow .3s;
+}
+.startklar.leer { cursor: default; padding-right: 21px; }
+.startklar::after {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--neon); box-shadow: 0 0 16px var(--neon); opacity: .85;
+}
+/* Der Schein sitzt hinter dem Text und wandert beim Antippen leicht mit —
+   das Startfeld soll sich anfühlen wie eine geladene Rampe. */
+.startklar::before {
+  content: ""; position: absolute; left: -40px; top: 50%; width: 320px; height: 220px;
+  transform: translateY(-50%); pointer-events: none;
+  background: radial-gradient(closest-side, rgba(53,240,208,.16), transparent 72%);
+  transition: opacity .35s; opacity: .75;
+}
+.startklar:hover { border-color: rgba(53,240,208,.5); transform: translateY(-2px);
+  box-shadow: 0 18px 46px -22px rgba(0,0,0,.95); }
+.startklar:hover::before { opacity: 1; }
+.startklar:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
+.startklar:active { transform: translateY(0) scale(.995); }
+
+.startklar .sk-name {
+  position: relative; display: block; margin-top: 5px;
+  font-family: var(--f-display); font-weight: 600; font-size: 27px;
+  letter-spacing: .03em; text-transform: uppercase; line-height: 1.1; color: var(--ink);
+}
+.startklar .sk-meta {
+  position: relative; margin-top: 7px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  font-family: var(--f-mono); font-size: 11px; color: var(--ink-3);
+}
+.startklar .sk-meta i { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-4); flex: none; }
+.startklar .sk-uebungen {
+  position: relative; margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap;
+}
+.startklar .sk-uebungen span {
+  font-size: 11px; color: var(--ink-2); padding: 4px 9px; border-radius: 99px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.03);
+  white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.startklar .sk-uebungen .mehr { color: var(--ink-3); font-family: var(--f-mono); }
+.startklar .sk-pfeil {
+  position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
   display: inline-flex; color: var(--neon);
 }
-.kpi-go-pfeil svg { width: 16px; height: 16px; stroke: currentColor; fill: none;
+.startklar .sk-pfeil svg { width: 22px; height: 22px; stroke: currentColor; fill: none;
   stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s; }
-.kpi-go:hover .kpi-go-pfeil svg, .kpi-go:focus-visible .kpi-go-pfeil svg { transform: translateX(4px); }
+.startklar:hover .sk-pfeil svg { transform: translateX(5px); }
+
+@media (max-width: 640px) {
+  .startklar { padding: 14px 48px 14px 17px; }
+  .startklar .sk-name { font-size: 23px; }
+  .startklar .sk-pfeil { right: 15px; }
+}
 
 /* ── Chips / Pills ──────────────────────────────────────────── */
 .pills { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -834,7 +918,7 @@ tr:hover .rowbtn, .rowbtn:focus, .rowbtn:focus-visible, .rowbtn:hover, .rowbtn:a
 .dstat .k { font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
 .dstat .v {
   font-family: var(--f-display); font-size: 27px; font-weight: 600; line-height: 1.1;
-  font-variant-numeric: tabular-nums; margin-top: 3px; color: var(--ink);
+  margin-top: 3px; color: var(--ink);
 }
 .dstat .v u { text-decoration: none; font-size: 12px; color: var(--ink-3); font-family: var(--f-body); }
 .dstat .n { font-size: 11px; color: var(--ink-4); margin-top: 2px; }

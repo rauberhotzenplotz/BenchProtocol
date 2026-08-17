@@ -8,15 +8,16 @@ import { Sparkline } from '../../components/Sparkline'
 import { CountUp } from '../../components/CountUp'
 import { BarChart } from './BarChart'
 
+/** Ein Kennwert der Kopfzeile. Die Kacheln tragen keine eigene Farbe mehr
+    (früher c1–c4): Farbe bedeutet in dieser App Trainingstag, und ein
+    Kennwert gehört zu keinem — sie stand hier also nur herum. */
 export function KpiCard({
-  cls,
   label,
   value,
   unit,
   spark,
   deltaPct,
 }: {
-  cls: 'c1' | 'c2' | 'c3' | 'c4'
   label: string
   value: ReactNode
   unit?: string
@@ -26,7 +27,7 @@ export function KpiCard({
   deltaPct?: number | null
 }) {
   return (
-    <div className={`card kpi ${cls}`}>
+    <div className="card kpi">
       <div className="lab">{label}</div>
       <div className="val">
         <span className="zahlglow">{value}</span>
@@ -46,32 +47,30 @@ export function KpiCard({
   )
 }
 
-export function NextWorkoutCard({ tag, onStart }: { tag: DayWithExercises | null; onStart?: () => void }) {
-  if (!tag || !onStart) {
-    return <KpiCard cls="c1" label="Als Nächstes" value={<span style={{ fontSize: 22 }}>{tag ? tag.name : '—'}</span>} />
-  }
+/** Soll/Ist der laufenden Woche als Messbalken statt als nackte Zahl: hier
+    zählt nicht der Wert an sich, sondern wie viel vom Pensum noch offen
+    ist — und das liest man an einem Balken schneller ab. */
+export function WochenpensumCard({ erledigt, geplant }: { erledigt: number; geplant: number }) {
+  const anteil = geplant ? Math.min(1, erledigt / geplant) : 0
+  const fertig = geplant > 0 && erledigt >= geplant
   return (
-    <button className="card kpi c1 kpi-go" onClick={onStart}>
-      <div className="lab">Als Nächstes</div>
+    <div className="card kpi">
+      <div className="lab">Einheiten diese Woche</div>
       <div className="val">
-        <span className="zahlglow" style={{ fontSize: 22 }}>
-          {tag.name}
-        </span>
+        <span className="zahlglow">{erledigt}</span>
+        <u>von {geplant}</u>
       </div>
-      <span className="kpi-go-pfeil">
-        <svg viewBox="0 0 24 24">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </span>
-    </button>
+      <div className={'kpi-meter' + (fertig ? ' voll' : '')}>
+        <i style={{ width: `${(anteil * 100).toFixed(0)}%` }} />
+      </div>
+    </div>
   )
 }
 
 export function TrainingszeitCard({ woche, vorwoche }: { woche: number; vorwoche?: number }) {
   return (
     <KpiCard
-      cls="c4"
-      label="Trainingszeit · letzte 7 Tage"
+      label="Trainingszeit · 7 Tage"
       value={<CountUp value={woche} />}
       unit="min"
       deltaPct={vorwoche != null ? prozentAenderung(woche, vorwoche) : undefined}

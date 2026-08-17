@@ -3,8 +3,9 @@ import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, trainingszeitDaten, einheitenDaten } from './calc'
-import { NextWorkoutCard, TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard } from './widgets'
+import { naechsterTag, trainingszeitDaten, einheitenDaten, startInfo, wochenPensum } from './calc'
+import { TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard, WochenpensumCard } from './widgets'
+import { StartCard } from './StartCard'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { SternbildCard } from './SternbildCard'
@@ -51,11 +52,18 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
         <PlanPicker />
       </div>
 
-      <div className="grid g3" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
-        <NextWorkoutCard tag={tag} onStart={tag ? () => navigate('/training', { state: { autoStartDayId: tag.id } }) : undefined} />
+      <div style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
+        <StartCard
+          tag={tag}
+          info={startInfo(tag, sessions)}
+          onStart={tag ? () => navigate('/training', { state: { autoStartDayId: tag.id } }) : undefined}
+        />
+      </div>
+
+      <div className="kpirow" style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
+        <WochenpensumCard {...wochenPensum(days, sessions, week)} />
         <TrainingszeitCard woche={t.woche} vorwoche={t.vorwoche} />
         <KpiCard
-          cls="c3"
           label="Tonnage letztes Training"
           value={<CountUp value={Math.round(letzteTonnage / 1000 * 10) / 10} decimals={1} />}
           unit="t"
@@ -63,11 +71,11 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
         />
       </div>
 
-      <div style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
+      <div style={{ ...cssVars({ '--i': 3 }), marginBottom: 14 }}>
         <LetzteEinheitenCard sessions={sessions} days={days} />
       </div>
 
-      <div className="stack" style={{ ...cssVars({ '--i': 3 }), gap: 14 }}>
+      <div className="stack" style={{ ...cssVars({ '--i': 4 }), gap: 14 }}>
         <SternbildCard punkte={einheiten} />
         <TonnageEinheitenCard punkte={einheiten} />
         <DauerEinheitenCard punkte={einheiten} />
