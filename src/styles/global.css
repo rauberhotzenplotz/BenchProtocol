@@ -530,7 +530,7 @@ body {
 .kpi .spark { position: absolute; right: 0; bottom: 0; left: 0; height: 46px; opacity: .5; pointer-events: none; }
 
 .kpi-go {
-  appearance: none; -webkit-appearance: none; background: none; border: none;
+  appearance: none; -webkit-appearance: none;
   display: block; width: 100%; text-align: left; font: inherit; color: inherit;
   cursor: pointer;
 }
