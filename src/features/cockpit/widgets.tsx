@@ -138,7 +138,7 @@ export function LetzteEinheitenCard({ sessions, days }: { sessions: TrainingSess
         {liste.map(s => (
           <div key={s.id}>
             <i style={{ background: tagFarbe(days, s.day_id) }} />
-            <span style={{ color: tagFarbe(days, s.day_id) }}>{days.find(d => d.id === s.day_id)?.name ?? '—'}</span>
+            <span>{days.find(d => d.id === s.day_id)?.name ?? '—'}</span>
             <span className="dat">{new Date(s.started_at).toLocaleDateString('de-DE')}</span>
             <span className="dau">{s.minutes} min</span>
           </div>
