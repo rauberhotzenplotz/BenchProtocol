@@ -42,57 +42,59 @@ export function VolumePage() {
       </div>
 
       <div className="card" style={cssVars({ '--i': 1 })}>
-        <table className="t">
-          <thead>
-            <tr>
-              <th>Muskelgruppe</th>
-              {(days ?? []).map(d => (
-                <th key={d.id} style={{ width: 64 }}>
-                  {d.name}
-                </th>
-              ))}
-              <th style={{ width: 64 }}>Summe</th>
-              <th>Notiz</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {(rows ?? []).map(r => {
-              const proTag = tabelle.get(r.muscle_group)
-              const gesamt = istGesamt(proTag)
-              const urteil = volumeVerdict(gesamt)
-              return (
-                <tr key={r.id}>
-                  <td>{r.muscle_group}</td>
-                  {(days ?? []).map(d => (
-                    <td key={d.id} className="num">
-                      {proTag?.get(d.id) ?? 0}
+        <div className="tbl-wrap" style={{ border: 0, background: 'transparent' }}>
+          <table className="t">
+            <thead>
+              <tr>
+                <th>Muskelgruppe</th>
+                {(days ?? []).map(d => (
+                  <th key={d.id} style={{ width: 64 }}>
+                    {d.name}
+                  </th>
+                ))}
+                <th style={{ width: 64 }}>Summe</th>
+                <th>Notiz</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {(rows ?? []).map(r => {
+                const proTag = tabelle.get(r.muscle_group)
+                const gesamt = istGesamt(proTag)
+                const urteil = volumeVerdict(gesamt)
+                return (
+                  <tr key={r.id}>
+                    <td>{r.muscle_group}</td>
+                    {(days ?? []).map(d => (
+                      <td key={d.id} className="num">
+                        {proTag?.get(d.id) ?? 0}
+                      </td>
+                    ))}
+                    <td className="num">
+                      <span className={`chip ${urteil.klasse}`} title={urteil.text}>
+                        {gesamt}
+                      </span>
                     </td>
-                  ))}
-                  <td className="num">
-                    <span className={`chip ${urteil.klasse}`} title={urteil.text}>
-                      {gesamt}
-                    </span>
-                  </td>
-                  <td>
-                    <input
-                      className="inp voll dim"
-                      defaultValue={r.note ?? ''}
-                      onBlur={e => updateRow.mutate({ id: r.id, patch: { note: e.target.value } })}
-                    />
-                  </td>
-                  <td>
-                    <button className="rowbtn del" title="Zeile löschen" onClick={() => deleteRow.mutate(r.id)}>
-                      <svg viewBox="0 0 24 24">
-                        <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                    <td>
+                      <input
+                        className="inp voll dim"
+                        defaultValue={r.note ?? ''}
+                        onBlur={e => updateRow.mutate({ id: r.id, patch: { note: e.target.value } })}
+                      />
+                    </td>
+                    <td>
+                      <button className="rowbtn del" title="Zeile löschen" onClick={() => deleteRow.mutate(r.id)}>
+                        <svg viewBox="0 0 24 24">
+                          <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
 
         <p className="muted tiny" style={{ marginTop: 10 }}>
           Die Zahlen kommen direkt aus abgehakten Sätzen — ordne dazu eine Übung im Training-Tab dieser Muskelgruppe zu.
