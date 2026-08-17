@@ -53,7 +53,7 @@ export function TonnageEinheitenCard({ punkte }: { punkte: EinheitPunkt[] }) {
         <div className="dstat" style={cssVars({ '--f': 'var(--neon)' })}>
           <div className="k">Bewegt gesamt</div>
           <div className="v">
-            {Math.round((gesamt / 1000) * 10) / 10}
+            <span className="zahlglow">{Math.round((gesamt / 1000) * 10) / 10}</span>
             <u> t</u>
           </div>
           <div className="n">über {punkte.length} Einheiten</div>
@@ -61,7 +61,7 @@ export function TonnageEinheitenCard({ punkte }: { punkte: EinheitPunkt[] }) {
         <div className="dstat" style={cssVars({ '--f': 'var(--violet)' })}>
           <div className="k">Ø je Einheit</div>
           <div className="v">
-            {Math.round(gesamt / punkte.length)}
+            <span className="zahlglow">{Math.round(gesamt / punkte.length)}</span>
             <u> kg</u>
           </div>
           <div className="n">{Math.round(Math.max(...punkte.map(p => p.tonnage)))} kg im Maximum</div>
@@ -69,7 +69,7 @@ export function TonnageEinheitenCard({ punkte }: { punkte: EinheitPunkt[] }) {
         <div className="dstat" style={cssVars({ '--f': 'var(--good)' })}>
           <div className="k">Sätze abgehakt</div>
           <div className="v">
-            {erledigtGesamt}
+            <span className="zahlglow">{erledigtGesamt}</span>
             <u> von {geplantGesamt}</u>
           </div>
           <div className="n">im laufenden Block</div>

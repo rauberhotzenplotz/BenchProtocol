@@ -57,7 +57,7 @@ export function DauerEinheitenCard({ punkte }: { punkte: EinheitPunkt[] }) {
         <div className="dstat gesamt" style={cssVars({ '--f': 'var(--ink)' })}>
           <div className="k">Ø je Einheit</div>
           <div className="v">
-            {Math.round(schnitt)}
+            <span className="zahlglow">{Math.round(schnitt)}</span>
             <u> min</u>
           </div>
           <div className="n">über {punkte.length} Einheiten</div>

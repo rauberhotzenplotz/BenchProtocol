@@ -29,7 +29,7 @@ export function KpiCard({
     <div className={`card kpi ${cls}`}>
       <div className="lab">{label}</div>
       <div className="val">
-        {value}
+        <span className="zahlglow">{value}</span>
         {unit && <u>{unit}</u>}
       </div>
       {deltaPct != null && (
@@ -54,7 +54,9 @@ export function NextWorkoutCard({ tag, onStart }: { tag: DayWithExercises | null
     <button className="card kpi c1 kpi-go" onClick={onStart}>
       <div className="lab">Als Nächstes</div>
       <div className="val">
-        <span style={{ fontSize: 22 }}>{tag.name}</span>
+        <span className="zahlglow" style={{ fontSize: 22 }}>
+          {tag.name}
+        </span>
       </div>
       <span className="kpi-go-pfeil">
         <svg viewBox="0 0 24 24">
