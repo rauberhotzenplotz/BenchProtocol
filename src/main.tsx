@@ -8,6 +8,7 @@ import './styles/global.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { registerOfflineMutationDefaults } from './lib/offlineMutations'
+import { registerNativeBackButton } from './lib/nativeShell'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +25,7 @@ const queryClient = new QueryClient({
 // muss also schon registriert sein, bevor resumePausedMutations() greifen
 // kann. Siehe src/lib/offlineMutations.ts.
 registerOfflineMutationDefaults(queryClient)
+registerNativeBackButton()
 
 // Persistiert den gesamten Query-Cache inkl. pausierter Mutationen in
 // localStorage — so überlebt ein offline eingetragener Satz auch einen

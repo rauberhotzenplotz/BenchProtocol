@@ -14,6 +14,18 @@ const config: CapacitorConfig = {
   android: {
     backgroundColor: '#080B10',
   },
+  plugins: {
+    // Statusleiste dunkel statt Systemstandard — passend zum Weltraum-
+    // Theme, sonst blitzt oben ein heller Balken auf. overlaysWebView/
+    // backgroundColor greifen laut Capacitor-Doku nicht mehr ab Android 15
+    // (erzwungenes Edge-to-edge) — auf älteren Geräten (wie dem aktuellen
+    // Testgerät, Android 11) wirken sie aber normal.
+    StatusBar: {
+      overlaysWebView: false,
+      style: 'DARK',
+      backgroundColor: '#080B10',
+    },
+  },
 }
 
 export default config
