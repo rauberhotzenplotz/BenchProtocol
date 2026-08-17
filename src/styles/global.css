@@ -519,15 +519,17 @@ body {
   display: flex; align-items: baseline; gap: 6px; color: var(--ink);
 }
 .kpi .val u { text-decoration: none; font-size: 14px; color: var(--ink-3); font-family: var(--f-body); letter-spacing: 0; }
-/* Glow sitzt auf einem eigenen, sich an den Inhalt anschmiegenden Span um
-   nur die Zahl (.zahlglow) — nicht auf .val selbst, sonst würde die
-   Leuchtfläche die ganze Flex-Zeile inkl. Einheit/Leerraum abdecken statt
-   nur die Ziffern. isolation:isolate hält den negativen z-index lokal. */
-.zahlglow { position: relative; isolation: isolate; display: inline-block; }
-.zahlglow::before {
-  content: ""; position: absolute; inset: -6px -9px; z-index: -1;
-  background: radial-gradient(ellipse at center, rgba(130,190,255,.85), rgba(130,190,255,.3) 55%, transparent 75%);
-  filter: blur(13px); pointer-events: none;
+/* Glow folgt der Form jedes einzelnen Zeichens: text-shadow zeichnet die
+   Glyphenkontur nach, eine geblurrte Fläche dahinter (frühere Fassung)
+   leuchtete dagegen als Rechteck um den ganzen Textblock. Gestaffelt statt
+   ein einzelner weiter Schein — die enge, kräftige Lage hält die Kante der
+   Ziffer scharf, die weiten tragen den Schein nach außen. Das Zeichen
+   selbst liegt deckend darüber und bleibt dadurch klar lesbar. */
+.zahlglow {
+  text-shadow:
+    0 0 4px rgba(150,205,255,.95),
+    0 0 11px rgba(120,185,255,.8),
+    0 0 24px rgba(100,170,255,.6);
 }
 .kpi .sub { margin-top: 5px; font-size: 11.5px; color: var(--ink-3); display: flex; align-items: center; gap: 6px; }
 .kpi .sub svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
