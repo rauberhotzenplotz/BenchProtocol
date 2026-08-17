@@ -1061,10 +1061,6 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .tagkarte:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
 .tagkarte.fertig::after { background: var(--good); box-shadow: 0 0 14px var(--good); }
 
-.tagkarte .tnr {
-  font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .18em;
-  text-transform: uppercase; color: var(--ink-3);
-}
 .tagkarte h4 {
   margin: 5px 0 3px; font-family: var(--f-display); font-weight: 600;
   font-size: 22px; letter-spacing: .03em; text-transform: uppercase; line-height: 1.1;
@@ -1077,17 +1073,6 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .tagkarte.fertig .tfill { background: var(--good); box-shadow: 0 0 10px var(--good); }
 .tagkarte .tzeile { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); }
-/* Der Aufruf sitzt unten — so stehen die drei Karten auf einer Linie,
-   auch wenn eine davon Balken und Stand zusätzlich zeigt. */
-.tagkarte .tstart {
-  display: inline-flex; align-self: flex-start; align-items: center; gap: 8px;
-  margin-top: auto; padding-top: 14px;
-  font-family: var(--f-display); font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--f, var(--neon));
-}
-.tagkarte .tstart svg { width: 15px; height: 15px; stroke: currentColor; fill: none;
-  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s; }
-.tagkarte:hover .tstart svg { transform: translateX(4px); }
 
 /* ── Geöffnete Einheit ──────────────────────────────────────── */
 .ekopf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }

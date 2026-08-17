@@ -46,7 +46,7 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
       </div>
 
       <div className="tagliste" style={cssVars({ '--i': 2 })}>
-        {days.map((d, i) => {
+        {days.map(d => {
           const f = tagFortschritt(d.exercises, setsByExercise)
           const laeuft = sessions.some(s => s.day_id === d.id && !s.ended_at)
           const rec = sessions.find(s => s.day_id === d.id && s.ended_at && s.status === 'completed')
@@ -62,14 +62,8 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
               onClick={() => onOpen(d.id)}
               onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpen(d.id)}
             >
-              <div className="tnr">Tag {i + 1}</div>
               <h4>{d.name}</h4>
               <div className="tsub">{d.sub}</div>
-              <div className="tzeile">
-                <span>{d.exercises.length} Übungen</span>
-                <span>·</span>
-                <span>{f.geplant} Sätze</span>
-              </div>
               {uebersprungen && !begonnen ? (
                 <div className="tzeile">
                   <span className="chip mute">übersprungen</span>
@@ -94,14 +88,8 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
                   </>
                 )
               )}
-              <div className="row" style={{ gap: 8, marginTop: 4 }}>
-                <div className="tstart" style={{ flex: 1 }}>
-                  {laeuft ? 'Weiter trainieren' : begonnen ? 'Einheit öffnen' : uebersprungen ? 'Doch noch trainieren' : 'Training starten'}
-                  <svg viewBox="0 0 24 24">
-                    <path d="M5 12h14M13 6l6 6-6 6" />
-                  </svg>
-                </div>
-                {!begonnen && !uebersprungen && (
+              {!begonnen && !uebersprungen && (
+                <div className="row" style={{ justifyContent: 'flex-end', marginTop: 4 }}>
                   <button
                     className="btn sm ghost"
                     onClick={e => {
@@ -111,8 +99,8 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
                   >
                     Überspringen
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )
         })}
