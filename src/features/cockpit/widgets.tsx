@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { DayWithExercises } from '../training/queries'
 import { type UebungsDauerSchnitt } from '../training/calc'
 import { tagFarbe } from '../training/dayColor'
+import { prozentAenderung } from './calc'
 import type { TrainingSession } from '../../types/db'
 import { Sparkline } from '../../components/Sparkline'
 import { CountUp } from '../../components/CountUp'
@@ -13,12 +14,16 @@ export function KpiCard({
   value,
   unit,
   spark,
+  deltaPct,
 }: {
   cls: 'c1' | 'c2' | 'c3' | 'c4'
   label: string
   value: ReactNode
   unit?: string
   spark?: number[]
+  /** Veränderung in Prozent ggü. der Vorwoche, siehe prozentAenderung() in
+      ./calc.ts — null/undefined blendet die Zeile komplett aus. */
+  deltaPct?: number | null
 }) {
   return (
     <div className={`card kpi ${cls}`}>
@@ -27,6 +32,15 @@ export function KpiCard({
         {value}
         {unit && <u>{unit}</u>}
       </div>
+      {deltaPct != null && (
+        <div className={`sub ${deltaPct > 0 ? 'up' : deltaPct < 0 ? 'down' : ''}`}>
+          <svg viewBox="0 0 24 24">
+            <path d={deltaPct < 0 ? 'M12 5v14M5 12l7 7 7-7' : 'M12 19V5M5 12l7-7 7 7'} />
+          </svg>
+          {deltaPct > 0 ? '+' : ''}
+          {deltaPct} % ggü. Vorwoche
+        </div>
+      )}
       {spark && <Sparkline values={spark} />}
     </div>
   )
@@ -51,8 +65,16 @@ export function NextWorkoutCard({ tag, onStart }: { tag: DayWithExercises | null
   )
 }
 
-export function TrainingszeitCard({ woche }: { woche: number }) {
-  return <KpiCard cls="c4" label="Trainingszeit · letzte 7 Tage" value={<CountUp value={woche} />} unit="min" />
+export function TrainingszeitCard({ woche, vorwoche }: { woche: number; vorwoche?: number }) {
+  return (
+    <KpiCard
+      cls="c4"
+      label="Trainingszeit · letzte 7 Tage"
+      value={<CountUp value={woche} />}
+      unit="min"
+      deltaPct={vorwoche != null ? prozentAenderung(woche, vorwoche) : undefined}
+    />
+  )
 }
 
 export function UebungsdauerCard({ eintraege }: { eintraege: UebungsDauerSchnitt[] }) {

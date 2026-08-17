@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
+import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung, gruppeSetsByExercise } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, trainingszeitDaten, einheitenDaten } from './calc'
+import { naechsterTag, trainingszeitDaten, einheitenDaten, prozentAenderung } from './calc'
 import { NextWorkoutCard, TrainingszeitCard, UebungsdauerCard, KpiCard } from './widgets'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
@@ -34,6 +34,12 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
   const gesamtVolumen = gesamtWochenVolumen(days, setsByExercise)
   const einheiten = einheitenDaten(days, sessions, allSets)
 
+  // Vorwoche zum Vergleich — aus den ohnehin geladenen allSets (alle
+  // Wochen) herausgefiltert, statt einer eigenen Abfrage.
+  const setsByExerciseVorwoche = gruppeSetsByExercise(allSets.filter(s => s.week === week - 1))
+  const wochenTonnageVorwoche = days.reduce((a, d) => a + tonnageOf((d.exercises.map(ex => setsByExerciseVorwoche.get(ex.id) ?? [])).flat()), 0)
+  const gesamtVolumenVorwoche = gesamtWochenVolumen(days, setsByExerciseVorwoche)
+
   return (
     <>
       <div className="view-head" style={cssVars({ '--i': 0 })}>
@@ -49,10 +55,22 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
 
       <div className="grid g3" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
         <NextWorkoutCard tag={tag} onStart={tag ? () => navigate('/training', { state: { autoStartDayId: tag.id } }) : undefined} />
-        <TrainingszeitCard woche={t.woche} />
+        <TrainingszeitCard woche={t.woche} vorwoche={t.vorwoche} />
         <KpiCard cls="c1" label="Geschätztes 1RM" value={<CountUp value={e1} decimals={1} />} unit="kg" />
-        <KpiCard cls="c3" label={`Tonnage ${wochenLabel(week, plan).split(' ·')[0]}`} value={<CountUp value={Math.round(wochenTonnage / 1000 * 10) / 10} decimals={1} />} unit="t" />
-        <KpiCard cls="c4" label="Wochenvolumen" value={<CountUp value={gesamtVolumen} />} unit="Sätze" />
+        <KpiCard
+          cls="c3"
+          label={`Tonnage ${wochenLabel(week, plan).split(' ·')[0]}`}
+          value={<CountUp value={Math.round(wochenTonnage / 1000 * 10) / 10} decimals={1} />}
+          unit="t"
+          deltaPct={prozentAenderung(wochenTonnage, wochenTonnageVorwoche)}
+        />
+        <KpiCard
+          cls="c4"
+          label="Wochenvolumen"
+          value={<CountUp value={gesamtVolumen} />}
+          unit="Sätze"
+          deltaPct={prozentAenderung(gesamtVolumen, gesamtVolumenVorwoche)}
+        />
       </div>
 
       <div className="stack" style={{ ...cssVars({ '--i': 2 }), marginTop: 14, gap: 14 }}>

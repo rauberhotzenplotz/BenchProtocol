@@ -53,7 +53,7 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
 
       <div className="grid g3" style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
         <NextWorkoutCard tag={tag} onStart={tag ? () => navigate('/training', { state: { autoStartDayId: tag.id } }) : undefined} />
-        <TrainingszeitCard woche={t.woche} />
+        <TrainingszeitCard woche={t.woche} vorwoche={t.vorwoche} />
         <KpiCard
           cls="c3"
           label="Tonnage letztes Training"

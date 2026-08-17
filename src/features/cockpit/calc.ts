@@ -10,10 +10,26 @@ export function naechsterTag(days: DayWithExercises[], setsByExercise: Map<strin
 export function trainingszeitDaten(sessions: TrainingSession[]) {
   const echte = sessions.filter(s => s.status === 'completed')
   const jetzt = Date.now()
+  const minutenZwischen = (abTagen: number, bisTagen: number) =>
+    echte
+      .filter(s => {
+        const alterTage = (jetzt - new Date(s.started_at).getTime()) / 864e5
+        return alterTage >= abTagen && alterTage < bisTagen
+      })
+      .reduce((a, s) => a + (s.minutes ?? 0), 0)
   return {
-    woche: echte.filter(s => jetzt - new Date(s.started_at).getTime() <= 7 * 864e5).reduce((a, s) => a + (s.minutes ?? 0), 0),
+    woche: minutenZwischen(0, 7),
+    vorwoche: minutenZwischen(7, 14),
     gesamt: echte.reduce((a, s) => a + (s.minutes ?? 0), 0),
   }
+}
+
+/** Veränderung in Prozent ggü. einem Vorwert — ohne Vorwert (0 oder nichts
+    geloggt) gibt es keine sinnvolle Prozentzahl, dann lieber nichts zeigen
+    als eine unendliche/verzerrte Angabe. */
+export function prozentAenderung(aktuell: number, vorher: number): number | null {
+  if (!vorher) return null
+  return Math.round(((aktuell - vorher) / vorher) * 100)
 }
 
 export function dayTonnageFromSets(exerciseIds: string[], sets: LoggedSet[]) {
