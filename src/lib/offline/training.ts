@@ -2,7 +2,7 @@ import type { QueryClient, QueryKey, Query } from '@tanstack/react-query'
 import { supabase } from '../supabase'
 import type { Exercise, LoggedSet, PlanDay, PlanTyp, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../../features/training/queries'
-import { advanceBlockIfDue } from '../../features/bench/queries'
+import { pruefeWochenabschluss } from '../../features/training/wochenAbschluss'
 import {
   upsertInArray,
   removeFromArray,
@@ -327,11 +327,13 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       // Bewusst erst hier, nicht am Aufrufort in SessionView/GymMode: läuft
       // dadurch garantiert erst, nachdem endSession serverseitig bestätigt
       // ist — auch wenn das erst nach einer Offline-Phase/Reload passiert.
-      // Der Block-Check liest frische Serverdaten und ist selbst nicht
-      // offline-fähig; genau deshalb hängt er hier und nicht am Knopf.
-      if (variables.planTyp === 'bench') {
-        await advanceBlockIfDue(qc, variables.planId)
-      }
+      // Der Abschluss-Check liest frische Serverdaten und ist selbst nicht
+      // offline-fähig; genau deshalb hängt er hier und nicht am Knopf. Gilt
+      // für jeden Plantyp und jede Woche — sobald alle Tage der laufenden
+      // Woche fertig sind, schaltet sie sofort weiter statt erst nach 7
+      // Tagen (wochenAutomatik.ts greift nur, solange das noch nicht
+      // passiert ist).
+      await pruefeWochenabschluss(qc, variables.planId)
     },
   })
 
