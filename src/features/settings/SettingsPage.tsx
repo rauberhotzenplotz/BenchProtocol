@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../auth/auth-context'
-import { supabase } from '../../lib/supabase'
 import { cssVars } from '../../lib/style'
 import { useActivePlan } from '../plans/active-plan-context'
 import { autoPauseAn, setAutoPauseAn } from '../training/pause'
 import { vibrationAn, setVibrationAn } from '../../lib/haptik'
-import { baueBackup, backupHerunterladen, backupEinspielen } from './backup'
+import { baueBackup, backupHerunterladen, backupLesen } from './backup'
+import { useRestoreBackup, useDeleteAllPlans } from './queries'
 
 /** Supabase-Fehler sind nicht immer `instanceof Error` (Klassenidentität
     kann über Modulgrenzen hinweg auseinanderfallen) — .message reicht als
@@ -21,20 +20,13 @@ function fehlertext(err: unknown, fallback: string): string {
 export function SettingsPage() {
   const { user } = useAuth()
   const { plans } = useActivePlan()
-  const qc = useQueryClient()
-  const [busy, setBusy] = useState(false)
+  const restoreBackup = useRestoreBackup()
+  const deleteAllPlans = useDeleteAllPlans()
   const [bestaetigen, setBestaetigen] = useState(false)
   const [autoPause, setAutoPause] = useState(autoPauseAn())
   const [vibration, setVibration] = useState(vibrationAn())
   const [backupMeldung, setBackupMeldung] = useState<{ art: 'ok' | 'err'; text: string } | null>(null)
   const [backupBusy, setBackupBusy] = useState(false)
-
-  const alleQueriesNeuLaden = () =>
-    qc.invalidateQueries({
-      predicate: q => ['plans', 'days', 'sets', 'sets-all', 'session', 'sessions', 'sessions-all', 'bench-progression', 'volume-rows'].includes(
-        String(q.queryKey[0]),
-      ),
-    })
 
   const exportieren = async () => {
     setBackupBusy(true)
@@ -54,8 +46,11 @@ export function SettingsPage() {
     setBackupBusy(true)
     setBackupMeldung(null)
     try {
-      const backup = await backupEinspielen(datei)
-      await alleQueriesNeuLaden()
+      // Nur Lesen und Prüfen wartet hier; geschrieben wird über die
+      // Warteschlange, damit sich eine Sicherung auch offline einspielen
+      // lässt und beim Wiederverbinden nachgeholt wird.
+      const backup = await backupLesen(datei)
+      restoreBackup.mutate(backup)
       setBackupMeldung({ art: 'ok', text: `Sicherung eingespielt (${backup.plans.length} Pläne).` })
     } catch (err) {
       setBackupMeldung({ art: 'err', text: fehlertext(err, 'Import fehlgeschlagen.') })
@@ -64,19 +59,12 @@ export function SettingsPage() {
     }
   }
 
-  const alleDatenLoeschen = async () => {
-    setBusy(true)
-    try {
-      // RLS begrenzt das ohnehin auf die eigenen Zeilen; Kind-Tabellen
-      // hängen per on delete cascade an plans.
-      const { error } = await supabase.from('plans').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-      if (error) throw error
-      await qc.invalidateQueries({ queryKey: ['plans', user?.id] })
-      await alleQueriesNeuLaden()
-      setBestaetigen(false)
-    } finally {
-      setBusy(false)
-    }
+  const alleDatenLoeschen = () => {
+    // RLS begrenzt das ohnehin auf die eigenen Zeilen; Kind-Tabellen hängen
+    // per on delete cascade an plans. Läuft über die Warteschlange, damit es
+    // auch offline sofort greift (lokal leer, Server zieht später nach).
+    deleteAllPlans.mutate()
+    setBestaetigen(false)
   }
 
   return (
@@ -211,7 +199,7 @@ export function SettingsPage() {
               <button className="btn ghost sm" onClick={() => setBestaetigen(false)}>
                 Abbrechen
               </button>
-              <button className="btn sm danger" onClick={() => void alleDatenLoeschen()} disabled={busy}>
+              <button className="btn sm danger" onClick={alleDatenLoeschen} disabled={deleteAllPlans.isPending}>
                 Ja, alles löschen
               </button>
             </div>

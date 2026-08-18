@@ -4,6 +4,7 @@ import { useDays, useSetsForExercises } from '../training/queries'
 import { gruppeSetsByExercise } from '../training/calc'
 import { useVolumeRows, useCreateVolumeRow, useUpdateVolumeRow, useDeleteVolumeRow, volumeVerdict } from './queries'
 import { istSaetzeJeGruppeUndTag, istGesamt } from './calc'
+import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
 
 export function VolumePage() {
@@ -12,9 +13,9 @@ export function VolumePage() {
   const exerciseIds = (days ?? []).flatMap(d => d.exercises.map(ex => ex.id))
   const { data: saetzeWoche } = useSetsForExercises(exerciseIds, activePlan?.week ?? 1)
   const { data: rows } = useVolumeRows(activePlan?.id)
-  const createRow = useCreateVolumeRow(activePlan?.id)
-  const updateRow = useUpdateVolumeRow(activePlan?.id)
-  const deleteRow = useDeleteVolumeRow(activePlan?.id)
+  const createRow = useCreateVolumeRow()
+  const updateRow = useUpdateVolumeRow()
+  const deleteRow = useDeleteVolumeRow()
   const [neuerName, setNeuerName] = useState('')
 
   if (!activePlan) {
@@ -111,7 +112,12 @@ export function VolumePage() {
             className="btn sm"
             disabled={!neuerName.trim()}
             onClick={() => {
-              createRow.mutate({ muscleGroup: neuerName.trim(), sortOrder: (rows ?? []).length })
+              createRow.mutate({
+                id: neueId(),
+                plan_id: activePlan.id,
+                muscle_group: neuerName.trim(),
+                sort_order: (rows ?? []).length,
+              })
               setNeuerName('')
             }}
           >

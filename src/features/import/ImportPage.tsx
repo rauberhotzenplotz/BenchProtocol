@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import { parseWorkbook, type ParsedWorkbook } from './xlsxParse'
-import { importAlsNeuerPlan } from './importPlan'
+import { baueImportZeilen } from './importPlan'
 import { parseAlphaCsv, type CsvWorkout } from './csvParse'
-import { planCsvImport, commitCsvImport, type CsvImportPlan } from './importCsv'
+import { planCsvImport, type CsvImportPlan } from './importCsv'
+import { useImportPlan, useImportCsvSets } from './queries'
 import { useActivePlan } from '../plans/active-plan-context'
 import { useDays } from '../training/queries'
 import type { PlanTyp } from '../../types/db'
@@ -16,9 +16,10 @@ function fehlertext(err: unknown, fallback: string): string {
 
 export function ImportPage() {
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const { activePlan, setActivePlanId } = useActivePlan()
   const { data: days } = useDays(activePlan?.id)
+  const importPlan = useImportPlan()
+  const importCsvSets = useImportCsvSets()
 
   const [datei, setDatei] = useState<File | null>(null)
   const [geparst, setGeparst] = useState<ParsedWorkbook | null>(null)
@@ -26,14 +27,12 @@ export function ImportPage() {
   const [typ, setTyp] = useState<PlanTyp>('general')
   const [fehler, setFehler] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(false)
-  const [anlegen, setAnlegen] = useState(false)
 
   const [csvDatei, setCsvDatei] = useState<File | null>(null)
   const [csvWorkouts, setCsvWorkouts] = useState<CsvWorkout[] | null>(null)
   const [csvPlan, setCsvPlan] = useState<CsvImportPlan | null>(null)
   const [csvFehler, setCsvFehler] = useState<string | null>(null)
   const [csvLaedt, setCsvLaedt] = useState(false)
-  const [csvSchreibt, setCsvSchreibt] = useState(false)
   const [csvErfolg, setCsvErfolg] = useState<number | null>(null)
 
   const dateiGewaehlt = async (f: File) => {
@@ -53,20 +52,15 @@ export function ImportPage() {
     }
   }
 
-  const einlesen = async () => {
+  const einlesen = () => {
     if (!geparst || !name.trim()) return
-    setAnlegen(true)
     setFehler(null)
-    try {
-      const plan = await importAlsNeuerPlan(geparst, name.trim(), typ)
-      await qc.invalidateQueries({ queryKey: ['plans'] })
-      setActivePlanId(plan.id)
-      navigate('/training')
-    } catch (err) {
-      setFehler(err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Import fehlgeschlagen.')
-    } finally {
-      setAnlegen(false)
-    }
+    // Alle Zeilen samt IDs entstehen hier, ohne Netz; geschrieben wird über
+    // die Warteschlange. Der Plan ist dadurch sofort benutzbar — auch offline.
+    const daten = baueImportZeilen(geparst, name.trim(), typ)
+    importPlan.mutate(daten)
+    setActivePlanId(daten.plan.id)
+    navigate('/training')
   }
 
   const gesamtUebungen = geparst?.days.reduce((a, d) => a + d.exercises.length, 0) ?? 0
@@ -92,21 +86,12 @@ export function ImportPage() {
 
   const csvEinlesen = async () => {
     if (!csvPlan || !csvPlan.saetze.length) return
-    setCsvSchreibt(true)
     setCsvFehler(null)
-    try {
-      const anzahl = await commitCsvImport(csvPlan)
-      await qc.invalidateQueries({ queryKey: ['sets'] })
-      await qc.invalidateQueries({ queryKey: ['sets-all'] })
-      setCsvErfolg(anzahl)
-      setCsvDatei(null)
-      setCsvWorkouts(null)
-      setCsvPlan(null)
-    } catch (err) {
-      setCsvFehler(fehlertext(err, 'Import fehlgeschlagen.'))
-    } finally {
-      setCsvSchreibt(false)
-    }
+    importCsvSets.mutate(csvPlan.saetze)
+    setCsvErfolg(csvPlan.saetze.length)
+    setCsvDatei(null)
+    setCsvWorkouts(null)
+    setCsvPlan(null)
   }
 
   return (
@@ -195,7 +180,7 @@ export function ImportPage() {
 
             <div className="row" style={{ gap: 10 }}>
               <input className="inp" value={name} onChange={e => setName(e.target.value)} maxLength={40} style={{ maxWidth: 320 }} />
-              <button className="btn primary sm" disabled={!name.trim() || anlegen} onClick={() => void einlesen()}>
+              <button className="btn primary sm" disabled={!name.trim() || importPlan.isPending} onClick={einlesen}>
                 Anlegen &amp; einlesen
               </button>
             </div>
@@ -271,7 +256,7 @@ export function ImportPage() {
                 )}
                 <button
                   className="btn primary sm"
-                  disabled={!csvPlan.saetze.length || csvSchreibt}
+                  disabled={!csvPlan.saetze.length || importCsvSets.isPending}
                   onClick={() => void csvEinlesen()}
                 >
                   In „{activePlan.name}“ einlesen

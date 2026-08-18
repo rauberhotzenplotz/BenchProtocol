@@ -1,4 +1,3 @@
-import { supabase } from '../../lib/supabase'
 import type { CsvWorkout } from './csvParse'
 import { matchExercises } from './csvMatch'
 import type { Exercise } from '../../types/db'
@@ -51,9 +50,3 @@ export function planCsvImport(workouts: CsvWorkout[], days: DayWithExercises[], 
   return { einheiten: workouts.length, saetze, unmatchedNamen: [...unmatchedNamen] }
 }
 
-export async function commitCsvImport(plan: CsvImportPlan): Promise<number> {
-  if (!plan.saetze.length) return 0
-  const { error } = await supabase.from('logged_sets').upsert(plan.saetze, { onConflict: 'exercise_id,week,position' })
-  if (error) throw error
-  return plan.saetze.length
-}

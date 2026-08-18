@@ -1,17 +1,23 @@
-import { supabase } from '../../lib/supabase'
 import type { ParsedWorkbook } from './xlsxParse'
-import type { Plan, PlanTyp } from '../../types/db'
+import type { PlanTyp, Plan, PlanDay, Exercise, BenchProgressionRow, VolumeRow } from '../../types/db'
+import type { ImportDaten } from '../../lib/offline/bulk'
+import { neueId } from '../../lib/offline/keys'
 
 const STANDARD_HINWEISE: Record<'d1' | 'd3', string[]> = {
   d1: ['RPE 7 — zwei bis drei Wdh. in Reserve', 'RPE 8 — zwei Wdh. in Reserve', 'RPE 8–9 — eine bis zwei Wdh. in Reserve', 'Deload, zügig und locker'],
   d3: ['Technik vor Gewicht', 'Technik vor Gewicht', 'Technik vor Gewicht', 'Deload'],
 }
 
-/** Reihenfolge wegen Fremdschlüsseln: Plan → Tage → Übungen, dann die
-    beiden optionalen Blätter (Bank-Progression, Volumen), die auf die
-    eben angelegten Tage verweisen. */
-export async function importAlsNeuerPlan(parsed: ParsedWorkbook, name: string, typ: PlanTyp): Promise<Plan> {
-  const planPatch =
+/** Baut aus einer eingelesenen Arbeitsmappe alle Zeilen eines neuen Plans —
+    rein rechnend, ohne Netzzugriff. Alle IDs entstehen hier clientseitig,
+    damit Tage und Übungen sofort aufeinander verweisen können und der
+    Import auch offline vollständig ist; geschrieben wird später als eine
+    Mutation (siehe lib/offline/bulk.ts). */
+export function baueImportZeilen(parsed: ParsedWorkbook, name: string, typ: PlanTyp): ImportDaten {
+  const jetzt = new Date().toISOString()
+  const planId = neueId()
+
+  const bench =
     typ === 'bench' && parsed.bench
       ? {
           work: parsed.bench.work ?? 60,
@@ -21,59 +27,79 @@ export async function importAlsNeuerPlan(parsed: ParsedWorkbook, name: string, t
         }
       : {}
 
-  const { data: plan, error: planErr } = await supabase.from('plans').insert({ name, typ, ...planPatch }).select().single()
-  if (planErr) throw planErr
+  const plan: Plan = {
+    id: planId,
+    user_id: '',
+    name,
+    typ,
+    week: 1,
+    week_started_at: jetzt,
+    sort_order: 0,
+    work: null,
+    reps: null,
+    rir: null,
+    plate: null,
+    block: typ === 'bench' ? 1 : null,
+    goal: null,
+    goal_from: null,
+    beruehrt: false,
+    rpe: null,
+    last_delta_note: null,
+    created_at: jetzt,
+    updated_at: jetzt,
+    ...bench,
+  }
 
-  const { data: days, error: daysErr } = await supabase
-    .from('plan_days')
-    .insert(parsed.days.map((d, i) => ({ plan_id: plan.id, name: d.name, sort_order: i })))
-    .select()
-  if (daysErr) throw daysErr
+  const tage: PlanDay[] = parsed.days.map((d, i) => ({
+    id: neueId(),
+    plan_id: planId,
+    user_id: '',
+    name: d.name,
+    sub: null,
+    sort_order: i,
+  }))
 
-  const exerciseRows = parsed.days.flatMap((d, di) =>
+  const uebungen: Exercise[] = parsed.days.flatMap((d, di) =>
     d.exercises.map((ex, ei) => ({
-      day_id: days[di].id,
+      id: neueId(),
+      day_id: tage[di].id,
+      user_id: '',
       name: ex.name,
       scheme: ex.scheme || null,
       rest: ex.rest || null,
       note: ex.note || null,
+      bench_slot: null,
+      muscle_group: null,
       sort_order: ei,
     })),
   )
-  if (exerciseRows.length) {
-    const { error } = await supabase.from('exercises').insert(exerciseRows)
-    if (error) throw error
-  }
 
-  if (typ === 'bench' && parsed.bench && (parsed.bench.d1Pct.length || parsed.bench.d3Pct.length)) {
-    const progressionRows = (['d1', 'd3'] as const).flatMap(slot => {
-      const werte = slot === 'd1' ? parsed.bench!.d1Pct : parsed.bench!.d3Pct
-      return werte.map((pct, i) => ({
-        plan_id: plan.id,
-        slot,
-        week: i + 1,
-        pct,
-        hint: STANDARD_HINWEISE[slot][i] ?? '',
-        scheme: i === 3 ? '3 × 5' : '4 × 5',
-      }))
-    })
-    if (progressionRows.length) {
-      const { error } = await supabase.from('bench_progression').insert(progressionRows)
-      if (error) throw error
-    }
-  }
+  const progression: BenchProgressionRow[] =
+    typ === 'bench' && parsed.bench && (parsed.bench.d1Pct.length || parsed.bench.d3Pct.length)
+      ? (['d1', 'd3'] as const).flatMap(slot => {
+          const werte = slot === 'd1' ? parsed.bench!.d1Pct : parsed.bench!.d3Pct
+          return werte.map((pct, i) => ({
+            id: neueId(),
+            plan_id: planId,
+            user_id: '',
+            slot,
+            week: i + 1,
+            pct,
+            hint: STANDARD_HINWEISE[slot][i] ?? '',
+            scheme: i === 3 ? '3 × 5' : '4 × 5',
+          }))
+        })
+      : []
 
-  if (parsed.volume.length) {
-    const volumeRows = parsed.volume.map((v, i) => ({
-      plan_id: plan.id,
-      muscle_group: v.muscleGroup,
-      note: v.note || null,
-      sort_order: i,
-      sets_by_day: Object.fromEntries(v.perDay.map((n, di) => [days[di]?.id, n]).filter(([id]) => id != null)),
-    }))
-    const { error } = await supabase.from('volume_rows').insert(volumeRows)
-    if (error) throw error
-  }
+  const volumen: VolumeRow[] = parsed.volume.map((v, i) => ({
+    id: neueId(),
+    plan_id: planId,
+    user_id: '',
+    muscle_group: v.muscleGroup,
+    note: v.note || null,
+    sort_order: i,
+    sets_by_day: Object.fromEntries(v.perDay.map((n, di) => [tage[di]?.id, n]).filter(([id]) => id != null)) as Record<string, number>,
+  }))
 
-  return plan as Plan
+  return { plan, tage, uebungen, progression, volumen }
 }

@@ -1,0 +1,364 @@
+import type { QueryClient, QueryKey, Query } from '@tanstack/react-query'
+import { supabase } from '../supabase'
+import type { Exercise, LoggedSet, PlanDay, PlanTyp, TrainingSession } from '../../types/db'
+import type { DayWithExercises } from '../../features/training/queries'
+import { advanceBlockIfDue } from '../../features/bench/queries'
+import {
+  upsertInArray,
+  removeFromArray,
+  arrayContainsId,
+  buildOptimisticSession,
+  upsertSessionInArray,
+  matchesExerciseWeek,
+  matchesDayWeek,
+} from '../../features/training/offlineCache'
+import { MUTATION_KEYS, SYNC_SCOPE } from './keys'
+import { optimistisch, zurueckrollen, type Schnappschuss } from './cache'
+
+type SetsContext = { prevSets: Array<[QueryKey, LoggedSet[] | undefined]>; prevSetsAll: Array<[QueryKey, LoggedSet[] | undefined]> }
+
+function rollbackSets(qc: QueryClient, ctx: SetsContext | undefined) {
+  ctx?.prevSets.forEach(([key, data]) => qc.setQueryData<LoggedSet[]>(key, data))
+  ctx?.prevSetsAll.forEach(([key, data]) => qc.setQueryData<LoggedSet[]>(key, data))
+}
+
+type SessionsContext = {
+  prevSession: TrainingSession | null | undefined
+  prevSessions: Array<[QueryKey, TrainingSession[] | undefined]>
+  prevSessionsAll: Array<[QueryKey, TrainingSession[] | undefined]>
+}
+
+function rollbackSessions(qc: QueryClient, dayId: string, week: number, ctx: SessionsContext | undefined) {
+  if (!ctx) return
+  qc.setQueryData(['session', dayId, week], ctx.prevSession)
+  ctx.prevSessions.forEach(([key, data]) => qc.setQueryData<TrainingSession[]>(key, data))
+  ctx.prevSessionsAll.forEach(([key, data]) => qc.setQueryData<TrainingSession[]>(key, data))
+}
+
+export type TagAnlegen = Pick<PlanDay, 'id' | 'plan_id' | 'name' | 'sort_order'>
+export type UebungAnlegen = Pick<
+  Exercise,
+  'id' | 'day_id' | 'name' | 'scheme' | 'rest' | 'note' | 'bench_slot' | 'muscle_group' | 'sort_order'
+>
+
+export function registriereTrainingMutationen(qc: QueryClient) {
+  // ── Tage und Übungen ─────────────────────────────────────────────
+  // Der Tages-Cache liegt unter ['days', planId] und trägt die Übungen
+  // verschachtelt mit (DayWithExercises). Gearbeitet wird bewusst über den
+  // Präfix ['days'] statt über die konkrete planId: die Zeilen bringen ihre
+  // Zugehörigkeit selbst mit (plan_id bzw. day_id), und so müssen die
+  // Aufrufer die planId nicht durch jede Mutation schleifen.
+  const tageFilter = { queryKey: ['days'] }
+  const tageInvalidieren = () => qc.invalidateQueries(tageFilter)
+
+  qc.setMutationDefaults<void, Error, TagAnlegen>(MUTATION_KEYS.createDay, {
+    scope: SYNC_SCOPE,
+    mutationFn: async row => {
+      const { error } = await supabase.from('plan_days').insert(row)
+      if (error) throw error
+    },
+    onMutate: row => {
+      const neu: DayWithExercises = { ...row, user_id: '', sub: null, exercises: [] }
+      return optimistisch<DayWithExercises>(qc, tageFilter, alt =>
+        // Nur in den Cache des zugehörigen Plans einhängen.
+        alt?.[0] && alt[0].plan_id !== row.plan_id ? alt : [...(alt ?? []), neu],
+      )
+    },
+    onError: (_e, _v, ctx) => zurueckrollen(qc, ctx as Schnappschuss),
+    onSuccess: tageInvalidieren,
+  })
+
+  qc.setMutationDefaults<void, Error, { id: string; patch: Partial<PlanDay> }>(MUTATION_KEYS.updateDay, {
+    scope: SYNC_SCOPE,
+    mutationFn: async ({ id, patch }) => {
+      const { error } = await supabase.from('plan_days').update(patch).eq('id', id)
+      if (error) throw error
+    },
+    onMutate: ({ id, patch }) =>
+      optimistisch<DayWithExercises>(qc, tageFilter, alt => (alt ?? []).map(t => (t.id === id ? { ...t, ...patch } : t))),
+    onError: (_e, _v, ctx) => zurueckrollen(qc, ctx as Schnappschuss),
+    onSuccess: tageInvalidieren,
+  })
+
+  qc.setMutationDefaults<void, Error, string>(MUTATION_KEYS.deleteDay, {
+    scope: SYNC_SCOPE,
+    mutationFn: async id => {
+      const { error } = await supabase.from('plan_days').delete().eq('id', id)
+      if (error) throw error
+    },
+    onMutate: id => optimistisch<DayWithExercises>(qc, tageFilter, alt => (alt ?? []).filter(t => t.id !== id)),
+    onError: (_e, _v, ctx) => zurueckrollen(qc, ctx as Schnappschuss),
+    onSuccess: tageInvalidieren,
+  })
+
+  qc.setMutationDefaults<void, Error, UebungAnlegen>(MUTATION_KEYS.createExercise, {
+    scope: SYNC_SCOPE,
+    mutationFn: async row => {
+      const { error } = await supabase.from('exercises').insert(row)
+      if (error) throw error
+    },
+    onMutate: row => {
+      const neu: Exercise = { ...row, user_id: '' }
+      return optimistisch<DayWithExercises>(qc, tageFilter, alt =>
+        (alt ?? []).map(t => (t.id === row.day_id ? { ...t, exercises: [...t.exercises, neu] } : t)),
+      )
+    },
+    onError: (_e, _v, ctx) => zurueckrollen(qc, ctx as Schnappschuss),
+    onSuccess: tageInvalidieren,
+  })
+
+  qc.setMutationDefaults<void, Error, { id: string; patch: Partial<Exercise> }>(MUTATION_KEYS.updateExercise, {
+    scope: SYNC_SCOPE,
+    mutationFn: async ({ id, patch }) => {
+      const { error } = await supabase.from('exercises').update(patch).eq('id', id)
+      if (error) throw error
+    },
+    onMutate: ({ id, patch }) =>
+      optimistisch<DayWithExercises>(qc, tageFilter, alt =>
+        (alt ?? []).map(t => ({ ...t, exercises: t.exercises.map(ex => (ex.id === id ? { ...ex, ...patch } : ex)) })),
+      ),
+    onError: (_e, _v, ctx) => zurueckrollen(qc, ctx as Schnappschuss),
+    onSuccess: tageInvalidieren,
+  })
+
+  qc.setMutationDefaults<void, Error, string>(MUTATION_KEYS.deleteExercise, {
+    scope: SYNC_SCOPE,
+    mutationFn: async id => {
+      const { error } = await supabase.from('exercises').delete().eq('id', id)
+      if (error) throw error
+    },
+    onMutate: id =>
+      optimistisch<DayWithExercises>(qc, tageFilter, alt =>
+        (alt ?? []).map(t => ({ ...t, exercises: t.exercises.filter(ex => ex.id !== id) })),
+      ),
+    onError: (_e, _v, ctx) => zurueckrollen(qc, ctx as Schnappschuss),
+    onSuccess: tageInvalidieren,
+  })
+
+  // ── Sätze ────────────────────────────────────────────────────────
+  qc.setMutationDefaults(MUTATION_KEYS.upsertSet, {
+    scope: SYNC_SCOPE,
+    mutationFn: async (row: {
+      exercise_id: string
+      week: number
+      position: number
+      kg?: number | null
+      reps?: number | null
+      rpe?: number | null
+      done?: boolean
+      done_at?: string | null
+    }) => {
+      const { data, error } = await supabase
+        .from('logged_sets')
+        .upsert(row, { onConflict: 'exercise_id,week,position' })
+        .select()
+        .single()
+      if (error) throw error
+      return data as LoggedSet
+    },
+    onMutate: async row => {
+      await qc.cancelQueries({ queryKey: ['sets'] })
+      await qc.cancelQueries({ queryKey: ['sets-all'] })
+      const prevSets = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets'] })
+      const prevSetsAll = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets-all'] })
+      qc.setQueriesData<LoggedSet[]>(
+        { queryKey: ['sets'], predicate: (q: Query) => matchesExerciseWeek(q.queryKey[1] as string[], q.queryKey[2] as number, row.exercise_id, row.week) },
+        old => upsertInArray(old, row),
+      )
+      qc.setQueriesData<LoggedSet[]>(
+        { queryKey: ['sets-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(row.exercise_id) },
+        old => upsertInArray(old, row),
+      )
+      return { prevSets, prevSetsAll } satisfies SetsContext
+    },
+    onError: (_err, _row, ctx) => rollbackSets(qc, ctx as SetsContext | undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sets'] })
+      qc.invalidateQueries({ queryKey: ['sets-all'] })
+    },
+  })
+
+  qc.setMutationDefaults(MUTATION_KEYS.deleteSet, {
+    scope: SYNC_SCOPE,
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('logged_sets').delete().eq('id', id)
+      if (error) throw error
+    },
+    onMutate: async id => {
+      await qc.cancelQueries({ queryKey: ['sets'] })
+      await qc.cancelQueries({ queryKey: ['sets-all'] })
+      const prevSets = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets'] })
+      const prevSetsAll = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets-all'] })
+      qc.setQueriesData<LoggedSet[]>(
+        { queryKey: ['sets'], predicate: (q: Query) => arrayContainsId(q.state.data as LoggedSet[] | undefined, id) },
+        old => removeFromArray(old, id),
+      )
+      qc.setQueriesData<LoggedSet[]>(
+        { queryKey: ['sets-all'], predicate: (q: Query) => arrayContainsId(q.state.data as LoggedSet[] | undefined, id) },
+        old => removeFromArray(old, id),
+      )
+      return { prevSets, prevSetsAll } satisfies SetsContext
+    },
+    onError: (_err, _id, ctx) => rollbackSets(qc, ctx as SetsContext | undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sets'] })
+      qc.invalidateQueries({ queryKey: ['sets-all'] })
+    },
+  })
+
+  // ── Einheiten ────────────────────────────────────────────────────
+  const einheitenInvalidieren = () => {
+    qc.invalidateQueries({ queryKey: ['session'] })
+    qc.invalidateQueries({ queryKey: ['sessions'] })
+    qc.invalidateQueries({ queryKey: ['sessions-all'] })
+  }
+
+  qc.setMutationDefaults(MUTATION_KEYS.startSession, {
+    scope: SYNC_SCOPE,
+    mutationFn: async ({ dayId, week }: { dayId: string; week: number }) => {
+      const { data, error } = await supabase
+        .from('sessions')
+        .upsert(
+          { day_id: dayId, week, started_at: new Date().toISOString(), ended_at: null, minutes: null, status: 'completed' },
+          { onConflict: 'day_id,week' },
+        )
+        .select()
+        .single()
+      if (error) throw error
+      return data as TrainingSession
+    },
+    onMutate: async ({ dayId, week }) => {
+      await qc.cancelQueries({ queryKey: ['session', dayId, week] })
+      await qc.cancelQueries({ queryKey: ['sessions'] })
+      await qc.cancelQueries({ queryKey: ['sessions-all'] })
+      const prevSession = qc.getQueryData<TrainingSession | null>(['session', dayId, week])
+      const prevSessions = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions'] })
+      const prevSessionsAll = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] })
+      const optimistic = buildOptimisticSession(prevSession, {
+        day_id: dayId,
+        week,
+        started_at: new Date().toISOString(),
+        ended_at: null,
+        minutes: null,
+        status: 'completed',
+      })
+      qc.setQueryData(['session', dayId, week], optimistic)
+      qc.setQueriesData<TrainingSession[]>(
+        { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+        old => upsertSessionInArray(old, optimistic),
+      )
+      qc.setQueriesData<TrainingSession[]>(
+        { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+        old => upsertSessionInArray(old, optimistic),
+      )
+      return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
+    },
+    onError: (_err, { dayId, week }, ctx) => rollbackSessions(qc, dayId, week, ctx as SessionsContext | undefined),
+    onSuccess: einheitenInvalidieren,
+  })
+
+  qc.setMutationDefaults(MUTATION_KEYS.skipSession, {
+    scope: SYNC_SCOPE,
+    mutationFn: async ({ dayId, week }: { dayId: string; week: number }) => {
+      const jetzt = new Date().toISOString()
+      const { error } = await supabase
+        .from('sessions')
+        .upsert({ day_id: dayId, week, started_at: jetzt, ended_at: jetzt, minutes: 0, status: 'skipped' }, { onConflict: 'day_id,week' })
+      if (error) throw error
+    },
+    onMutate: async ({ dayId, week }) => {
+      await qc.cancelQueries({ queryKey: ['session', dayId, week] })
+      await qc.cancelQueries({ queryKey: ['sessions'] })
+      await qc.cancelQueries({ queryKey: ['sessions-all'] })
+      const prevSession = qc.getQueryData<TrainingSession | null>(['session', dayId, week])
+      const prevSessions = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions'] })
+      const prevSessionsAll = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] })
+      const jetzt = new Date().toISOString()
+      const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, started_at: jetzt, ended_at: jetzt, minutes: 0, status: 'skipped' })
+      qc.setQueryData(['session', dayId, week], optimistic)
+      qc.setQueriesData<TrainingSession[]>(
+        { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+        old => upsertSessionInArray(old, optimistic),
+      )
+      qc.setQueriesData<TrainingSession[]>(
+        { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+        old => upsertSessionInArray(old, optimistic),
+      )
+      return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
+    },
+    onError: (_err, { dayId, week }, ctx) => rollbackSessions(qc, dayId, week, ctx as SessionsContext | undefined),
+    onSuccess: einheitenInvalidieren,
+  })
+
+  qc.setMutationDefaults(MUTATION_KEYS.endSession, {
+    scope: SYNC_SCOPE,
+    mutationFn: async ({ id, startedAt }: { id: string; startedAt: string; dayId: string; week: number; planId: string; planTyp: PlanTyp }) => {
+      const minutes = Math.max(1, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000))
+      const { error } = await supabase
+        .from('sessions')
+        .update({ ended_at: new Date().toISOString(), minutes })
+        .eq('id', id)
+      if (error) throw error
+      return minutes
+    },
+    onMutate: async ({ dayId, week, startedAt }) => {
+      await qc.cancelQueries({ queryKey: ['session', dayId, week] })
+      await qc.cancelQueries({ queryKey: ['sessions'] })
+      await qc.cancelQueries({ queryKey: ['sessions-all'] })
+      const prevSession = qc.getQueryData<TrainingSession | null>(['session', dayId, week])
+      const prevSessions = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions'] })
+      const prevSessionsAll = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] })
+      const minutes = Math.max(1, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000))
+      const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, ended_at: new Date().toISOString(), minutes })
+      qc.setQueryData(['session', dayId, week], optimistic)
+      qc.setQueriesData<TrainingSession[]>(
+        { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+        old => upsertSessionInArray(old, optimistic),
+      )
+      qc.setQueriesData<TrainingSession[]>(
+        { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+        old => upsertSessionInArray(old, optimistic),
+      )
+      return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
+    },
+    onError: (_err, { dayId, week }, ctx) => rollbackSessions(qc, dayId, week, ctx as SessionsContext | undefined),
+    onSuccess: async (_minutes, variables) => {
+      einheitenInvalidieren()
+      // Bewusst erst hier, nicht am Aufrufort in SessionView/GymMode: läuft
+      // dadurch garantiert erst, nachdem endSession serverseitig bestätigt
+      // ist — auch wenn das erst nach einer Offline-Phase/Reload passiert.
+      // Der Block-Check liest frische Serverdaten und ist selbst nicht
+      // offline-fähig; genau deshalb hängt er hier und nicht am Knopf.
+      if (variables.planTyp === 'bench') {
+        await advanceBlockIfDue(qc, variables.planId)
+      }
+    },
+  })
+
+  qc.setMutationDefaults<void, Error, { sessionId: string; week: number; exerciseIds: string[] }>(MUTATION_KEYS.deleteSession, {
+    scope: SYNC_SCOPE,
+    mutationFn: async ({ sessionId, week, exerciseIds }: { sessionId: string; week: number; exerciseIds: string[] }) => {
+      if (exerciseIds.length) await supabase.from('logged_sets').delete().in('exercise_id', exerciseIds).eq('week', week)
+      const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
+      if (error) throw error
+    },
+    onMutate: async ({ sessionId, week, exerciseIds }) => {
+      await qc.cancelQueries({ queryKey: ['sets'] })
+      await qc.cancelQueries({ queryKey: ['sessions'] })
+      const prevSets = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets'] })
+      const prevSetsAll = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets-all'] })
+      const gehoertDazu = (s: LoggedSet) => s.week === week && exerciseIds.includes(s.exercise_id)
+      qc.setQueriesData<LoggedSet[]>({ queryKey: ['sets'] }, old => (old ?? []).filter(s => !gehoertDazu(s)))
+      qc.setQueriesData<LoggedSet[]>({ queryKey: ['sets-all'] }, old => (old ?? []).filter(s => !gehoertDazu(s)))
+      qc.setQueriesData<TrainingSession[]>({ queryKey: ['sessions'] }, old => (old ?? []).filter(s => s.id !== sessionId))
+      qc.setQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] }, old => (old ?? []).filter(s => s.id !== sessionId))
+      return { prevSets, prevSetsAll } satisfies SetsContext
+    },
+    onError: (_err, _v, ctx) => rollbackSets(qc, ctx as SetsContext | undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sets'] })
+      qc.invalidateQueries({ queryKey: ['sets-all'] })
+      einheitenInvalidieren()
+    },
+  })
+}

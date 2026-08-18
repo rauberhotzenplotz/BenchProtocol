@@ -23,8 +23,16 @@ export interface Backup {
 }
 
 /** RLS begrenzt jede Abfrage ohnehin auf die eigenen Zeilen — export lädt
-    deshalb einfach "alles" aus jeder Tabelle. */
+    deshalb einfach "alles" aus jeder Tabelle.
+
+    Als einziger Vorgang der App bewusst nicht offline-fähig: eine Sicherung
+    aus dem lokalen Cache wäre womöglich unvollständig, und genau darauf
+    verlässt man sich im Ernstfall. Lieber ein klarer Hinweis als eine halbe
+    Datei, die im Zweifel nach einer echten Sicherung aussieht. */
 export async function baueBackup(): Promise<Backup> {
+  if (!navigator.onLine) {
+    throw new Error('Für eine vollständige Sicherung brauchst du eine Internetverbindung.')
+  }
   const holen = async <T>(tabelle: string): Promise<T[]> => {
     const { data, error } = await supabase.from(tabelle).select('*')
     if (error) throw error
@@ -70,44 +78,13 @@ function istBackup(wert: unknown): wert is Backup {
   return !!wert && typeof wert === 'object' && (wert as Backup).format === 'benchprotocol-backup'
 }
 
-/** user_id nie aus der Datei übernehmen — auch nicht aus der eigenen alten
-    Sicherung. Die Spalte hat default auth.uid(), lässt man sie beim Insert
-    weg, setzt die Datenbank die aktuell angemeldete Person automatisch;
-    bei einem Konflikt (dieselbe ID existiert schon) bleibt die vorhandene
-    user_id ohnehin unangetastet. So kann nie versehentlich eine fremde
-    oder veraltete user_id mit hochgeladen werden. */
-function ohneUserId<T extends { user_id?: unknown }>(zeilen: T[]): T[] {
-  // Der Schlüssel muss wirklich fehlen, nicht nur undefined sein — sonst
-  // schickt supabase-js ihn u. U. trotzdem als null mit, und das verletzt
-  // die RLS-Policy (auth.uid() = user_id) bzw. die not-null-Spalte.
-  return zeilen.map(z => {
-    const kopie: Record<string, unknown> = { ...z }
-    delete kopie.user_id
-    return kopie as T
-  })
-}
-
-/** Reihenfolge wichtig: Eltern vor Kindern wegen Fremdschlüsseln. Bereits
-    vorhandene IDs (z. B. beim erneuten Einspielen desselben Backups)
-    werden per upsert überschrieben statt einen Fehler zu werfen. */
-export async function backupEinspielen(datei: File): Promise<Backup> {
+/** Liest und prüft eine Sicherungsdatei, ohne zu schreiben. Das Schreiben
+    passiert als eine Mutation über die Warteschlange (siehe
+    lib/offline/bulk.ts) — damit lässt sich eine Sicherung auch offline
+    einspielen und wird beim Wiederverbinden nachgeholt. */
+export async function backupLesen(datei: File): Promise<Backup> {
   const text = await datei.text()
   const wert: unknown = JSON.parse(text)
   if (!istBackup(wert)) throw new Error('Das ist keine Bench-Protocol-Sicherung.')
-
-  const schreiben = async (tabelle: string, zeilen: unknown[]) => {
-    if (!zeilen.length) return
-    const { error } = await supabase.from(tabelle).upsert(ohneUserId(zeilen as { user_id?: unknown }[]))
-    if (error) throw error
-  }
-
-  await schreiben('plans', wert.plans)
-  await schreiben('plan_days', wert.plan_days)
-  await schreiben('exercises', wert.exercises)
-  await schreiben('bench_progression', wert.bench_progression)
-  await schreiben('volume_rows', wert.volume_rows)
-  await schreiben('logged_sets', wert.logged_sets)
-  await schreiben('sessions', wert.sessions)
-
   return wert
 }

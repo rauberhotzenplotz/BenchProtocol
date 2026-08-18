@@ -3,7 +3,7 @@ import { useUpdateBenchProgressionRow } from './queries'
 import { benchLoad } from './calc'
 
 export function ProgressionTable({ plan, rows, dim }: { plan: Plan; rows: BenchProgressionRow[]; dim: boolean }) {
-  const updateRow = useUpdateBenchProgressionRow(plan.id)
+  const updateRow = useUpdateBenchProgressionRow()
 
   return (
     <div className="tbl-wrap" style={{ border: 0, background: 'transparent' }}>

@@ -5,6 +5,7 @@ import { tagFortschritt, gruppeSetsByExercise, wochenLabel } from './calc'
 import { PlanPicker } from '../plans/PlanPicker'
 import { DateStrip } from './DateStrip'
 import { tagFarbe } from './dayColor'
+import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
 
 interface Props {
@@ -19,7 +20,7 @@ interface Props {
 
 export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJemals, alleSaetzeJemals, onOpen }: Props) {
   const setsByExercise = gruppeSetsByExercise(alleSaetze)
-  const createDay = useCreateDay(plan.id)
+  const createDay = useCreateDay()
   const skipSession = useSkipSession()
 
   const gesamt = days.reduce(
@@ -106,7 +107,9 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
         <button
           className="tagkarte neu"
           aria-label="Trainingstag hinzufügen"
-          onClick={() => createDay.mutate({ name: `Tag ${days.length + 1}`, sortOrder: days.length })}
+          onClick={() =>
+            createDay.mutate({ id: neueId(), plan_id: plan.id, name: `Tag ${days.length + 1}`, sort_order: days.length })
+          }
         >
           <svg viewBox="0 0 24 24">
             <path d="M12 5v14M5 12h14" />

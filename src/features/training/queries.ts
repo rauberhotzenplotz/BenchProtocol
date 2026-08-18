@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { Exercise, LoggedSet, PlanDay, PlanTyp, TrainingSession } from '../../types/db'
-import { MUTATION_KEYS } from '../../lib/offlineMutations'
+import { MUTATION_KEYS } from '../../lib/offline/keys'
+import type { TagAnlegen, UebungAnlegen } from '../../lib/offline/training'
 
 export type DayWithExercises = PlanDay & { exercises: Exercise[] }
 
@@ -27,82 +28,32 @@ export function useDays(planId: string | undefined) {
   })
 }
 
-function invalidateDays(qc: ReturnType<typeof useQueryClient>, planId: string | undefined) {
-  return qc.invalidateQueries({ queryKey: ['days', planId] })
+// Alle schreibenden Hooks tragen nur noch ihren Schlüssel; Verhalten,
+// optimistische Cache-Updates und Rollback stehen zentral in
+// src/lib/offline/training.ts. Die Zeilen bringen ihre Zugehörigkeit selbst
+// mit (plan_id/day_id), deshalb brauchen die Hooks keine planId mehr.
+export function useCreateDay() {
+  return useMutation<void, Error, TagAnlegen>({ mutationKey: MUTATION_KEYS.createDay })
 }
 
-export function useCreateDay(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ name, sortOrder }: { name: string; sortOrder: number }) => {
-      const { data, error } = await supabase
-        .from('plan_days')
-        .insert({ plan_id: planId, name, sort_order: sortOrder })
-        .select()
-        .single()
-      if (error) throw error
-      return data as PlanDay
-    },
-    onSuccess: () => invalidateDays(qc, planId),
-  })
+export function useUpdateDay() {
+  return useMutation<void, Error, { id: string; patch: Partial<PlanDay> }>({ mutationKey: MUTATION_KEYS.updateDay })
 }
 
-export function useUpdateDay(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<PlanDay> }) => {
-      const { error } = await supabase.from('plan_days').update(patch).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateDays(qc, planId),
-  })
+export function useDeleteDay() {
+  return useMutation<void, Error, string>({ mutationKey: MUTATION_KEYS.deleteDay })
 }
 
-export function useDeleteDay(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('plan_days').delete().eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateDays(qc, planId),
-  })
+export function useCreateExercise() {
+  return useMutation<void, Error, UebungAnlegen>({ mutationKey: MUTATION_KEYS.createExercise })
 }
 
-export function useCreateExercise(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (
-      row: Pick<Exercise, 'day_id' | 'name' | 'scheme' | 'rest' | 'note' | 'bench_slot' | 'muscle_group'> & { sort_order: number }
-    ) => {
-      const { data, error } = await supabase.from('exercises').insert(row).select().single()
-      if (error) throw error
-      return data as Exercise
-    },
-    onSuccess: () => invalidateDays(qc, planId),
-  })
+export function useUpdateExercise() {
+  return useMutation<void, Error, { id: string; patch: Partial<Exercise> }>({ mutationKey: MUTATION_KEYS.updateExercise })
 }
 
-export function useUpdateExercise(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Exercise> }) => {
-      const { error } = await supabase.from('exercises').update(patch).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateDays(qc, planId),
-  })
-}
-
-export function useDeleteExercise(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('exercises').delete().eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateDays(qc, planId),
-  })
+export function useDeleteExercise() {
+  return useMutation<void, Error, string>({ mutationKey: MUTATION_KEYS.deleteExercise })
 }
 
 // ── Sätze ──────────────────────────────────────────────────────────
@@ -229,20 +180,8 @@ export function useEndSession() {
     dieses Tages in dieser Woche (sonst blieben verwaiste Sätze übrig, die
     Kalender/Cockpit weiter mitzählen würden). */
 export function useDeleteSession() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ sessionId, week, exerciseIds }: { sessionId: string; week: number; exerciseIds: string[] }) => {
-      if (exerciseIds.length) await supabase.from('logged_sets').delete().in('exercise_id', exerciseIds).eq('week', week)
-      const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sets'] })
-      qc.invalidateQueries({ queryKey: ['sets-all'] })
-      qc.invalidateQueries({ queryKey: ['session'] })
-      qc.invalidateQueries({ queryKey: ['sessions'] })
-      qc.invalidateQueries({ queryKey: ['sessions-all'] })
-    },
+  return useMutation<void, Error, { sessionId: string; week: number; exerciseIds: string[] }>({
+    mutationKey: MUTATION_KEYS.deleteSession,
   })
 }
 

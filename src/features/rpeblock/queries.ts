@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { MUTATION_KEYS } from '../../lib/offline/keys'
+import type { BlockAnlegen } from '../../lib/offline/rpeblock'
 import type { RpeBlock, RpeBlockStatus, RpePlannedSet } from '../../types/db'
-import type { GeplanteWoche } from './blockPlanung'
 
 export function useBlocksForExercises(exerciseIds: string[]) {
   return useQuery({
@@ -31,95 +32,27 @@ export function usePlannedSets(blockId: string | undefined) {
   })
 }
 
-function invalidateBlocks(qc: ReturnType<typeof useQueryClient>) {
-  return qc.invalidateQueries({ queryKey: ['rpe-blocks'] })
-}
+// Verhalten zentral in src/lib/offline/rpeblock.ts.
 
 /** Legt einen Block plus seine Wochenplanung in einem Rutsch an. Die
     Zielgewichte pro Woche werden hier übergeben (nicht neu berechnet) —
     der Aufrufer entscheidet, ob/welches Start-e1RM zur Rückrechnung
     vorliegt (siehe RpeBlockPage: leer bei allererstem Block). */
 export function useCreateBlock() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({
-      exerciseId,
-      plannedWeeks,
-      plate,
-      wochen,
-    }: {
-      exerciseId: string
-      plannedWeeks: number
-      plate: number
-      wochen: GeplanteWoche[]
-    }) => {
-      const { data: block, error: blockErr } = await supabase
-        .from('rpe_blocks')
-        .insert({ exercise_id: exerciseId, planned_weeks: plannedWeeks, plate })
-        .select()
-        .single()
-      if (blockErr) throw blockErr
-
-      const { error: setsErr } = await supabase.from('rpe_planned_sets').insert(
-        wochen.map(w => ({
-          block_id: block.id,
-          week_number: w.weekNumber,
-          target_reps: w.targetReps,
-          target_rpe: w.targetRpe,
-          target_weight: w.targetWeight,
-        })),
-      )
-      if (setsErr) throw setsErr
-
-      return block as RpeBlock
-    },
-    onSuccess: () => invalidateBlocks(qc),
-  })
+  return useMutation<void, Error, BlockAnlegen>({ mutationKey: MUTATION_KEYS.createBlock })
 }
 
 /** Trägt den tatsächlichen Top-Satz einer Woche ein. */
 export function useLogWeek() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({
-      id,
-      gewicht,
-      wdh,
-      rpe,
-    }: {
-      id: string
-      gewicht: number
-      wdh: number
-      rpe: number
-    }) => {
-      const { error } = await supabase
-        .from('rpe_planned_sets')
-        .update({ actual_weight: gewicht, actual_reps: wdh, actual_rpe: rpe, logged_at: new Date().toISOString() })
-        .eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rpe-planned-sets'] }),
+  return useMutation<void, Error, { id: string; blockId: string; gewicht: number; wdh: number; rpe: number }>({
+    mutationKey: MUTATION_KEYS.logWeek,
   })
 }
 
 export function useSetBlockStatus() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: RpeBlockStatus }) => {
-      const { error } = await supabase.from('rpe_blocks').update({ status }).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateBlocks(qc),
-  })
+  return useMutation<void, Error, { id: string; status: RpeBlockStatus }>({ mutationKey: MUTATION_KEYS.setBlockStatus })
 }
 
 export function useDeleteBlock() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('rpe_blocks').delete().eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateBlocks(qc),
-  })
+  return useMutation<void, Error, string>({ mutationKey: MUTATION_KEYS.deleteBlock })
 }

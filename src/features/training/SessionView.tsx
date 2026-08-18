@@ -19,6 +19,7 @@ import { GymMode, type GymPosition } from './GymMode'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useVolumeRows } from '../volume/queries'
+import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
 import { ZahlEingabe } from '../../components/ZahlRad'
 import { zahlenBereich } from '../../lib/zahlen'
@@ -60,8 +61,8 @@ export function SessionView({
 }: Props) {
   const startSession = useStartSession()
   const endSession = useEndSession()
-  const createExercise = useCreateExercise(plan.id)
-  const updateDay = useUpdateDay(plan.id)
+  const createExercise = useCreateExercise()
+  const updateDay = useUpdateDay()
   const { data: volumeRows } = useVolumeRows(plan.id)
   const muskelgruppen = (volumeRows ?? []).map(r => r.muscle_group)
   const restTimer = useRestTimer()
@@ -75,13 +76,13 @@ export function SessionView({
     else setNeuerName(day.name)
   }
 
-  const beenden = async () => {
+  const beenden = () => {
     if (!session) return
-    // Der automatische Block-Check läuft nicht mehr hier, sondern im
-    // registrierten onSuccess von endSession (src/lib/offlineMutations.ts)
-    // — so greift er garantiert erst nach bestätigtem Sync, auch wenn
-    // endSession offline pausiert und erst später nachgeholt wird.
-    await endSession.mutateAsync({ id: session.id, startedAt: session.started_at, dayId: day.id, week, planId: plan.id, planTyp: plan.typ })
+    // Kein await: offline pausiert die Mutation, der Knopf bliebe sonst
+    // hängen. Der automatische Block-Check läuft ohnehin nicht hier,
+    // sondern im registrierten onSuccess von endSession
+    // (src/lib/offline/training.ts) — also erst nach bestätigtem Sync.
+    endSession.mutate({ id: session.id, startedAt: session.started_at, dayId: day.id, week, planId: plan.id, planTyp: plan.typ })
   }
 
   const laeuft = !!session && !session.ended_at
@@ -253,7 +254,7 @@ export function SessionView({
             </button>
           </>
         ) : (
-          <button className="btn primary" onClick={() => void startSession.mutateAsync({ dayId: day.id, week })}>
+          <button className="btn primary" onClick={() => startSession.mutate({ dayId: day.id, week })}>
             {session ? 'Erneut starten' : 'Training starten'}
           </button>
         )}
@@ -265,7 +266,6 @@ export function SessionView({
         {day.exercises.map((ex, i) => (
           <ExerciseBlock
             key={ex.id}
-            planId={plan.id}
             planTyp={plan.typ}
             exercise={ex}
             nummer={i + 1}
@@ -285,8 +285,11 @@ export function SessionView({
             planTyp={plan.typ}
             muskelgruppen={muskelgruppen}
             onAbbrechen={() => setNeueUebung(false)}
-            onAnlegen={async werte => {
-              await createExercise.mutateAsync({
+            onAnlegen={werte => {
+              // Nicht auf den Server warten: offline pausiert die Mutation,
+              // das Formular bliebe sonst stehen. Die ID entsteht hier.
+              createExercise.mutate({
+                id: neueId(),
                 day_id: day.id,
                 sort_order: day.exercises.length,
                 ...werte,
@@ -346,7 +349,7 @@ function NeueUebungForm({
 }: {
   planTyp: Plan['typ']
   muskelgruppen: string[]
-  onAnlegen: (w: { name: string; scheme: string; rest: string; note: string; bench_slot: BenchSlot | null; muscle_group: string | null }) => Promise<void>
+  onAnlegen: (w: { name: string; scheme: string; rest: string; note: string; bench_slot: BenchSlot | null; muscle_group: string | null }) => void
   onAbbrechen: () => void
 }) {
   const [name, setName] = useState('')
@@ -428,7 +431,7 @@ function NeueUebungForm({
           <button
             className="btn primary sm"
             disabled={!name.trim()}
-            onClick={() => void onAnlegen({ name: name.trim(), scheme, rest: formatPause(restMin), note: '', bench_slot: benchSlot, muscle_group: muscleGroup })}
+            onClick={() => onAnlegen({ name: name.trim(), scheme, rest: formatPause(restMin), note: '', bench_slot: benchSlot, muscle_group: muscleGroup })}
           >
             Anlegen
           </button>
@@ -439,7 +442,6 @@ function NeueUebungForm({
 }
 
 function ExerciseBlock({
-  planId,
   planTyp,
   exercise,
   nummer,
@@ -450,7 +452,6 @@ function ExerciseBlock({
   muskelgruppen,
   plate,
 }: {
-  planId: string
   planTyp: Plan['typ']
   exercise: Exercise
   /** Platz in der Tagesreihenfolge, 1-basiert — steht im Nummernkreis. */
@@ -474,8 +475,8 @@ function ExerciseBlock({
   }
   const [einstellungen, setEinstellungen] = useState(false)
   const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
-  const updateExercise = useUpdateExercise(planId)
-  const deleteExercise = useDeleteExercise(planId)
+  const updateExercise = useUpdateExercise()
+  const deleteExercise = useDeleteExercise()
   const upsertSet = useUpsertSet()
   const deleteSetM = useDeleteSet()
 

@@ -125,7 +125,7 @@ function WochenZeile({ woche }: { woche: RpePlannedSet }) {
     const w = parseInt(wdh, 10)
     const r = parseFloat(rpe.replace(',', '.'))
     if (!(g > 0) || !(w > 0) || !(r >= 6 && r <= 10)) return
-    logWeek.mutate({ id: woche.id, gewicht: g, wdh: w, rpe: r })
+    logWeek.mutate({ id: woche.id, blockId: woche.block_id, gewicht: g, wdh: w, rpe: r })
   }
 
   return (

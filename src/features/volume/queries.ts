@@ -1,5 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { MUTATION_KEYS } from '../../lib/offline/keys'
+import type { VolumenZeileAnlegen } from '../../lib/offline/volume'
 import type { VolumeRow } from '../../types/db'
 
 export function useVolumeRows(planId: string | undefined) {
@@ -14,42 +16,17 @@ export function useVolumeRows(planId: string | undefined) {
   })
 }
 
-export function useCreateVolumeRow(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ muscleGroup, sortOrder }: { muscleGroup: string; sortOrder: number }) => {
-      const { data, error } = await supabase
-        .from('volume_rows')
-        .insert({ plan_id: planId, muscle_group: muscleGroup, sort_order: sortOrder })
-        .select()
-        .single()
-      if (error) throw error
-      return data as VolumeRow
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['volume-rows', planId] }),
-  })
+// Verhalten zentral in src/lib/offline/volume.ts.
+export function useCreateVolumeRow() {
+  return useMutation<void, Error, VolumenZeileAnlegen>({ mutationKey: MUTATION_KEYS.createVolumeRow })
 }
 
-export function useUpdateVolumeRow(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<VolumeRow> }) => {
-      const { error } = await supabase.from('volume_rows').update(patch).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['volume-rows', planId] }),
-  })
+export function useUpdateVolumeRow() {
+  return useMutation<void, Error, { id: string; patch: Partial<VolumeRow> }>({ mutationKey: MUTATION_KEYS.updateVolumeRow })
 }
 
-export function useDeleteVolumeRow(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('volume_rows').delete().eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['volume-rows', planId] }),
-  })
+export function useDeleteVolumeRow() {
+  return useMutation<void, Error, string>({ mutationKey: MUTATION_KEYS.deleteVolumeRow })
 }
 
 export function volumeVerdict(total: number): { klasse: string; text: string } {

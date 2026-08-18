@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useActivePlan } from './active-plan-context'
 import { useCreatePlan, useDeletePlan, useUpdatePlan } from './queries'
+import { neueId } from '../../lib/offline/keys'
 import type { PlanTyp } from '../../types/db'
 
 /** Knopf mit dem Namen des aktiven Plans, öffnet die Verwaltung — Pendant
@@ -58,8 +59,13 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
             rpe: parseFloat(testRpe.replace(',', '.')),
           }
         : undefined
-    const plan = await createPlan.mutateAsync({ name: trimmed, typ: neuerTyp, testsatz })
-    setActivePlanId(plan.id)
+    // ID hier erzeugen statt vom Server zu holen: so lässt sich der Plan
+    // sofort aktiv setzen, ohne auf eine Antwort zu warten — offline würde
+    // die Mutation sonst pausieren und der Dialog hinge (siehe
+    // lib/offline/keys.ts, neueId).
+    const id = neueId()
+    createPlan.mutate({ id, name: trimmed, typ: neuerTyp, testsatz })
+    setActivePlanId(id)
     setName('')
     setTestGewicht('')
     setTestWdh('')
@@ -69,13 +75,13 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
 
   const umbenennen = async (id: string) => {
     const trimmed = umbenennenName.trim()
-    if (trimmed) await updatePlan.mutateAsync({ id, patch: { name: trimmed } })
+    if (trimmed) updatePlan.mutate({ id, patch: { name: trimmed } })
     setUmbenennenId(null)
   }
 
   const loeschen = async (id: string) => {
     if (plans.length <= 1) return
-    await deletePlan.mutateAsync(id)
+    deletePlan.mutate(id)
     setLoeschenId(null)
     if (activePlan?.id === id) {
       const rest = plans.find(p => p.id !== id)

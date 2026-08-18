@@ -3,6 +3,7 @@ import type { RpeBlock } from '../../types/db'
 import { useCreateBlock, usePlannedSets } from './queries'
 import { planeWochen } from './blockPlanung'
 import { blockAuswertung, type WochenEintrag } from './blockAuswertung'
+import { neueId } from '../../lib/offline/keys'
 
 /** Schätzt das Start-1RM für einen neuen Block aus dem besten e1RM des
     letzten Blocks derselben Übung — null, wenn es noch keinen gibt oder
@@ -35,7 +36,10 @@ export function NeuerBlockForm({ exerciseId, vorherigeBlocks, onFertig }: { exer
   const anlegen = () => {
     const startE1rm = startE1rmText.trim() ? parseFloat(startE1rmText.replace(',', '.')) : (vorschlagE1rm ?? null)
     const wochen = planeWochen({ plannedWeeks, targetReps, startRpe, rpeSchritt, plate, startE1rm })
-    createBlock.mutate({ exerciseId, plannedWeeks, plate, wochen }, { onSuccess: onFertig })
+    // Ohne Warten auf den Server schließen: die ID entsteht hier, offline
+    // wandert die Mutation in die Warteschlange.
+    createBlock.mutate({ id: neueId(), exerciseId, plannedWeeks, plate, wochen })
+    onFertig()
   }
 
   return (

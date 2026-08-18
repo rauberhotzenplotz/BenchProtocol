@@ -1,4 +1,4 @@
-import { useOfflineQueueStatus } from '../features/training/useOfflineQueueStatus'
+import { useOfflineQueueStatus } from '../lib/offline/queueStatus'
 
 /** Zeigt an, wenn Trainings-Änderungen (Satz, Einheit start/end/skip) wegen
     fehlendem Netz lokal gepuffert sind bzw. gerade nachgeholt werden.

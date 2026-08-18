@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { MUTATION_KEYS } from '../../lib/offline/keys'
 import type { BenchProgressionRow, BenchSlot, Exercise } from '../../types/db'
 import { setsOf } from '../training/calc'
 import { naechstesE1rm, round } from './calc'
 import { zielgewicht } from '../rpeblock/e1rm'
 
-const DEFAULT_ROWS: Omit<BenchProgressionRow, 'id' | 'plan_id' | 'user_id'>[] = [
+/** Standard-Progression eines frischen Bankfokus-Plans. Wird beim Anlegen
+    eines Plans gleich mit eingefügt (siehe lib/offline/plans.ts), damit ein
+    offline angelegter Plan sofort vollständig ist; die Selbstheilung in
+    useBenchProgression() unten bleibt nur noch für Altbestände. */
+export const DEFAULT_BENCH_ROWS: Omit<BenchProgressionRow, 'id' | 'plan_id' | 'user_id'>[] = [
   { slot: 'd1', week: 1, scheme: '4 × 5', pct: 0.78, hint: 'RPE 7 — zwei bis drei Wdh. in Reserve' },
   { slot: 'd1', week: 2, scheme: '4 × 5', pct: 0.81, hint: 'RPE 8 — zwei Wdh. in Reserve' },
   { slot: 'd1', week: 3, scheme: '4 × 4', pct: 0.85, hint: 'RPE 8–9 — eine bis zwei Wdh. in Reserve' },
@@ -25,11 +30,16 @@ export function useBenchProgression(planId: string | undefined) {
       if (error) throw error
       let rows = data as BenchProgressionRow[]
       if (rows.length === 0) {
-        // Ein neuer Bankfokus-Plan bekommt die generische Standard-
-        // Progression — dieselbe Vorbelegung wie SEED.bench in der alten App.
+        // Nur noch Selbstheilung für Pläne aus der Zeit vor dem Anlegen der
+        // Progression bei der Planerstellung. upsert statt insert, damit es
+        // sich nicht mit den frisch eingefügten Zeilen eines gerade
+        // synchronisierten Offline-Plans beißt.
         const { data: eingefuegt, error: insErr } = await supabase
           .from('bench_progression')
-          .insert(DEFAULT_ROWS.map(r => ({ ...r, plan_id: planId })))
+          .upsert(
+            DEFAULT_BENCH_ROWS.map(r => ({ ...r, id: crypto.randomUUID(), plan_id: planId })),
+            { onConflict: 'plan_id,slot,week' },
+          )
           .select()
         if (insErr) throw insErr
         rows = eingefuegt as BenchProgressionRow[]
@@ -39,15 +49,9 @@ export function useBenchProgression(planId: string | undefined) {
   })
 }
 
-export function useUpdateBenchProgressionRow(planId: string | undefined) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, pct }: { id: string; pct: number }) => {
-      const { error } = await supabase.from('bench_progression').update({ pct }).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bench-progression', planId] }),
-  })
+/** Verhalten zentral in src/lib/offline/bench.ts. */
+export function useUpdateBenchProgressionRow() {
+  return useMutation<void, Error, { id: string; pct: number }>({ mutationKey: MUTATION_KEYS.updateBenchRow })
 }
 
 export function benchRowsFor(rows: BenchProgressionRow[], slot: BenchSlot) {
