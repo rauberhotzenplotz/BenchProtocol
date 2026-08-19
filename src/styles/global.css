@@ -41,6 +41,22 @@
 
 * { box-sizing: border-box; }
 
+html {
+  /* Erzwingt dauerhaft die Scrollleisten-Spur der Seite, statt sie je
+     nach Inhaltshöhe kommen und gehen zu lassen. Ohne das: sobald sich
+     die Höhe von .ap-inhalt beim Abhaken eines Satzes über die
+     Bildschirmgrenze schiebt (oder wieder darunter fällt), reserviert
+     der Browser kurz eine Spur für die (unsichtbare) Leiste — und weil
+     .ap { position: fixed; inset: 0 } sich am dadurch veränderten
+     window.innerWidth ausrichtet, sprang das ganze Bild für einen
+     Wimpernschlag seitlich. Live nachgemessen: ohne diese Zeile
+     schwankte window.innerWidth beim Abhaken zwischen 375 und 427 px,
+     document.documentElement.clientWidth blieb dabei konstant — genau
+     das Muster einer kommenden/gehenden Spur. Mit "scroll" ist die Spur
+     immer da (nur dank scrollbar-width: none unsichtbar), also gibt es
+     nichts mehr, das kommen oder gehen könnte. */
+  overflow-y: scroll;
+}
 body {
   margin: 0;
   background: var(--ground);
