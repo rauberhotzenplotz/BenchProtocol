@@ -3492,3 +3492,19 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   .bib-kopf, .bib-zeile, .bib-neu .bib-zeile { grid-template-columns: 1fr 84px 84px 26px; gap: 5px; }
   .bib-neu .bib-zeile { grid-template-columns: 1fr 84px 84px 0; }
 }
+
+/* Trefferliste des Übungs-Pickers (SessionView.tsx UebungAuswahl) — eine
+   Ergebniszeile je Treffer, keine Tabelle: bei bis zu 30 Treffern reicht
+   eine einfache Liste, das Grid der Verwaltungsseite lohnt sich hier
+   nicht (keine Inline-Bearbeitung, nur Auswahl per Klick). */
+.bib-treffer { display: flex; flex-direction: column; gap: 4px; max-height: 46vh; overflow-y: auto; }
+.bib-treffer-zeile {
+  appearance: none; -webkit-appearance: none; cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 11px; border-radius: var(--r-m); border: 1px solid var(--line-soft);
+  background: rgba(255,255,255,.02); color: inherit; font: inherit;
+  transition: border-color .15s, background .15s;
+}
+.bib-treffer-zeile:hover { border-color: rgba(53,240,208,.35); background: rgba(53,240,208,.05); }
+.bib-treffer-name { font-size: 13.5px; color: var(--ink); }
+.bib-treffer-meta { font-family: var(--f-mono); font-size: 10px; letter-spacing: .04em; color: var(--ink-4); }

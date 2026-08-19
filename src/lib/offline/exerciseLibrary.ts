@@ -21,7 +21,31 @@ export function registriereBibliothekMutationen(qc: QueryClient) {
       if (error) throw error
     },
     onMutate: row => {
-      const neu: ExerciseLibraryEntry = { ...row, user_id: '', created_at: new Date().toISOString() }
+      // Von Hand angelegte Vorlagen (die einzige Quelle dieser Mutation)
+      // haben nie Katalogdaten — die Felder aus dem Excel-Import bleiben
+      // hier konsequent leer, bis invalidateQueries() die echte Zeile holt.
+      const neu: ExerciseLibraryEntry = {
+        ...row,
+        user_id: '',
+        created_at: new Date().toISOString(),
+        bench_slot: null,
+        name_en: null,
+        name_de_raw: null,
+        difficulty: null,
+        muscle_group: null,
+        primary_muscle: null,
+        secondary_muscle: null,
+        tertiary_muscle: null,
+        equipment: null,
+        body_position: null,
+        hand_pattern: null,
+        arm_pattern: null,
+        grip: null,
+        leg_pattern: null,
+        body_region: null,
+        mechanic: null,
+        laterality: null,
+      }
       return optimistisch<ExerciseLibraryEntry>(qc, filter, alt => inListeAnhaengen(alt, neu))
     },
     onError: (_e, _v, ctx) => zurueckrollen(qc, ctx as Schnappschuss),

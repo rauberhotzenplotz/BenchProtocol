@@ -22,7 +22,7 @@ import { GymModeAP } from './GymModeAP'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useVolumeRows } from '../volume/queries'
-import { useExerciseLibrary } from '../exerciseLibrary/queries'
+import { useLibrarySearch } from '../exerciseLibrary/queries'
 import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
 import { ZahlEingabe } from '../../components/ZahlRad'
@@ -67,7 +67,6 @@ export function SessionView({
   const updateDay = useUpdateDay()
   const { data: volumeRows } = useVolumeRows(plan.id)
   const muskelgruppen = (volumeRows ?? []).map(r => r.muscle_group)
-  const { data: bibliothek } = useExerciseLibrary()
   const restTimer = useRestTimer()
 
   const [nameBearbeiten, setNameBearbeiten] = useState(false)
@@ -287,10 +286,9 @@ export function SessionView({
 
       <div style={{ marginTop: 14 }}>
         {neueUebung ? (
-          <NeueUebungForm
+          <UebungAuswahl
             planTyp={plan.typ}
             muskelgruppen={muskelgruppen}
-            bibliothek={bibliothek ?? []}
             onAbbrechen={() => setNeueUebung(false)}
             onAnlegen={werte => {
               // Nicht auf den Server warten: offline pausiert die Mutation,
@@ -341,56 +339,102 @@ export function SessionView({
   )
 }
 
-function NeueUebungForm({
+/** Übung zu einem Plan hinzufügen: reine Auswahl aus der Bibliothek, kein
+    Freitext mehr — neue Übungen legt man auf der "Übungen"-Seite an (siehe
+    ExerciseLibraryPage). Zwei Schritte: erst suchen (serverseitig über
+    useLibrarySearch, 3245 Katalogeinträge sind zu viele für eine lokale
+    Liste), dann am gewählten Treffer Schema/Pause/Bank-Zuordnung/
+    Muskelgruppe als Startwert bestätigen oder anpassen. */
+function UebungAuswahl({
   planTyp,
   muskelgruppen,
-  bibliothek,
   onAnlegen,
   onAbbrechen,
 }: {
   planTyp: Plan['typ']
   muskelgruppen: string[]
-  bibliothek: ExerciseLibraryEntry[]
   onAnlegen: (w: { name: string; scheme: string; rest: string; note: string; bench_slot: BenchSlot | null; muscle_group: string | null }) => void
   onAbbrechen: () => void
 }) {
-  const [name, setName] = useState('')
+  const [suche, setSuche] = useState('')
+  const { data: treffer, isFetching } = useLibrarySearch(suche)
+  const [gewaehlt, setGewaehlt] = useState<ExerciseLibraryEntry | null>(null)
   const [scheme, setScheme] = useState('3 × 10')
   const [restMin, setRestMin] = useState(2)
   const [benchSlot, setBenchSlot] = useState<BenchSlot | null>(null)
   const [muscleGroup, setMuscleGroup] = useState<string | null>(null)
 
-  // Trifft der eingetippte/gewählte Name genau einen Bibliothekseintrag,
-  // werden Schema und Pause daraus übernommen — reine Vorbelegung, keine
-  // dauerhafte Verknüpfung. Wer danach weiter tippt (kein Treffer mehr),
-  // behält die zuletzt übernommenen Werte, statt dass sie verschwinden.
-  const uebernehmeAusBibliothek = (n: string) => {
-    setName(n)
-    const treffer = bibliothek.find(e => e.name.toLowerCase() === n.trim().toLowerCase())
-    if (!treffer) return
-    if (treffer.scheme) setScheme(treffer.scheme)
-    if (treffer.rest) setRestMin(pauseMinuten(treffer.rest) || 2)
+  const waehlen = (e: ExerciseLibraryEntry) => {
+    setGewaehlt(e)
+    setScheme(e.scheme || '3 × 10')
+    setRestMin(e.rest ? pauseMinuten(e.rest) || 2 : 2)
+    // Bank-Zuordnung nur übernehmen, wenn der Plan sie überhaupt nutzt.
+    setBenchSlot(planTyp === 'bench' ? e.bench_slot : null)
+    // Die Muskelgruppe des Katalogeintrags ist Freitext aus dem Import und
+    // gehört nicht zwangsläufig zum Wortschatz dieses Plans (siehe
+    // Volumen-Tab) — nur übernehmen, wenn sie dort exakt schon vorkommt,
+    // sonst lieber leer statt einer neuen, nirgends ausgewerteten Kategorie.
+    const passt = e.muscle_group && muskelgruppen.some(g => g.toLowerCase() === e.muscle_group!.toLowerCase())
+    setMuscleGroup(passt ? muskelgruppen.find(g => g.toLowerCase() === e.muscle_group!.toLowerCase())! : null)
+  }
+
+  if (!gewaehlt) {
+    return (
+      <div className="card">
+        <div className="stack">
+          <div className="field">
+            <label>Übung suchen</label>
+            <input
+              className="inp"
+              autoFocus
+              placeholder="z. B. Bankdrücken oder Bench Press"
+              value={suche}
+              onChange={e => setSuche(e.target.value)}
+            />
+          </div>
+          {suche.trim().length > 0 && suche.trim().length < 2 && (
+            <p className="muted tiny" style={{ margin: 0 }}>
+              Noch ein Zeichen mehr …
+            </p>
+          )}
+          {suche.trim().length >= 2 && (
+            <div className="bib-treffer">
+              {isFetching && !treffer && <p className="muted tiny" style={{ margin: 0 }}>Suche …</p>}
+              {treffer && treffer.length === 0 && (
+                <p className="muted tiny" style={{ margin: 0 }}>Keine Übung gefunden.</p>
+              )}
+              {treffer?.map(e => (
+                <button key={e.id} type="button" className="bib-treffer-zeile" onClick={() => waehlen(e)}>
+                  <span className="bib-treffer-name">{e.name}</span>
+                  <span className="bib-treffer-meta">
+                    {[e.equipment, e.muscle_group].filter(Boolean).join(' · ')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn ghost sm" onClick={onAbbrechen}>
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="card">
       <div className="stack">
         <div className="field">
-          <label>Übungsname</label>
-          <input
-            className="inp"
-            autoFocus
-            list="uebung-bibliothek"
-            value={name}
-            onChange={e => uebernehmeAusBibliothek(e.target.value)}
-          />
-          {bibliothek.length > 0 && (
-            <datalist id="uebung-bibliothek">
-              {bibliothek.map(e => (
-                <option key={e.id} value={e.name} />
-              ))}
-            </datalist>
-          )}
+          <label>Übung</label>
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <b style={{ fontFamily: 'var(--f-display)', fontSize: 16, letterSpacing: '.02em' }}>{gewaehlt.name}</b>
+            <span className="spacer" />
+            <button className="btn ghost sm" onClick={() => setGewaehlt(null)}>
+              Andere wählen
+            </button>
+          </div>
         </div>
         <div className="grid g2" style={{ gap: 10 }}>
           <div className="field">
@@ -457,8 +501,9 @@ function NeueUebungForm({
           </button>
           <button
             className="btn primary sm"
-            disabled={!name.trim()}
-            onClick={() => onAnlegen({ name: name.trim(), scheme, rest: formatPause(restMin), note: '', bench_slot: benchSlot, muscle_group: muscleGroup })}
+            onClick={() =>
+              onAnlegen({ name: gewaehlt.name, scheme, rest: formatPause(restMin), note: '', bench_slot: benchSlot, muscle_group: muscleGroup })
+            }
           >
             Anlegen
           </button>

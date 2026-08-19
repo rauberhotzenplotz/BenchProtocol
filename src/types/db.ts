@@ -59,9 +59,11 @@ export interface Exercise {
   sort_order: number
 }
 
-/** Vorlage für empfohlenes Schema + Pausenzeit einer Übung. Wird beim
-    Anlegen einer Übung nur kopiert (siehe NeueUebungForm) — keine
-    dauerhafte Verknüpfung, die Übung bleibt danach unabhängig
+/** Übungskatalog: von Hand angelegte Vorlagen (nur Name/Schema/Pause)
+    und importierte Katalogeinträge (alle übrigen Felder) nebeneinander
+    in derselben Tabelle — importierte Zeilen tragen einfach mehr aus.
+    Wird beim Anlegen einer Übung nur kopiert (siehe UebungAuswahl) —
+    keine dauerhafte Verknüpfung, die Übung bleibt danach unabhängig
     editierbar. */
 export interface ExerciseLibraryEntry {
   id: string
@@ -71,6 +73,29 @@ export interface ExerciseLibraryEntry {
   rest: string | null
   sort_order: number
   created_at: string
+  /** Gesetzt bei den Bankdrücken-Varianten (schwer/leicht/deload) —
+      beim Anlegen aus dieser Vorlage übernimmt die neue Übung diese
+      Bank-Zuordnung automatisch, die wöchentliche Gewichtsberechnung
+      läuft danach wie gewohnt über bench_progression. */
+  bench_slot: BenchSlot | null
+  /** Englischer und ungekürzter deutscher Name — nur fürs Suchen, die
+      Anzeige nutzt ausschließlich "name". */
+  name_en: string | null
+  name_de_raw: string | null
+  difficulty: string | null
+  muscle_group: string | null
+  primary_muscle: string | null
+  secondary_muscle: string | null
+  tertiary_muscle: string | null
+  equipment: string | null
+  body_position: string | null
+  hand_pattern: string | null
+  arm_pattern: string | null
+  grip: string | null
+  leg_pattern: string | null
+  body_region: string | null
+  mechanic: string | null
+  laterality: string | null
 }
 
 export interface BenchProgressionRow {
