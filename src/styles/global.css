@@ -112,8 +112,8 @@ body {
 .nb-w1 {
   width: 88vmin; height: 88vmin; left: -24vmin; top: calc(-30vmin + 8vh);
   background: radial-gradient(circle closest-side,
-    rgba(20,179,154,.40) 0%, rgba(20,179,154,.23) 24%,
-    rgba(20,179,154,.10) 44%, rgba(20,179,154,.03) 61%, transparent 76%);
+    rgba(20,179,154,.24) 0%, rgba(20,179,154,.14) 24%,
+    rgba(20,179,154,.06) 44%, rgba(20,179,154,.02) 61%, transparent 76%);
   animation: nbZug1 78s ease-in-out infinite;
 }
 /* Violett weiter unten rechts — bewusst nicht auf gleicher Höhe wie das
@@ -121,8 +121,8 @@ body {
 .nb-w2 {
   width: 78vmin; height: 78vmin; right: -22vmin; top: 46vh;
   background: radial-gradient(circle closest-side,
-    rgba(107,92,205,.36) 0%, rgba(107,92,205,.21) 24%,
-    rgba(107,92,205,.09) 44%, rgba(107,92,205,.025) 61%, transparent 76%);
+    rgba(107,92,205,.22) 0%, rgba(107,92,205,.13) 24%,
+    rgba(107,92,205,.05) 44%, rgba(107,92,205,.015) 61%, transparent 76%);
   animation: nbZug2 94s ease-in-out infinite;
 }
 /* Magenta unten links — hält den Fuß der Seite warm, sonst kippt alles
@@ -133,8 +133,8 @@ body {
 .nb-w3 {
   width: 96vmin; height: 96vmin; left: 0vmin; bottom: -24vmin;
   background: radial-gradient(circle closest-side,
-    rgba(150,42,92,.19) 0%, rgba(150,42,92,.105) 24%,
-    rgba(150,42,92,.045) 44%, rgba(150,42,92,.012) 61%, transparent 76%);
+    rgba(150,42,92,.11) 0%, rgba(150,42,92,.06) 24%,
+    rgba(150,42,92,.03) 44%, rgba(150,42,92,.007) 61%, transparent 76%);
   animation: nbZug3 86s ease-in-out infinite;
 }
 /* Tiefes Blau, aus der oberen rechten Ecke Richtung Mitte gerückt, damit
@@ -151,8 +151,8 @@ body {
 .nb-w4 {
   width: 52vmin; height: 52vmin; right: calc(-6vmin + 20vw); top: calc(-16vmin + 6vh);
   background: radial-gradient(circle closest-side,
-    rgba(28,64,132,.30) 0%, rgba(28,64,132,.17) 24%,
-    rgba(28,64,132,.07) 44%, rgba(28,64,132,.02) 61%, transparent 76%);
+    rgba(28,64,132,.18) 0%, rgba(28,64,132,.10) 24%,
+    rgba(28,64,132,.04) 44%, rgba(28,64,132,.012) 61%, transparent 76%);
   animation: nbZug4 68s ease-in-out infinite;
 }
 
@@ -187,7 +187,7 @@ body {
    leeren Raum ab, statt alles gleichmäßig grau zu überziehen. */
 .nb-korn {
   inset: 0;
-  opacity: .30;
+  opacity: .20;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='k'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23k)'/%3E%3C/svg%3E");
 }
@@ -465,7 +465,7 @@ body {
      mehr unterstützt wird. */
   padding: calc(0px + env(safe-area-inset-top, 0px)) 22px 0;
   height: calc(62px + env(safe-area-inset-top, 0px));
-  background: rgba(8,11,16,.80);
+  background: rgba(8,11,16,.92);
   backdrop-filter: blur(14px) saturate(1.3);
   border-bottom: 1px solid var(--line);
 }
@@ -529,7 +529,7 @@ body {
 
 .card {
   position: relative;
-  background: linear-gradient(158deg, rgba(21,29,40,.86), rgba(14,19,27,.86));
+  background: linear-gradient(158deg, rgba(21,29,40,.96), rgba(14,19,27,.96));
   border: 1px solid var(--line);
   border-radius: var(--r-l);
   padding: 16px 18px;
@@ -609,7 +609,7 @@ body {
 .kpiband {
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   border: 1px solid var(--line-soft); border-radius: var(--r-l);
-  background: rgba(8,11,16,.45); padding: 14px 2px 12px;
+  background: rgba(8,11,16,.92); padding: 14px 2px 12px;
 }
 .kpiband-wert { position: relative; text-align: center; padding: 0 7px; min-width: 0; }
 .kpiband-wert + .kpiband-wert::before {
@@ -744,7 +744,7 @@ body {
   position: relative; width: 100%; text-align: left;
   display: flex; flex-direction: column; align-items: stretch;
   appearance: none; -webkit-appearance: none;
-  background: linear-gradient(158deg, rgba(22,31,43,.9), rgba(13,18,26,.92));
+  background: linear-gradient(158deg, rgba(22,31,43,.97), rgba(13,18,26,.97));
   border: 1px solid var(--line); border-radius: var(--r-l);
   padding: 16px 60px 16px 21px;
   color: inherit; font: inherit; cursor: pointer; overflow: hidden;
@@ -869,7 +869,7 @@ body {
 /* min-width: 0 ist nötig, damit eine breite Tabelle scrollt statt die
    Karte aufzuschieben — Flex- und Grid-Kinder schrumpfen sonst nicht
    unter ihre Inhaltsbreite. */
-.tbl-wrap { overflow-x: auto; border-radius: var(--r-m); border: 1px solid var(--line); background: rgba(8,11,16,.42); min-width: 0; }
+.tbl-wrap { overflow-x: auto; border-radius: var(--r-m); border: 1px solid var(--line); background: rgba(8,11,16,.9); min-width: 0; }
 .grid > *, .stack > * { min-width: 0; }
 table.t { width: 100%; border-collapse: collapse; min-width: 900px; }
 table.t th {
@@ -1155,7 +1155,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 /* ── Datumsstreifen und Kalender ────────────────────────────── */
 .streifen {
   border: 1px solid var(--line); border-radius: var(--r-l);
-  background: rgba(8,11,16,.5); padding: 10px 13px 9px; cursor: pointer;
+  background: rgba(8,11,16,.92); padding: 10px 13px 9px; cursor: pointer;
   transition: border-color .25s, transform .25s; width: 100%; text-align: left;
   color: inherit; font: inherit;
 }
@@ -1287,7 +1287,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .tagkarte {
   position: relative; text-align: left; width: 100%;
   display: flex; flex-direction: column; align-items: stretch;
-  background: linear-gradient(158deg, rgba(21,29,40,.86), rgba(14,19,27,.86));
+  background: linear-gradient(158deg, rgba(21,29,40,.96), rgba(14,19,27,.96));
   border: 1px solid var(--line); border-radius: var(--r-l);
   padding: 12px 15px 11px; cursor: pointer; overflow: hidden;
   color: inherit; font: inherit;
@@ -1330,9 +1330,12 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .laufbar {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   border: 1px solid var(--line); border-radius: var(--r-l); padding: 13px 17px; margin-bottom: 14px;
-  background: rgba(8,11,16,.55);
+  background: rgba(8,11,16,.92);
 }
-.laufbar.an { border-color: rgba(53,240,208,.45); background: rgba(53,240,208,.06); }
+/* Zwei Ebenen statt einer einzigen schwachen Neon-Tönung: die Tönung
+   allein (.06) ließ den Nebel dahinter praktisch ungebremst durch —
+   jetzt liegt sie auf einem eigenen blickdichten Grund. */
+.laufbar.an { border-color: rgba(53,240,208,.45); background: linear-gradient(rgba(53,240,208,.09), rgba(53,240,208,.09)), rgba(8,11,16,.92); }
 .laufbar .uhr {
   font-family: var(--f-mono); font-size: 26px; font-variant-numeric: tabular-nums;
   color: var(--neon); letter-spacing: -.01em;
@@ -1346,7 +1349,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .ueb {
   --ak: #2C3949;
   position: relative; border: 1px solid var(--line); border-radius: var(--r-l);
-  background: rgba(8,11,16,.5); padding: 14px 16px 14px 19px; margin-bottom: 11px;
+  background: rgba(8,11,16,.92); padding: 14px 16px 14px 19px; margin-bottom: 11px;
   transition: border-color .25s, background .25s;
 }
 .ueb::before {
@@ -1399,7 +1402,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   -webkit-mask-image: linear-gradient(90deg, #000 84%, transparent 100%);
   mask-image: linear-gradient(90deg, #000 84%, transparent 100%);
 }
-.ueb.auf { border-color: rgba(53,240,208,.28); background: rgba(8,11,16,.62); }
+.ueb.auf { border-color: rgba(53,240,208,.28); background: rgba(8,11,16,.94); }
 .ueb.auf.fertig { border-color: rgba(63,224,138,.3); }
 .ueb-koerper.geoeffnet { animation: uebAuf .3s cubic-bezier(.22,1,.36,1) both; }
 @keyframes uebAuf { from { opacity: 0; transform: translateY(-8px); } }
@@ -1627,7 +1630,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .drop {
   border: 1.5px dashed var(--line); border-radius: var(--r-l);
   padding: 44px 26px; text-align: center; cursor: pointer;
-  background: rgba(8,11,16,.42); transition: all .3s; position: relative; overflow: hidden;
+  background: rgba(8,11,16,.88); transition: all .3s; position: relative; overflow: hidden;
 }
 .drop::before {
   content: ""; position: absolute; inset: -50%;
@@ -1648,7 +1651,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
    von Haus aus per Tastatur bedienbar. */
 .xlsxhilfe {
   margin-top: 14px; border: 1px solid var(--line); border-radius: var(--r-l);
-  background: rgba(8,11,16,.42); overflow: hidden;
+  background: rgba(8,11,16,.88); overflow: hidden;
 }
 .xlsxhilfe summary {
   display: flex; align-items: center; gap: 12px; padding: 15px 18px;
@@ -2429,8 +2432,9 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
    während der ganzen Einheit Akku ziehen. Deshalb hier ausblenden statt
    nur überdecken. Über :has() statt über ein Attribut am <html>, damit
    es keinen Zustand gibt, der beim Aus- und Wiedereinsteigen aus dem
-   Tritt geraten kann: liegt ein .gym im Baum, ist der Nebel weg. */
-body:has(.gym) .nebel { display: none; }
+   Tritt geraten kann: liegt ein .gym im Baum, ist der Nebel weg.
+   .ap (GymModeAP) deckt genauso vollständig ab — dieselbe Begründung. */
+body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
 
 .gym-zu {
   position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; z-index: 2;
