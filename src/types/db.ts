@@ -103,6 +103,10 @@ export interface ExerciseLibraryEntry {
   body_region: string | null
   mechanic: string | null
   laterality: string | null
+  /** Bekanntheitsrang fürs Durchsuchen nach Muskelgruppe — 0 zuerst.
+      Default 0 für von Hand angelegte Vorlagen, importierte Katalogzeilen
+      tragen einen recherchierten, höheren Rang (siehe Migration 0012). */
+  popularity: number
 }
 
 export interface BenchProgressionRow {

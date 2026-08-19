@@ -23,7 +23,7 @@ import { GymModeAP } from './GymModeAP'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useVolumeRows } from '../volume/queries'
-import { useLibrarySearch } from '../exerciseLibrary/queries'
+import { useLibrarySearch, MUSKELGRUPPEN, useLibraryByMuscleGroup } from '../exerciseLibrary/queries'
 import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
 import { ZahlEingabe } from '../../components/ZahlRad'
@@ -367,6 +367,44 @@ function UebungAuswahl({
 }) {
   const [suche, setSuche] = useState('')
   const { data: treffer, isFetching } = useLibrarySearch(suche)
+  const sucheAktiv = suche.trim().length >= 2
+
+  // Durchsuchen nach Muskelgruppe: eigener Zustand statt Teil der
+  // Textsuche, weil beides gleichzeitig verfügbar bleiben soll (siehe
+  // Aufgabenstellung) — Tippen gewinnt einfach optisch, sobald es zwei
+  // Zeichen sind, ohne dass die gewählte Gruppe deshalb verlorenginge.
+  const [muskelgruppe, setMuskelgruppe] = useState<string | null>(null)
+  const {
+    data: browseSeiten,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: browseLaedt,
+  } = useLibraryByMuscleGroup(muskelgruppe)
+  const browseTreffer = browseSeiten?.pages.flat() ?? []
+
+  // IntersectionObserver auf einer unsichtbaren Wächter-Zeile am
+  // Listenende statt eines Scroll-Ereignishorchers: löst zuverlässig aus,
+  // sobald sie ins Bild kommt, ohne bei jedem Scroll-Pixel neu zu
+  // rechnen. root ist die scrollende Trefferliste selbst (.bib-treffer),
+  // nicht der Bildschirm — die Liste hat ihre eigene Scrollfläche.
+  const listeRef = useRef<HTMLDivElement | null>(null)
+  const waechterRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!hasNextPage) return
+    const waechter = waechterRef.current
+    const wurzel = listeRef.current
+    if (!waechter || !wurzel) return
+    const beobachter = new IntersectionObserver(
+      eintraege => {
+        if (eintraege[0].isIntersecting) fetchNextPage()
+      },
+      { root: wurzel, rootMargin: '200px' },
+    )
+    beobachter.observe(waechter)
+    return () => beobachter.disconnect()
+  }, [hasNextPage, fetchNextPage, muskelgruppe])
+
   const [gewaehlt, setGewaehlt] = useState<ExerciseLibraryEntry | null>(null)
   const [scheme, setScheme] = useState('3 × 10')
   const [restMin, setRestMin] = useState(2)
@@ -388,6 +426,12 @@ function UebungAuswahl({
   }
 
   if (!gewaehlt) {
+    // Suche gewinnt rein optisch, sobald zwei Zeichen stehen — die
+    // gewählte Muskelgruppe bleibt dabei im Hintergrund gemerkt, ein
+    // Leeren des Suchfelds zeigt sie sofort wieder.
+    const zeigtSuche = sucheAktiv
+    const zeigtBrowse = !zeigtSuche && !!muskelgruppe
+
     return (
       <div className="card">
         <div className="stack">
@@ -401,12 +445,29 @@ function UebungAuswahl({
               onChange={e => setSuche(e.target.value)}
             />
           </div>
-          {suche.trim().length > 0 && suche.trim().length < 2 && (
+
+          {/* Immer sichtbar, auch ohne Sucheingabe — Durchsuchen nach
+              Muskelgruppe ist der zweite, gleichberechtigte Einstieg. */}
+          <div className="bib-muskelgruppen">
+            {MUSKELGRUPPEN.map(g => (
+              <button
+                key={g}
+                type="button"
+                className={'chip' + (muskelgruppe === g ? ' neon' : ' mute')}
+                onClick={() => setMuskelgruppe(m => (m === g ? null : g))}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+
+          {suche.trim().length > 0 && !sucheAktiv && (
             <p className="muted tiny" style={{ margin: 0 }}>
               Noch ein Zeichen mehr …
             </p>
           )}
-          {suche.trim().length >= 2 && (
+
+          {zeigtSuche && (
             <div className="bib-treffer">
               {isFetching && !treffer && <p className="muted tiny" style={{ margin: 0 }}>Suche …</p>}
               {treffer && treffer.length === 0 && (
@@ -422,6 +483,32 @@ function UebungAuswahl({
               ))}
             </div>
           )}
+
+          {zeigtBrowse && (
+            <div className="bib-treffer" ref={listeRef}>
+              {browseLaedt && <p className="muted tiny" style={{ margin: 0 }}>Lädt …</p>}
+              {!browseLaedt && browseTreffer.length === 0 && (
+                <p className="muted tiny" style={{ margin: 0 }}>Keine Übung für „{muskelgruppe}“.</p>
+              )}
+              {browseTreffer.map(e => (
+                <button key={e.id} type="button" className="bib-treffer-zeile" onClick={() => waehlen(e)}>
+                  <span className="bib-treffer-name">{e.name}</span>
+                  <span className="bib-treffer-meta">{[e.equipment, e.difficulty].filter(Boolean).join(' · ')}</span>
+                </button>
+              ))}
+              {/* Unsichtbare Wächter-Zeile statt eines "Mehr laden"-Knopfs:
+                  kommt sie ins Bild, holt der IntersectionObserver oben
+                  von selbst die nächste Seite. isFetchingNextPage zeigt
+                  während des Nachladens einen kurzen Hinweis statt eines
+                  Sprungs im Layout. */}
+              {hasNextPage && (
+                <div ref={waechterRef} className="muted tiny" style={{ textAlign: 'center', padding: '6px 0' }}>
+                  {isFetchingNextPage ? 'Lädt weitere …' : ''}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="row" style={{ gap: 8 }}>
             <button className="btn ghost sm" onClick={onAbbrechen}>
               Abbrechen

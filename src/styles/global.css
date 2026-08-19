@@ -3508,3 +3508,9 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
 .bib-treffer-zeile:hover { border-color: rgba(53,240,208,.35); background: rgba(53,240,208,.05); }
 .bib-treffer-name { font-size: 13.5px; color: var(--ink); }
 .bib-treffer-meta { font-family: var(--f-mono); font-size: 10px; letter-spacing: .04em; color: var(--ink-4); }
+
+/* Muskelgruppen-Chipreihe im Übungs-Picker (UebungAuswahl) — immer
+   sichtbar unter dem Suchfeld, auch schon vor einer Suche. Umbricht bei
+   16 Gruppen zwangsläufig auf mehrere Zeilen, deshalb flex-wrap statt
+   horizontalem Scrollen (auf schmalen Handys sonst schwer zu überblicken). */
+.bib-muskelgruppen { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }

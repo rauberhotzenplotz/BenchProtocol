@@ -45,6 +45,7 @@ export function registriereBibliothekMutationen(qc: QueryClient) {
         body_region: null,
         mechanic: null,
         laterality: null,
+        popularity: 0,
       }
       return optimistisch<ExerciseLibraryEntry>(qc, filter, alt => inListeAnhaengen(alt, neu))
     },

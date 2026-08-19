@@ -1,9 +1,24 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { MUTATION_KEYS } from '../../lib/offline/keys'
 import type { BibliothekseintragAnlegen } from '../../lib/offline/exerciseLibrary'
 import type { ExerciseLibraryEntry } from '../../types/db'
+
+/** Muskelgruppen des importierten Katalogs, in einer Reihenfolge, wie sie
+    im Studio üblich gedacht werden (Oberkörper drückend/ziehend, dann
+    Rumpf, dann Beine) — statt alphabetisch oder nach Häufigkeit im Import
+    (dort dominiert "Quadrizeps" mit über 1300 Zeilen rein durch die Zahl
+    der Gerätevarianten, das sagt nichts über Wichtigkeit). Fest codiert
+    statt per Datenbankabfrage ermittelt: ändert sich der Katalog nicht
+    laufend, und so steht die Reihenfolge fest, statt bei jedem Laden neu
+    zusammengewürfelt zu werden. */
+export const MUSKELGRUPPEN = [
+  'Brust', 'Rücken', 'Schultern', 'Bizeps', 'Trizeps', 'Unterarme',
+  'Bauchmuskeln', 'Hüftbeuger',
+  'Gesäß', 'Quadrizeps', 'Beinbeuger', 'Adduktoren', 'Abduktoren', 'Waden', 'Schienbeine',
+  'Trapez',
+] as const
 
 /** Nicht an einen Plan gebunden — eine Bibliothek je Nutzer, quer über
     alle Pläne nutzbar (dieselbe Übung taucht oft in mehreren Plänen auf).
@@ -56,6 +71,37 @@ export function useLibrarySearch(suchtext: string) {
         .or(`name.ilike."%${q}%",name_en.ilike."%${q}%",name_de_raw.ilike."%${q}%"`)
         .order('name')
         .limit(30)
+      if (error) throw error
+      return data as ExerciseLibraryEntry[]
+    },
+  })
+}
+
+const SEITENGROESSE = 24
+
+/** Übungen einer Muskelgruppe, nach Bekanntheit sortiert (siehe
+    exercise_library.popularity, Migration 0012) — Grundlage des
+    Muskelgruppen-Durchsuchens im Übungs-Picker. useInfiniteQuery statt
+    einer einzelnen Seite: "weitere laden" beim Herunterscrollen hängt
+    einfach die nächste Seite an, ohne eigene Zustandsverwaltung für den
+    Offset. null-Muskelgruppe hält die Abfrage über `enabled` an, bis der
+    Nutzer eine gewählt hat. */
+export function useLibraryByMuscleGroup(muskelgruppe: string | null) {
+  return useInfiniteQuery({
+    queryKey: ['exercise-library-muskelgruppe', muskelgruppe],
+    enabled: !!muskelgruppe,
+    initialPageParam: 0,
+    getNextPageParam: (letzteSeite: ExerciseLibraryEntry[], alleSeiten) =>
+      letzteSeite.length < SEITENGROESSE ? undefined : alleSeiten.length,
+    queryFn: async ({ pageParam }) => {
+      const von = pageParam * SEITENGROESSE
+      const { data, error } = await supabase
+        .from('exercise_library')
+        .select('*')
+        .eq('muscle_group', muskelgruppe!)
+        .order('popularity')
+        .order('name')
+        .range(von, von + SEITENGROESSE - 1)
       if (error) throw error
       return data as ExerciseLibraryEntry[]
     },
