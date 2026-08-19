@@ -25,6 +25,9 @@ export const MUTATION_KEYS = {
   endSession: ['endSession'],
   skipSession: ['skipSession'],
   deleteSession: ['deleteSession'],
+  pauseSession: ['pauseSession'],
+  resumeSession: ['resumeSession'],
+  resetSessionSets: ['resetSessionSets'],
   // Bank-Progression
   updateBenchRow: ['updateBenchRow'],
   // Volumen

@@ -4,8 +4,9 @@ import type { DayWithExercises } from '../training/queries'
 import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
 import { naechsterTag, trainingszeitDaten, einheitenDaten, ruhetage, startInfo, wochenPensum } from './calc'
-import { TrainingszeitCard, LetzteEinheitenCard, UebungsdauerCard, KpiCard, RuhetageCard, WochenpensumCard } from './widgets'
+import { LetzteEinheitenCard, UebungsdauerCard, KennzahlBand, Auswertungen } from './widgets'
 import { StartCard } from './StartCard'
+import { tagFarbe } from '../training/dayColor'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { SternbildCard } from './SternbildCard'
@@ -36,8 +37,9 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
     return tonnageOf(allSets.filter(set => ids.includes(set.exercise_id) && set.week === s.week))
   }
   const letzteTonnage = letzte.length ? tonnageVon(letzte[0]) : 0
-  const serie = letzte.map(tonnageVon).reverse()
   const einheiten = einheitenDaten(days, sessions, allSets)
+  const pensum = wochenPensum(days, sessions, week)
+  const ruht = ruhetage(sessions)
 
   return (
     <>
@@ -51,7 +53,7 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
         <PlanPicker />
       </div>
 
-      <div style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
+      <div style={{ ...cssVars({ '--i': 1, '--f': tag ? tagFarbe(days, tag.id) : 'var(--neon)' }), marginBottom: 14 }}>
         <StartCard
           tag={tag}
           info={startInfo(tag, sessions)}
@@ -59,24 +61,28 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
         />
       </div>
 
-      <div className="kpirow" style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
-        <WochenpensumCard {...wochenPensum(days, sessions, week)} />
-        <TrainingszeitCard woche={t.woche} vorwoche={t.vorwoche} />
-        <KpiCard
-          label="Tonnage letztes Training"
-          value={<CountUp value={Math.round(letzteTonnage / 1000 * 10) / 10} decimals={1} />}
-          unit="t"
-          spark={serie.length > 1 ? serie : undefined}
+      <div style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
+        <KennzahlBand
+          werte={[
+            { label: 'Einheiten', wert: `${pensum.erledigt}/${pensum.geplant}`, fuehrend: true },
+            { label: 'Tonnage', wert: <CountUp value={Math.round(letzteTonnage / 1000 * 10) / 10} decimals={1} />, einheit: 't' },
+            { label: 'Zeit 7 T.', wert: <CountUp value={t.woche} />, einheit: 'min' },
+            { label: 'Ruhetage', wert: ruht == null ? '—' : <CountUp value={ruht} /> },
+          ]}
         />
-        <RuhetageCard tage={ruhetage(sessions)} />
       </div>
 
-      <div className="kachelgrid" style={cssVars({ '--i': 3 })}>
-        <LetzteEinheitenCard sessions={sessions} days={days} />
-        <SternbildCard punkte={einheiten} />
-        <TonnageEinheitenCard punkte={einheiten} />
-        <DauerEinheitenCard punkte={einheiten} />
-        <UebungsdauerCard eintraege={dauerJeUebung} />
+      <div style={cssVars({ '--i': 3 })}>
+        <SternbildCard punkte={einheiten} gross />
+      </div>
+
+      <div style={{ ...cssVars({ '--i': 4 }), marginTop: 12 }}>
+        <Auswertungen>
+          <LetzteEinheitenCard sessions={sessions} days={days} />
+          <TonnageEinheitenCard punkte={einheiten} />
+          <DauerEinheitenCard punkte={einheiten} />
+          <UebungsdauerCard eintraege={dauerJeUebung} />
+        </Auswertungen>
       </div>
     </>
   )

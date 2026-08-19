@@ -219,7 +219,7 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       const { data, error } = await supabase
         .from('sessions')
         .upsert(
-          { day_id: dayId, week, started_at: new Date().toISOString(), ended_at: null, minutes: null, status: 'completed' },
+          { day_id: dayId, week, started_at: new Date().toISOString(), ended_at: null, minutes: null, status: 'completed', paused_at: null },
           { onConflict: 'day_id,week' },
         )
         .select()
@@ -241,6 +241,7 @@ export function registriereTrainingMutationen(qc: QueryClient) {
         ended_at: null,
         minutes: null,
         status: 'completed',
+        paused_at: null,
       })
       qc.setQueryData(['session', dayId, week], optimistic)
       qc.setQueriesData<TrainingSession[]>(
@@ -330,9 +331,9 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       // Der Abschluss-Check liest frische Serverdaten und ist selbst nicht
       // offline-fähig; genau deshalb hängt er hier und nicht am Knopf. Gilt
       // für jeden Plantyp und jede Woche — sobald alle Tage der laufenden
-      // Woche fertig sind, schaltet sie sofort weiter statt erst nach 7
-      // Tagen (wochenAutomatik.ts greift nur, solange das noch nicht
-      // passiert ist).
+      // Woche erledigt sind, schaltet sie sofort weiter. Dieselbe Prüfung
+      // läuft zusätzlich beim Laden (useWochenAbschluss in AppShell.tsx),
+      // falls eine Woche auf anderem Weg vollständig wird.
       await pruefeWochenabschluss(qc, variables.planId)
     },
   })
@@ -361,6 +362,101 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       qc.invalidateQueries({ queryKey: ['sets'] })
       qc.invalidateQueries({ queryKey: ['sets-all'] })
       einheitenInvalidieren()
+    },
+  })
+
+  qc.setMutationDefaults<void, Error, { id: string; dayId: string; week: number }>(MUTATION_KEYS.pauseSession, {
+    scope: SYNC_SCOPE,
+    mutationFn: async ({ id }) => {
+      const { error } = await supabase.from('sessions').update({ paused_at: new Date().toISOString() }).eq('id', id)
+      if (error) throw error
+    },
+    onMutate: async ({ dayId, week }) => {
+      await qc.cancelQueries({ queryKey: ['session', dayId, week] })
+      await qc.cancelQueries({ queryKey: ['sessions'] })
+      await qc.cancelQueries({ queryKey: ['sessions-all'] })
+      const prevSession = qc.getQueryData<TrainingSession | null>(['session', dayId, week])
+      const prevSessions = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions'] })
+      const prevSessionsAll = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] })
+      const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, paused_at: new Date().toISOString() })
+      qc.setQueryData(['session', dayId, week], optimistic)
+      qc.setQueriesData<TrainingSession[]>(
+        { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+        old => upsertSessionInArray(old, optimistic),
+      )
+      qc.setQueriesData<TrainingSession[]>(
+        { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+        old => upsertSessionInArray(old, optimistic),
+      )
+      return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
+    },
+    onError: (_err, { dayId, week }, ctx) => rollbackSessions(qc, dayId, week, ctx as SessionsContext | undefined),
+    onSuccess: einheitenInvalidieren,
+  })
+
+  qc.setMutationDefaults<void, Error, { id: string; dayId: string; week: number; startedAt: string; pausedAt: string }>(
+    MUTATION_KEYS.resumeSession,
+    {
+      scope: SYNC_SCOPE,
+      // Die Pausendauer wird auf started_at aufgeschlagen, statt paused_at
+      // einfach nur zu löschen: sonst zählte die in endSession aus der
+      // Zeitdifferenz berechnete Dauer die Pause mit. Ist rechnerisch
+      // dasselbe wie "eine Stoppuhr anhalten und weiterlaufen lassen".
+      mutationFn: async ({ id, startedAt, pausedAt }) => {
+        const neuerStart = new Date(new Date(startedAt).getTime() + (Date.now() - new Date(pausedAt).getTime())).toISOString()
+        const { error } = await supabase.from('sessions').update({ started_at: neuerStart, paused_at: null }).eq('id', id)
+        if (error) throw error
+      },
+      onMutate: async ({ dayId, week, startedAt, pausedAt }) => {
+        await qc.cancelQueries({ queryKey: ['session', dayId, week] })
+        await qc.cancelQueries({ queryKey: ['sessions'] })
+        await qc.cancelQueries({ queryKey: ['sessions-all'] })
+        const prevSession = qc.getQueryData<TrainingSession | null>(['session', dayId, week])
+        const prevSessions = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions'] })
+        const prevSessionsAll = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] })
+        const neuerStart = new Date(new Date(startedAt).getTime() + (Date.now() - new Date(pausedAt).getTime())).toISOString()
+        const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, started_at: neuerStart, paused_at: null })
+        qc.setQueryData(['session', dayId, week], optimistic)
+        qc.setQueriesData<TrainingSession[]>(
+          { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+          old => upsertSessionInArray(old, optimistic),
+        )
+        qc.setQueriesData<TrainingSession[]>(
+          { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+          old => upsertSessionInArray(old, optimistic),
+        )
+        return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
+      },
+      onError: (_err, { dayId, week }, ctx) => rollbackSessions(qc, dayId, week, ctx as SessionsContext | undefined),
+      onSuccess: einheitenInvalidieren,
+    },
+  )
+
+  // Setzt nur die geloggten Sätze zurück, nicht die Session selbst — anders
+  // als deleteSession oben. Entspricht dem live beobachteten Verhalten von
+  // Alpha Progression: die Dauer der Einheit läuft nach einem Reset weiter,
+  // nur die Werte sind wieder leer.
+  qc.setMutationDefaults<void, Error, { exerciseIds: string[]; week: number }>(MUTATION_KEYS.resetSessionSets, {
+    scope: SYNC_SCOPE,
+    mutationFn: async ({ exerciseIds, week }) => {
+      if (!exerciseIds.length) return
+      const { error } = await supabase.from('logged_sets').delete().in('exercise_id', exerciseIds).eq('week', week)
+      if (error) throw error
+    },
+    onMutate: async ({ exerciseIds, week }) => {
+      await qc.cancelQueries({ queryKey: ['sets'] })
+      await qc.cancelQueries({ queryKey: ['sets-all'] })
+      const prevSets = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets'] })
+      const prevSetsAll = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets-all'] })
+      const gehoertDazu = (s: LoggedSet) => s.week === week && exerciseIds.includes(s.exercise_id)
+      qc.setQueriesData<LoggedSet[]>({ queryKey: ['sets'] }, old => (old ?? []).filter(s => !gehoertDazu(s)))
+      qc.setQueriesData<LoggedSet[]>({ queryKey: ['sets-all'] }, old => (old ?? []).filter(s => !gehoertDazu(s)))
+      return { prevSets, prevSetsAll } satisfies SetsContext
+    },
+    onError: (_err, _v, ctx) => rollbackSets(qc, ctx as SetsContext | undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sets'] })
+      qc.invalidateQueries({ queryKey: ['sets-all'] })
     },
   })
 }

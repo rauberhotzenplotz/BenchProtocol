@@ -66,6 +66,7 @@ type SessionPatch = {
   ended_at?: string | null
   minutes?: number | null
   status?: TrainingSession['status']
+  paused_at?: string | null
 }
 
 /** Baut einen optimistischen Session-Eintrag: übernimmt Felder aus einer
@@ -81,6 +82,7 @@ export function buildOptimisticSession(old: TrainingSession | null | undefined, 
     ended_at: patch.ended_at !== undefined ? patch.ended_at : (old?.ended_at ?? null),
     minutes: patch.minutes !== undefined ? patch.minutes : (old?.minutes ?? null),
     status: patch.status ?? old?.status ?? 'completed',
+    paused_at: patch.paused_at !== undefined ? patch.paused_at : (old?.paused_at ?? null),
   }
 }
 

@@ -73,16 +73,14 @@ export function DateStrip({ plan, days, sessions, alleSaetze }: Props) {
             >
               <div className="wt">{z.wochentag}</div>
               <div className="nr">{z.tag}</div>
-              <div className="was">
-                {z.namen.length ? (
-                  z.namen.slice(0, 2).map((n, i) => (
-                    <b key={i} style={{ color: n.farbe }}>
-                      {n.name}
-                    </b>
-                  ))
-                ) : (
-                  <span className="leer">—</span>
-                )}
+              {/* Nur Punkte statt Tagesnamen: sieben Namen nebeneinander
+                  waren auf Handybreite ohnehin abgeschnitten — der Punkt
+                  in der Tagesfarbe sagt dasselbe auf einen Blick, den
+                  Namen liefert der Titel bzw. der Kalender-Dialog. */}
+              <div className="punkte">
+                {z.namen.slice(0, 3).map((n, i) => (
+                  <i key={i} style={{ background: n.farbe, boxShadow: `0 0 6px ${n.farbe}` }} />
+                ))}
               </div>
             </div>
           ))}

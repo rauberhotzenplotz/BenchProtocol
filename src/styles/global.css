@@ -399,6 +399,32 @@ body {
     bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
 }
 
+/* ── Session-Menü (Abschließen/Pausieren/Zurücksetzen) ─────────
+   Dieselbe Sheet-Optik wie .mehr-feld, aber unter dem auslösenden Knopf
+   verankert statt an der Navigationsleiste — daher position:absolute im
+   relativ positionierten Auslöser-Wrapper statt fixer Rail-Koordinaten. */
+.session-menu-wrap { position: relative; display: inline-flex; }
+.session-menu-hinter { position: fixed; inset: 0; z-index: 74; background: transparent; }
+.session-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 76; width: 220px;
+  background: rgba(14,19,27,.98); backdrop-filter: blur(14px);
+  border: 1px solid var(--line); border-radius: var(--r-l); padding: 7px;
+  box-shadow: 0 26px 60px -24px rgba(0,0,0,.96), 0 0 0 1px rgba(53,240,208,.06);
+  animation: mehrAuf .22s cubic-bezier(.34,1.4,.64,1) both;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.session-menu-eintrag {
+  display: block; width: 100%; text-align: left;
+  border: 1px solid transparent; background: transparent; color: var(--ink-2);
+  padding: 10px 12px; border-radius: var(--r-m); cursor: pointer;
+  font: inherit; font-size: 13px; transition: all .18s;
+}
+.session-menu-eintrag:hover { background: rgba(53,240,208,.08); color: var(--ink); border-color: rgba(53,240,208,.25); }
+.session-menu-eintrag.gefahr { color: var(--crit); }
+.session-menu-eintrag.gefahr:hover { background: rgba(255,92,92,.09); border-color: rgba(255,92,92,.3); }
+.session-menu-bestaetigen { padding: 8px 10px 4px; display: flex; flex-direction: column; gap: 9px; }
+.session-menu-bestaetigen span { font-size: 12px; color: var(--ink-3); }
+
 /* ── Einstellungen ──────────────────────────────────────────── */
 .setzeile {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
@@ -568,6 +594,54 @@ body {
    bildschirmfüllender Blöcke; auf dem Schreibtisch passen so viele hin, wie
    Platz haben. Ohne eigene Umbruchpunkte, weil die Zahl der Kacheln je
    Plantyp verschieden ist (Bank sechs, Standard vier). */
+/* ── Kennzahlen-Band ────────────────────────────────────────────
+   Ersetzt im Cockpit die Reihe gleich schwerer KPI-Karten: sechs
+   umrandete Kästen mit identischem Gewicht lassen das Auge nirgends
+   landen. Hier stehen dieselben Zahlen in einem einzigen, ruhigen
+   Band — Trennlinien statt Rahmen, und die Startkarte darüber behält
+   als einzige Fläche das volle Gewicht. */
+.kpiband {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  border: 1px solid var(--line-soft); border-radius: var(--r-l);
+  background: rgba(8,11,16,.45); padding: 14px 2px 12px;
+}
+.kpiband-wert { position: relative; text-align: center; padding: 0 7px; min-width: 0; }
+.kpiband-wert + .kpiband-wert::before {
+  content: ""; position: absolute; left: 0; top: 6%; bottom: 6%; width: 1px; background: var(--line-soft);
+}
+.kpiband .zahl {
+  display: block; font-family: var(--f-display); font-weight: 600; font-size: 26px;
+  line-height: 1; color: var(--ink); white-space: nowrap;
+}
+.kpiband .zahl u { text-decoration: none; font-family: var(--f-body); font-size: 11px; color: var(--ink-3); margin-left: 2px; }
+.kpiband .lab {
+  display: block; margin-top: 7px; font-family: var(--f-mono); font-size: 8.5px;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--ink-4);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Ein Wert darf leuchten — der, um den sich der Plan dreht. */
+.kpiband-wert.fuehrend .zahl { color: var(--neon); text-shadow: 0 0 18px rgba(53,240,208,.4); }
+
+/* Das Sternbild steht als Schaustück offen auf der Übersicht statt hinter
+   einem Tipp — es ist die eine Grafik, für die man die App gern öffnet. */
+.sternbild-gross { padding: 15px 15px 12px; }
+.sternbild-gross.leer { color: var(--ink-3); }
+
+/* Alles außer den Kernzahlen liegt eingeklappt darunter, statt die
+   Übersicht mit Diagrammen zuzustellen. */
+.mehr-auswertung {
+  width: 100%; appearance: none; -webkit-appearance: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: transparent; border: 1px dashed var(--line); border-radius: var(--r-l);
+  padding: 11px; color: var(--ink-3); font: inherit; font-size: 12px;
+  font-family: var(--f-mono); letter-spacing: .1em; text-transform: uppercase;
+  transition: color .2s, border-color .2s;
+}
+.mehr-auswertung:hover { color: var(--neon); border-color: rgba(53,240,208,.4); }
+.mehr-auswertung svg { width: 14px; height: 14px; stroke: currentColor; fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s; }
+.mehr-auswertung[aria-expanded="true"] svg { transform: rotate(180deg); }
+
 .kpirow { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); }
 @media (max-width: 640px) {
   .kpirow { gap: 10px; }
@@ -673,26 +747,28 @@ body {
 .startklar.leer { cursor: default; padding-right: 21px; }
 .startklar::after {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: var(--neon); box-shadow: 0 0 16px var(--neon); opacity: .85;
+  background: var(--f, var(--neon)); box-shadow: 0 0 16px var(--f, var(--neon)); opacity: .85;
 }
 /* Der Schein sitzt hinter dem Text und wandert beim Antippen leicht mit —
-   das Startfeld soll sich anfühlen wie eine geladene Rampe. */
+   das Startfeld soll sich anfühlen wie eine geladene Rampe. Als einzige
+   Fläche der Übersicht darf sie tragen: alles andere darunter ist
+   Rückschau und bleibt bewusst leiser (siehe .kpiband). */
 .startklar::before {
-  content: ""; position: absolute; left: -40px; top: 50%; width: 320px; height: 220px;
+  content: ""; position: absolute; left: -40px; top: 50%; width: 360px; height: 260px;
   transform: translateY(-50%); pointer-events: none;
-  background: radial-gradient(closest-side, rgba(53,240,208,.16), transparent 72%);
-  transition: opacity .35s; opacity: .75;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--f, var(--neon)) 20%, transparent), transparent 72%);
+  transition: opacity .35s; opacity: .8;
 }
-.startklar:hover { border-color: rgba(53,240,208,.5); transform: translateY(-2px);
+.startklar:hover { border-color: var(--f, var(--neon)); transform: translateY(-2px);
   box-shadow: 0 18px 46px -22px rgba(0,0,0,.95); }
 .startklar:hover::before { opacity: 1; }
 .startklar:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
 .startklar:active { transform: translateY(0) scale(.995); }
 
 .startklar .sk-name {
-  position: relative; display: block; margin-top: 5px;
-  font-family: var(--f-display); font-weight: 600; font-size: 27px;
-  letter-spacing: .03em; text-transform: uppercase; line-height: 1.1; color: var(--ink);
+  position: relative; display: block; margin-top: 6px;
+  font-family: var(--f-display); font-weight: 600; font-size: 33px;
+  letter-spacing: .03em; text-transform: uppercase; line-height: 1.05; color: var(--ink);
 }
 .startklar .sk-meta {
   position: relative; margin-top: 7px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
@@ -716,10 +792,13 @@ body {
   stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s; }
 .startklar:hover .sk-pfeil svg { transform: translateX(5px); }
 
+.startklar .sk-pfeil svg { color: var(--f, var(--neon)); }
+
 @media (max-width: 640px) {
-  .startklar { padding: 14px 48px 14px 17px; }
-  .startklar .sk-name { font-size: 23px; }
+  .startklar { padding: 16px 48px 16px 17px; }
+  .startklar .sk-name { font-size: 28px; }
   .startklar .sk-pfeil { right: 15px; }
+  .kpiband .zahl { font-size: 23px; }
 }
 
 /* ── Chips / Pills ──────────────────────────────────────────── */
@@ -752,6 +831,13 @@ body {
 .chip.high { color: var(--crit); border-color: rgba(255,92,92,.35); background: rgba(255,92,92,.09); }
 .chip.mute { color: var(--ink-3); border-color: var(--line); background: rgba(255,255,255,.02); }
 .chip.neon { color: var(--neon); border-color: rgba(53,240,208,.35); background: rgba(53,240,208,.08); }
+
+/* Muskel-Chips auf der Tagesansicht: leuchtender Punkt statt Foto/Silhouette
+   — die Größe des Punkts zeigt die relative Satzanzahl je Gruppe. */
+.muskel-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.muskel-chip { gap: 6px; padding: 4px 9px 4px 7px; }
+.muskel-chip i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.muskel-chip em { font-style: normal; opacity: .7; }
 
 /* ── Buttons ────────────────────────────────────────────────── */
 .btn {
@@ -1063,17 +1149,17 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 /* ── Datumsstreifen und Kalender ────────────────────────────── */
 .streifen {
   border: 1px solid var(--line); border-radius: var(--r-l);
-  background: rgba(8,11,16,.5); padding: 13px 15px 12px; cursor: pointer;
+  background: rgba(8,11,16,.5); padding: 10px 13px 9px; cursor: pointer;
   transition: border-color .25s, transform .25s; width: 100%; text-align: left;
   color: inherit; font: inherit;
 }
 .streifen:hover { border-color: rgba(53,240,208,.35); transform: translateY(-1px); }
 .streifen:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
-.streifen-kopf { display: flex; align-items: baseline; gap: 10px; margin-bottom: 11px; }
-.streifen-kopf b { font-family: var(--f-display); font-size: 15px; letter-spacing: .06em; text-transform: uppercase; }
+.streifen-kopf { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.streifen-kopf b { font-family: var(--f-display); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
 .streifen-kopf span { font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-3); }
 .streifen-kopf .mehr { margin-left: auto; color: var(--neon); font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
-.streifen-fuss { margin-top: 9px; font-family: var(--f-mono); font-size: 10px; color: var(--ink-4); }
+.streifen-fuss { margin-top: 7px; font-family: var(--f-mono); font-size: 9.5px; color: var(--ink-4); }
 
 /* overflow-x bleibt als Sicherheitsnetz stehen, greift bei sieben Zellen
    aber nicht mehr: flex-shrink 1 lässt die Zellen auf sehr schmalen
@@ -1091,13 +1177,10 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .dtag .nr { font-family: var(--f-display); font-size: 17px; line-height: 1.2; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .dtag.trainiert .nr { color: var(--ink); }
 .dtag.heute .nr { color: var(--neon); }
-.dtag .was {
-  margin-top: 4px; font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .02em;
-  text-transform: uppercase; line-height: 1.25; min-height: 22px;
-  overflow: hidden; text-overflow: ellipsis;
-}
-.dtag .was b { display: block; font-weight: 600; }
-.dtag .leer { color: var(--ink-4); opacity: .45; }
+/* Punkte statt Tagesnamen — feste Höhe, damit Zellen mit und ohne
+   Training gleich hoch bleiben und der Streifen nicht springt. */
+.dtag .punkte { display: flex; justify-content: center; gap: 3px; height: 6px; margin-top: 5px; }
+.dtag .punkte i { width: 5px; height: 5px; border-radius: 50%; flex: none; }
 
 .kal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .kal .kwt { font-family: var(--f-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
@@ -1192,17 +1275,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .linkbtn:hover { color: var(--neon); }
 
 /* ── Trainingstage ──────────────────────────────────────────── */
-.tagliste { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0,1fr)); }
-.tagkarte.neu {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  min-height: 148px; border: 1.5px dashed var(--line); border-radius: var(--r-l);
-  background: transparent; color: var(--ink-4); cursor: pointer;
-  font-family: var(--f-display); font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase;
-  transition: border-color .25s, color .25s;
-}
-.tagkarte.neu svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
-.tagkarte.neu:hover { border-color: rgba(53,240,208,.5); color: var(--neon); }
-.tagkarte.neu:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
+.tagliste { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0,1fr)); }
 @media (max-width: 900px) { .tagliste { grid-template-columns: 1fr; } }
 
 .tagkarte {
@@ -1210,7 +1283,7 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   display: flex; flex-direction: column; align-items: stretch;
   background: linear-gradient(158deg, rgba(21,29,40,.86), rgba(14,19,27,.86));
   border: 1px solid var(--line); border-radius: var(--r-l);
-  padding: 18px 20px 16px; cursor: pointer; overflow: hidden;
+  padding: 12px 15px 11px; cursor: pointer; overflow: hidden;
   color: inherit; font: inherit;
   transition: border-color .3s, transform .3s, box-shadow .3s;
 }
@@ -1225,12 +1298,12 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .tagkarte.fertig::after { background: var(--good); box-shadow: 0 0 14px var(--good); }
 
 .tagkarte h4 {
-  margin: 5px 0 3px; font-family: var(--f-display); font-weight: 600;
-  font-size: 22px; letter-spacing: .03em; text-transform: uppercase; line-height: 1.1;
+  margin: 0 0 2px; font-family: var(--f-display); font-weight: 600;
+  font-size: 17px; letter-spacing: .03em; text-transform: uppercase; line-height: 1.1;
 }
-.tagkarte .tsub { font-size: 12px; color: var(--ink-3); margin-bottom: 13px; }
-.tagkarte .tbalken { height: 6px; border-radius: 99px; background: rgba(8,11,16,.7);
-  border: 1px solid var(--line-soft); overflow: hidden; margin: 13px 0 9px; }
+.tagkarte .tsub { font-size: 11.5px; color: var(--ink-3); margin-bottom: 0; }
+.tagkarte .tbalken { height: 5px; border-radius: 99px; background: rgba(8,11,16,.7);
+  border: 1px solid var(--line-soft); overflow: hidden; margin: 9px 0 7px; }
 .tagkarte .tfill { height: 100%; border-radius: 99px; background: var(--f, var(--neon));
   box-shadow: 0 0 10px var(--f, var(--neon)); width: 0; transition: width .9s cubic-bezier(.22,1,.36,1); }
 .tagkarte.fertig .tfill { background: var(--good); box-shadow: 0 0 10px var(--good); }
@@ -1375,6 +1448,26 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .ueb .setkopf, .ueb .setgrid { margin-top: 11px; }
 .ueb-fuss { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
 
+/* Referenzpanel "Letzte Einheit" — bewusst unauffälliger als die aktuelle
+   Satzliste (schwächerer Rahmen, kleinere Schrift), da es nur zum
+   Vergleich dient, nicht zur Eingabe. */
+.letzte-einheit {
+  margin-top: 10px; padding: 9px 10px; border-radius: var(--r-m);
+  border: 1px dashed var(--line-soft); background: rgba(255,255,255,.02);
+}
+.letzte-einheit-kopf {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-4); margin-bottom: 7px;
+}
+.letzte-einheit-liste { display: flex; flex-direction: column; gap: 4px; }
+.letzte-einheit-zeile {
+  display: grid; grid-template-columns: 20px 1fr 1fr 1fr; gap: 8px; align-items: baseline;
+  font-size: 12.5px; color: var(--ink-3);
+}
+.letzte-einheit-zeile .nr { font-family: var(--f-mono); font-size: 10px; color: var(--ink-4); }
+.letzte-einheit-zeile .mono em { margin-left: 3px; font-style: normal; font-size: 10px; color: var(--ink-4); }
+.letzte-einheit-zeile .rm { color: var(--ink-2); }
+
 /* Notiz, Bank-Zuordnung, Muskelgruppe und Löschen sind Einstellungen, die
    man einmal setzt und dann jahrelang nicht mehr anfasst — sie liegen
    hinter dem Zahnrad im Fuß, damit die geöffnete Übung im Training nur
@@ -1395,13 +1488,13 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 /* ── Satzweise Erfassung ────────────────────────────────────── */
 .setgrid { display: flex; flex-direction: column; gap: 6px; }
 .setline {
-  display: grid; grid-template-columns: 30px 1.3fr 1fr .85fr 46px 26px; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 30px 1.3fr 1fr .85fr .7fr 46px 26px; gap: 8px; align-items: center;
   padding: 7px 8px; border-radius: var(--r-m); background: rgba(8,11,16,.6);
   border: 1px solid var(--line-soft); transition: border-color .2s, background .2s;
 }
 /* RPE ist nur beim Bankdrücken sinnvoll (einzige Übung mit RPE-Automatik)
    — bei anderen Übungen fällt die Spalte ganz weg statt leer zu bleiben. */
-.setline.ohne-rpe, .setkopf.ohne-rpe { grid-template-columns: 30px 1.3fr 1fr 46px 26px; }
+.setline.ohne-rpe, .setkopf.ohne-rpe { grid-template-columns: 30px 1.3fr 1fr .7fr 46px 26px; }
 .setline:hover { border-color: var(--line); }
 .setline.ok { border-color: rgba(63,224,138,.32); background: rgba(63,224,138,.06); }
 .setline .nr {
@@ -1423,13 +1516,17 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .setline .inp.repw { color: var(--ink); font-weight: 600; font-size: 14.5px; }
 .setline .inp.rpew { color: var(--ink-3); }
 .setline.ok .inp.kgw { color: var(--good); }
+/* 1RM ist reine Anzeige, kein Eingabefeld — eigene, schmalere Klasse statt
+   der .inp-Varianten. */
+.setline .rm { font-family: var(--f-mono); font-size: 11.5px; color: var(--ink-3); text-align: center; }
+.setline.ok .rm { color: var(--good); }
 
 .setkopf {
-  display: grid; grid-template-columns: 30px 1.3fr 1fr .85fr 46px 26px; gap: 8px;
+  display: grid; grid-template-columns: 30px 1.3fr 1fr .85fr .7fr 46px 26px; gap: 8px;
   padding: 0 8px 3px; font-family: var(--f-mono); font-size: 10px;
   letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3);
 }
-.setkopf span:first-child, .setkopf span:nth-child(5) { text-align: center; }
+.setkopf span:first-child { text-align: center; }
 .sethaken {
   width: 38px; height: 34px; margin: 0 auto; border-radius: var(--r-s);
   border: 1px solid var(--line); background: transparent; color: var(--ink-4);
@@ -1474,8 +1571,8 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .sperr-wert { font-family: var(--f-display); font-size: 22px; font-weight: 600; color: var(--ink-2); }
 
 @media (max-width: 760px) {
-  .setline, .setkopf { grid-template-columns: 24px 1.3fr 1fr .8fr 42px 24px; gap: 5px; }
-  .setline.ohne-rpe, .setkopf.ohne-rpe { grid-template-columns: 24px 1.3fr 1fr 42px 24px; }
+  .setline, .setkopf { grid-template-columns: 24px 1.3fr 1fr .8fr .6fr 42px 24px; gap: 5px; }
+  .setline.ohne-rpe, .setkopf.ohne-rpe { grid-template-columns: 24px 1.3fr 1fr .6fr 42px 24px; }
   .ueb-titel b { font-size: 15.5px; }
   .ueb-nr { width: 27px; height: 27px; font-size: 11px; }
 }
@@ -2378,6 +2475,11 @@ body:has(.gym) .nebel { display: none; }
 .gym-wdh span { color: var(--ink-3); font-size: .5em; margin-left: .2em; }
 .gym-hinweis { margin-top: 14px; font-family: var(--f-mono); font-size: 10.5px;
   letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4); text-align: center; }
+/* Live-1RM unter Gewicht/Wdh./RPE — dieselbe unauffällige Mono-Zeile wie
+   der Pausenhinweis, nur die Zahl selbst etwas kräftiger. */
+.gym-rm { margin-top: 10px; font-family: var(--f-mono); font-size: 10.5px;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4); text-align: center; }
+.gym-rm b { font-family: var(--f-display); font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
 /* Läuft die Pause vor diesem Satz über, zählt hier weiter, wie lange schon
    — bewusst grau statt in einer Warnfarbe: die Pause ist vorbei, das ist
    nur noch eine Information, keine Dringlichkeit mehr. */
@@ -3181,3 +3283,114 @@ body:has(.gym) .nebel { display: none; }
 .auth-msg.ok { color: var(--good); }
 .auth-switch { text-align: center; margin-top: 14px; font-size: 12.5px; color: var(--ink-3); }
 .auth-switch button { color: var(--neon); }
+
+/* ── Gym-Modus im Alpha-Progression-Aufbau ──────────────────────
+   Bewusst NICHT im Weltraum-Thema der übrigen App, sondern in der
+   Optik der Vorlage (iOS-Systemfarben, fast schwarzer Grund, blaue
+   Akzente, grüner Haken) — als Vergleichsstück. Eigener Namensraum
+   .ap-*, damit sich nichts mit dem restlichen Stylesheet beißt; das
+   Angleichen ans eigene Design kommt später. */
+.ap {
+  position: fixed; inset: 0; z-index: 120;
+  background: #0b0b0d; color: #fff;
+  display: flex; flex-direction: column;
+  font-family: -apple-system, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+.ap-griff { width: 46px; height: 5px; border-radius: 99px; background: #48484a; margin: 4px auto 8px; flex: none; }
+
+.ap-kopf { display: flex; justify-content: flex-end; padding: 0 16px 10px; flex: none; }
+.ap-titelbtn {
+  appearance: none; -webkit-appearance: none; background: transparent; border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  color: #0A84FF; font: inherit; font-size: 19px; font-weight: 600;
+}
+.ap-titelbtn svg { width: 19px; height: 19px; fill: currentColor; }
+
+/* Übungsstreifen — bei der Vorlage Fotos, hier nummerierte Kacheln. */
+.ap-streifen { display: flex; gap: 9px; overflow-x: auto; padding: 0 16px 14px; flex: none; scrollbar-width: none; }
+.ap-streifen::-webkit-scrollbar { display: none; }
+.ap-kachel {
+  appearance: none; -webkit-appearance: none; cursor: pointer; flex: none;
+  width: 62px; height: 62px; border-radius: 14px; border: 2px solid transparent;
+  background: #1c1c1e; color: #8e8e93;
+  font: inherit; font-size: 19px; font-weight: 600;
+  transition: opacity .2s, border-color .2s, color .2s;
+  opacity: .55;
+}
+.ap-kachel.aktiv { opacity: 1; border-color: #0A84FF; color: #fff; }
+.ap-kachel.fertig { color: #30D158; }
+
+.ap-inhalt { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px; }
+
+.ap-uebung { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 700; color: #0A84FF; }
+.ap-meta { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 4px 12px; color: #8e8e93; font-size: 16px; }
+.ap-warmup {
+  display: inline-block; margin-top: 13px; padding: 9px 16px; border-radius: 99px;
+  background: #1c1c1e; color: #8e8e93; font-size: 16px; font-weight: 600;
+}
+
+/* Satztabelle: fünf Spalten wie in der Vorlage (#, KG, WDH, 1RM, Haken). */
+.ap-tabkopf, .ap-zeile {
+  display: grid; grid-template-columns: 54px 1fr 1fr 1fr 58px; gap: 9px; align-items: center;
+}
+.ap-tabkopf { margin-top: 20px; color: #8e8e93; font-size: 16px; padding: 0 2px 4px; }
+.ap-tabkopf.klein { margin-top: 6px; font-size: 13px; grid-template-columns: 1fr 1fr 1fr 1fr; }
+.ap-zeile { padding: 6px 0; cursor: pointer; }
+.ap-zeile:not(.aktiv) { color: #8e8e93; font-size: 19px; }
+
+.ap-nr {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  height: 52px; border-radius: 13px; font-size: 19px; font-weight: 600;
+}
+.ap-zeile.aktiv .ap-nr { background: #1c1c1e; color: #fff; }
+.ap-nr i {
+  position: absolute; top: 6px; right: 8px; width: 9px; height: 9px;
+  border-radius: 50%; background: #0A84FF;
+}
+
+/* Eingabefelder der aktiven Zeile — dieselbe Pillenoptik wie in der
+   Vorlage; dahinter öffnet unser vorhandenes Zahlrad. */
+.ap-feld {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  height: 52px; width: 100%; border: 0; border-radius: 13px;
+  background: #1c1c1e; color: #fff; font: inherit; font-size: 21px; font-weight: 700;
+}
+.ap-feld:active { background: #2c2c2e; }
+.ap-wert { text-align: center; font-size: 19px; }
+.ap-zeile.aktiv .ap-wert { color: #8e8e93; }
+
+.ap-haken {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  height: 52px; width: 58px; border: 0; border-radius: 13px;
+  background: #30D158; color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .2s;
+}
+.ap-haken.an { background: #1c6b36; }
+.ap-haken svg { width: 26px; height: 26px; stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Letzte Einheit derselben Übung — bei der Vorlage direkt unter der
+   Tabelle als eigene Karte. */
+.ap-historie { margin: 22px 0 16px; padding: 13px 15px 15px; border-radius: 15px; background: #1c1c1e; }
+.ap-historie-kopf { color: #8e8e93; font-size: 15px; }
+.ap-hzeile { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 9px; padding: 4px 0; color: #c7c7cc; font-size: 15px; }
+.ap-historie .ap-tabkopf { padding-left: 0; }
+
+/* Der Timer sitzt mittig, "Beenden" links daneben — wie in der Vorlage.
+   Drei gleich breite Spalten halten ihn auch dann in der Mitte, wenn der
+   Text links unterschiedlich lang ist. */
+.ap-fuss { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 16px 4px; }
+.ap-beenden {
+  appearance: none; -webkit-appearance: none; background: transparent; border: 0; cursor: pointer;
+  color: #0A84FF; font: inherit; font-size: 17px; padding: 8px 0; justify-self: start;
+}
+.ap-timer {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  min-width: 86px; height: 52px; border: 0; border-radius: 15px;
+  background: #1c1c1e; color: #8e8e93; font: inherit; font-size: 19px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ap-timer.laeuft { color: #0A84FF; }
+.ap-timer svg { width: 27px; height: 27px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

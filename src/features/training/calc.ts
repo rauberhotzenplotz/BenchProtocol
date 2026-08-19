@@ -1,5 +1,7 @@
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
+import { e1rm, round } from '../bench/calc'
+import { geschaetztes1RM } from '../rpeblock/e1rm'
 
 export function mround(n: number, step: number): number {
   return Math.round(n / step) * step
@@ -48,6 +50,29 @@ export function tagFortschritt(exercises: Exercise[], setsByExercise: Map<string
     anteil: geplant ? Math.min(1, erledigt / geplant) : 0,
     fertig: geplant > 0 && erledigt >= geplant,
   }
+}
+
+/** Gilt ein Trainingstag in dieser Woche als abgehakt? Entweder wurde die
+    Einheit beendet oder sie wurde bewusst übersprungen — beides schließt
+    den Tag ab. Bewusst nicht über die abgehakten Sätze: wer eine Einheit
+    beendet, ohne jeden einzelnen Satz anzuhaken, hat sie trotzdem
+    hinter sich. */
+export function tagErledigt(dayId: string, sessions: TrainingSession[], week: number): boolean {
+  return sessions.some(
+    s => s.day_id === dayId && s.week === week && (s.status === 'skipped' || (s.status === 'completed' && s.ended_at != null)),
+  )
+}
+
+/** Sind alle Trainingstage der laufenden Woche erledigt? Grundlage des
+    einheitenbasierten Wochenwechsels: die Woche endet, wenn man sie
+    trainiert hat, nicht wenn der Kalender sieben Tage weiter ist — sonst
+    zerschneidet eine verschobene Trainingswoche (statt Sonntag mal
+    Montag) die laufende Woche mittendrin.
+
+    Ohne Trainingstage nie erledigt: ein leerer Plan würde sonst endlos
+    weiterschalten, weil "alle Tage fertig" leer trivial zuträfe. */
+export function wocheErledigt(dayIds: string[], sessions: TrainingSession[], week: number): boolean {
+  return dayIds.length > 0 && dayIds.every(id => tagErledigt(id, sessions, week))
 }
 
 /** Letztes bekanntes Gewicht/Wdh./RPE einer Übung — wochenübergreifend,
@@ -167,6 +192,47 @@ export function aufwaermPlan(mitStange: boolean, kgRoh: number, plate: number): 
   return [{ label: 'Leere Stange', kg: AUFWAERM_STANGE, wdh: 10 }].concat(
     [auf(0.5, 5, '50 %'), auf(0.65, 3, '65 %'), auf(0.75, 1, '75 %')].filter(s => s.kg > AUFWAERM_STANGE),
   )
+}
+
+/** Geschätztes 1RM eines einzelnen Satzes — bevorzugt die RPE-Tabelle
+    (genauer), fällt außerhalb ihres Bereichs oder ohne RPE auf Epley
+    zurück. Dasselbe Muster wie baseE1RM() in bench/calc.ts, hier aber
+    für jeden einzelnen Satz statt nur den Plan-Testsatz. */
+export function satzE1rm(kg: number | null | undefined, reps: number | null | undefined, rpe: number | null | undefined): number | null {
+  if (!kg || !reps) return null
+  if (rpe != null) {
+    const tab = geschaetztes1RM(kg, reps, rpe)
+    if (tab != null) return round(tab, 1)
+  }
+  return round(e1rm(kg, reps), 1)
+}
+
+/** Alle Sätze der letzten Woche vor der aktuellen, in der diese Übung
+    Gewichtsdaten hat — für ein sichtbares "Letzte Einheit"-Panel, im
+    Unterschied zu letzterSatz() oben, das nur den einen letzten Satz
+    für die stille Vorbelegung liefert. */
+export function letzteEinheitFuerUebung(exerciseId: string, alleSaetze: LoggedSet[], aktuelleWoche: number): LoggedSet[] {
+  const relevante = alleSaetze.filter(s => s.exercise_id === exerciseId && s.week < aktuelleWoche && s.kg != null)
+  if (!relevante.length) return []
+  const letzteWoche = Math.max(...relevante.map(s => s.week))
+  return relevante.filter(s => s.week === letzteWoche).sort((a, b) => a.position - b.position)
+}
+
+export interface MuskelgruppenSatz {
+  gruppe: string
+  saetze: number
+}
+
+/** Trainierte Muskelgruppen eines Tages mit ihrer geplanten Satzanzahl,
+    absteigend sortiert — Grundlage für die Muskel-Chips auf der
+    Tagesansicht. Übungen ohne Muskelgruppen-Angabe bleiben außen vor. */
+export function muskelgruppenDesTags(exercises: Exercise[]): MuskelgruppenSatz[] {
+  const map = new Map<string, number>()
+  exercises.forEach(ex => {
+    if (!ex.muscle_group) return
+    map.set(ex.muscle_group, (map.get(ex.muscle_group) ?? 0) + setsOf(ex.scheme))
+  })
+  return [...map.entries()].map(([gruppe, saetze]) => ({ gruppe, saetze })).sort((a, b) => b.saetze - a.saetze)
 }
 
 export function gruppeSetsByExercise(sets: LoggedSet[]): Map<string, LoggedSet[]> {

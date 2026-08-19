@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { DayWithExercises } from '../training/queries'
 import { type UebungsDauerSchnitt } from '../training/calc'
 import { tagFarbe } from '../training/dayColor'
@@ -8,6 +8,56 @@ import { Sparkline } from '../../components/Sparkline'
 import { CountUp } from '../../components/CountUp'
 import { KachelKarte } from './KachelKarte'
 import { ListChart } from './ListChart'
+
+export interface BandWert {
+  label: string
+  wert: ReactNode
+  einheit?: string
+  /** Hebt genau einen Wert neon hervor — den, um den sich der Plan dreht. */
+  fuehrend?: boolean
+}
+
+/** Die Kernzahlen als ein ruhiges Band statt als Reihe gleich schwerer
+    Karten: sechs umrandete Kästen nebeneinander geben dem Auge keinen
+    Halt, weil jeder gleich laut ist. Hier trennt nur eine Haarlinie, und
+    die Startkarte darüber bleibt die einzige Fläche mit vollem Gewicht. */
+export function KennzahlBand({ werte }: { werte: BandWert[] }) {
+  return (
+    <div className="kpiband">
+      {werte.map(w => (
+        <div key={w.label} className={'kpiband-wert' + (w.fuehrend ? ' fuehrend' : '')}>
+          <span className="zahl">
+            {w.wert}
+            {w.einheit && <u>{w.einheit}</u>}
+          </span>
+          <span className="lab">{w.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Klappt die Diagramme weg, bis man sie sehen will. Die Übersicht soll
+    beim Öffnen der App eine Handlung und drei Zahlen zeigen, nicht fünf
+    Auswertungen — die stehen einen Tipp weiter. */
+export function Auswertungen({ children }: { children: ReactNode }) {
+  const [offen, setOffen] = useState(false)
+  return (
+    <>
+      <button className="mehr-auswertung" aria-expanded={offen} onClick={() => setOffen(o => !o)}>
+        {offen ? 'Auswertungen zuklappen' : 'Auswertungen'}
+        <svg viewBox="0 0 24 24">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {offen && (
+        <div className="kachelgrid" style={{ marginTop: 12 }}>
+          {children}
+        </div>
+      )}
+    </>
+  )
+}
 
 /** Ein Kennwert der Kopfzeile. Die Kacheln tragen keine eigene Farbe mehr
     (früher c1–c4): Farbe bedeutet in dieser App Trainingstag, und ein

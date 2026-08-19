@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, type QueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { MUTATION_KEYS } from '../../lib/offline/keys'
-import type { BenchProgressionRow, BenchSlot, Exercise } from '../../types/db'
-import { setsOf } from '../training/calc'
+import type { BenchProgressionRow, BenchSlot, Exercise, TrainingSession } from '../../types/db'
+import { wocheErledigt } from '../training/calc'
 import { naechstesE1rm, round } from './calc'
 import { zielgewicht } from '../rpeblock/e1rm'
 
@@ -67,16 +67,19 @@ const REFERENZ_RPE = 8
 
 /** Prüft nach dem Beenden einer Einheit, ob ein Bankfokus-Block automatisch
     abgeschlossen werden kann: nur in der Deload-Woche (4) und nur, wenn
-    dort in allen Tagen alle geplanten Sätze abgehakt sind. Lädt dafür
-    frisch nach (statt sich auf React-Query-Cache zu verlassen), da das
-    direkt nach einer Mutation aufgerufen wird. Kein no-op-Wurf, wenn die
-    Bedingung nicht zutrifft — einfach nichts tun.
-    Eigenständige Funktion statt reiner mutationFn, weil sie sowohl vom
-    useAutoAdvanceBlock-Hook als auch — offline-sicher, also erst nachdem
-    endSession serverseitig wirklich bestätigt ist — aus dem in
-    src/lib/offlineMutations.ts registrierten onSuccess von endSession
-    aufgerufen wird (siehe dort). Braucht zwingend frische Serverdaten, ist
-    also selbst nicht offline-fähig/warteschlangentauglich. */
+    dort alle Trainingstage erledigt sind (beendet oder übersprungen —
+    siehe wocheErledigt in training/calc.ts, derselbe einheitenbasierte
+    Maßstab wie beim normalen Wochenwechsel). Die Sätze werden weiterhin
+    gelesen, aber nur noch für die 1RM-Neuberechnung, nicht mehr als
+    Auslöser. Lädt dafür frisch nach (statt sich auf React-Query-Cache zu
+    verlassen), da das direkt nach einer Mutation aufgerufen wird. Kein
+    no-op-Wurf, wenn die Bedingung nicht zutrifft — einfach nichts tun.
+    Eigenständige Funktion statt reiner mutationFn, weil sie — offline-
+    sicher, also erst nachdem endSession serverseitig wirklich bestätigt
+    ist — aus dem in src/lib/offline/training.ts registrierten onSuccess
+    von endSession heraus über pruefeWochenabschluss() aufgerufen wird.
+    Braucht zwingend frische Serverdaten, ist also selbst nicht
+    offline-fähig/warteschlangentauglich. */
 export async function advanceBlockIfDue(qc: QueryClient, planId: string) {
   const { data: plan, error: planErr } = await supabase.from('plans').select('*').eq('id', planId).single()
   if (planErr) throw planErr
@@ -92,23 +95,10 @@ export async function advanceBlockIfDue(qc: QueryClient, planId: string) {
   const exerciseIds = alleExercises.map(ex => ex.id)
   if (!exerciseIds.length) return null
 
-  const { data: progression, error: progErr } = await supabase.from('bench_progression').select('*').eq('plan_id', planId)
-  if (progErr) throw progErr
-  const woche4Rows = (progression as BenchProgressionRow[]).filter(r => r.week === 4)
-
-  const sollFuer = (ex: Exercise) => {
-    if (ex.bench_slot) {
-      const row = woche4Rows.find(r => r.slot === ex.bench_slot)
-      if (row) return setsOf(row.scheme)
-    }
-    return setsOf(ex.scheme)
-  }
-  const geplant = alleExercises.reduce((a, ex) => a + sollFuer(ex), 0)
-
-  const { data: woche4Saetze, error: setsErr } = await supabase.from('logged_sets').select('*').in('exercise_id', exerciseIds).eq('week', 4)
-  if (setsErr) throw setsErr
-  const erledigt = woche4Saetze.filter(s => s.done).length
-  if (erledigt < geplant) return null
+  const dayIdsAlle = (days as { id: string }[]).map(d => d.id)
+  const { data: woche4Sessions, error: sessErr } = await supabase.from('sessions').select('*').in('day_id', dayIdsAlle).eq('week', 4)
+  if (sessErr) throw sessErr
+  if (!wocheErledigt(dayIdsAlle, woche4Sessions as TrainingSession[], 4)) return null
 
   const { data: wochen1bis3, error: w13Err } = await supabase
     .from('logged_sets')
@@ -126,11 +116,8 @@ export async function advanceBlockIfDue(qc: QueryClient, planId: string) {
   const patch: Record<string, unknown> = {
     block: (plan.block ?? 1) + 1,
     week: 1,
-    // Ohne den Reset hier bliebe der alte Zeitstempel stehen — die
-    // Wochenautomatik (wochenAutomatik.ts) sähe eine Woche 1, die
-    // angeblich schon seit dem vorigen Block läuft, und schaltete
-    // sofort wieder weiter, statt dem neuen Block seine volle Woche
-    // zu geben.
+    // Der neue Block startet seine Woche 1 jetzt — ohne den Reset behielte
+    // die Anzeige den Startzeitpunkt des vorigen Blocks.
     week_started_at: new Date().toISOString(),
     last_delta_note: ergebnis.begruendung,
   }
@@ -155,11 +142,4 @@ export async function advanceBlockIfDue(qc: QueryClient, planId: string) {
   qc.invalidateQueries({ queryKey: ['sessions-all'] })
 
   return ergebnis
-}
-
-export function useAutoAdvanceBlock() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (planId: string) => advanceBlockIfDue(qc, planId),
-  })
 }

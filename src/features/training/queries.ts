@@ -191,3 +191,24 @@ export function useDeleteSession() {
 export function useSkipSession() {
   return useMutation<void, Error, { dayId: string; week: number }>({ mutationKey: MUTATION_KEYS.skipSession })
 }
+
+/** Hält eine laufende Einheit an, ohne sie zu beenden — die Gegenstelle zu
+    useResumeSession() unten. */
+export function usePauseSession() {
+  return useMutation<void, Error, { id: string; dayId: string; week: number }>({ mutationKey: MUTATION_KEYS.pauseSession })
+}
+
+/** Setzt eine pausierte Einheit fort: verschiebt started_at um die
+    Pausendauer nach vorn, damit die spätere Dauer-Berechnung in
+    useEndSession() die Pause nicht mitzählt. */
+export function useResumeSession() {
+  return useMutation<void, Error, { id: string; dayId: string; week: number; startedAt: string; pausedAt: string }>({
+    mutationKey: MUTATION_KEYS.resumeSession,
+  })
+}
+
+/** Setzt nur die geloggten Sätze einer Einheit zurück — anders als
+    useDeleteSession() bleibt die Session (und damit ihre Dauer) bestehen. */
+export function useResetSessionSets() {
+  return useMutation<void, Error, { exerciseIds: string[]; week: number }>({ mutationKey: MUTATION_KEYS.resetSessionSets })
+}

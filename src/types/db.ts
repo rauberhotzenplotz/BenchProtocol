@@ -12,8 +12,10 @@ export interface Plan {
   name: string
   typ: PlanTyp
   week: number
-  /** Seit wann die aktuelle Woche läuft — Grundlage des automatischen
-      Wochenwechsels nach 7 Tagen (siehe wochenAutomatik.ts). */
+  /** Seit wann die aktuelle Woche läuft. Steuert den Wochenwechsel nicht
+      mehr (der hängt an den erledigten Einheiten, siehe
+      training/wochenAbschluss.ts), dient aber weiter als Anzeige- und
+      Auswertungsstempel. */
   week_started_at: string
   sort_order: number
   /** Nur bei typ === 'bench' gesetzt. */
@@ -107,6 +109,9 @@ export interface TrainingSession {
   ended_at: string | null
   minutes: number | null
   status: SessionStatus
+  /** Gesetzt, solange die Einheit pausiert ist — null im Normalzustand
+      und nach "Fortsetzen". */
+  paused_at: string | null
 }
 
 export type RpeBlockStatus = 'active' | 'completed' | 'abandoned'

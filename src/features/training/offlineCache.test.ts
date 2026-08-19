@@ -15,7 +15,7 @@ function set(patch: Partial<LoggedSet>): LoggedSet {
 }
 
 function session(patch: Partial<TrainingSession>): TrainingSession {
-  return { id: 'se1', day_id: 'd1', user_id: 'u1', week: 1, started_at: '', ended_at: null, minutes: null, status: 'completed', ...patch }
+  return { id: 'se1', day_id: 'd1', user_id: 'u1', week: 1, started_at: '', ended_at: null, minutes: null, status: 'completed', paused_at: null, ...patch }
 }
 
 describe('upsertInArray', () => {
@@ -79,6 +79,14 @@ describe('buildOptimisticSession', () => {
     expect(s.started_at).toBe('2026-01-01T00:00:00.000Z')
     expect(s.ended_at).toBe('2026-01-01T01:00:00.000Z')
     expect(s.minutes).toBe(60)
+  })
+
+  it('setzt paused_at über den Patch, lässt es sonst wie in der bestehenden Session', () => {
+    const pausiert = buildOptimisticSession(session({ paused_at: null }), { day_id: 'd1', week: 1, paused_at: '2026-01-01T00:05:00.000Z' })
+    expect(pausiert.paused_at).toBe('2026-01-01T00:05:00.000Z')
+
+    const unveraendert = buildOptimisticSession(session({ paused_at: '2026-01-01T00:05:00.000Z' }), { day_id: 'd1', week: 1, ended_at: null })
+    expect(unveraendert.paused_at).toBe('2026-01-01T00:05:00.000Z')
   })
 })
 

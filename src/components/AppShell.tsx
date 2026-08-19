@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { useIsMutating } from '@tanstack/react-query'
+import { useIsMutating, useQueryClient } from '@tanstack/react-query'
 import { Nav } from './Nav'
 import { UpdateBanner } from './UpdateBanner'
 import { OfflineBanner } from './OfflineBanner'
@@ -9,8 +9,7 @@ import { Mark } from './Mark'
 import { BootScreen } from './BootScreen'
 import { useAuth } from '../auth/auth-context'
 import { useActivePlan } from '../features/plans/active-plan-context'
-import { useUpdatePlan } from '../features/plans/queries'
-import { naechsteWoche } from '../features/training/wochenAutomatik'
+import { pruefeWochenabschluss } from '../features/training/wochenAbschluss'
 import { nebelPhase } from './nebelPhase'
 
 function useClock() {
@@ -37,20 +36,40 @@ function useNebelPhase() {
   }, [phase])
 }
 
-/** Ersetzt die frühere manuelle W1–W4/Deload-Auswahl (siehe
-    wochenAutomatik.ts): prüft bei jedem Laden des aktiven Plans, ob seit
-    Beginn der eingetragenen Woche 7 Tage vergangen sind, und schreibt bei
-    Bedarf die neue Woche. Läuft einmal je geänderter Woche, nicht bei
-    jedem Rendern — die Prüfung selbst ist reine Zeit-Arithmetik, ein
-    erneuter Aufruf nach dem Schreiben liefert dann null. */
-function useWochenAutomatik(plan: ReturnType<typeof useActivePlan>['activePlan']) {
-  const updatePlan = useUpdatePlan()
+/** Schaltet die Woche weiter, sobald alle Trainingstage erledigt sind
+    (siehe wochenAbschluss.ts). Der Aufruf steckt zusätzlich im onSuccess
+    von endSession — dort greift er unmittelbar nach dem Beenden einer
+    Einheit. Hier läuft dieselbe Prüfung noch einmal beim Laden, weil eine
+    Woche auch auf anderem Weg vollständig werden kann: eine Einheit wird
+    nachträglich übersprungen, eine gelöschte Einheit kommt zurück, oder
+    die Daten ändern sich auf einem zweiten Gerät. Ohne diese zweite
+    Stelle bliebe ein bereits vollständiger Zustand für immer stehen, weil
+    kein weiteres "Beenden" mehr folgt.
+
+    Nur online: pruefeWochenabschluss() liest frisch vom Server und ist
+    bewusst nicht warteschlangentauglich (siehe dort). Offline passiert
+    nichts — beim nächsten Laden mit Netz zieht die Prüfung nach.
+
+    Der Ref-Wächter verhindert überlappende Läufe, während die Prüfung
+    selbst noch unterwegs ist; nach dem Schreiben löst die invalidierte
+    Planliste einen erneuten Lauf aus, der dann null liefert (die frische
+    Woche hat noch keine erledigten Tage) und damit terminiert. */
+function useWochenAbschluss(plan: ReturnType<typeof useActivePlan>['activePlan']) {
+  const qc = useQueryClient()
+  const laeuft = useRef(false)
   useEffect(() => {
-    if (!plan) return
-    const naechste = naechsteWoche(plan)
-    if (naechste) updatePlan.mutate({ id: plan.id, patch: naechste })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur bei geänderter Woche neu prüfen, nicht bei jeder Mutation von updatePlan
-  }, [plan?.id, plan?.week, plan?.week_started_at])
+    if (!plan || laeuft.current || !navigator.onLine) return
+    laeuft.current = true
+    pruefeWochenabschluss(qc, plan.id)
+      .catch(() => {
+        // Ein fehlgeschlagener Abschluss-Check darf die App nicht stören —
+        // beim nächsten Laden wird es ohnehin erneut versucht.
+      })
+      .finally(() => {
+        laeuft.current = false
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur bei geändertem Plan/Woche neu prüfen, qc ist stabil
+  }, [plan?.id, plan?.week])
 }
 
 export function AppShell() {
@@ -59,7 +78,7 @@ export function AppShell() {
   const { signOut } = useAuth()
   const { activePlan } = useActivePlan()
   useNebelPhase()
-  useWochenAutomatik(activePlan)
+  useWochenAbschluss(activePlan)
 
   return (
     <div className="app">

@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung, gruppeSetsByExercise } from '../training/calc'
+import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, trainingszeitDaten, einheitenDaten, prozentAenderung, ruhetage, startInfo, wochenPensum } from './calc'
-import { TrainingszeitCard, UebungsdauerCard, KpiCard, RuhetageCard, WochenpensumCard, LetzteEinheitenCard } from './widgets'
+import { naechsterTag, einheitenDaten, startInfo, wochenPensum } from './calc'
+import { UebungsdauerCard, LetzteEinheitenCard, KennzahlBand, Auswertungen } from './widgets'
 import { StartCard } from './StartCard'
+import { tagFarbe } from '../training/dayColor'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { SternbildCard } from './SternbildCard'
@@ -26,7 +27,6 @@ interface Props {
 export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessions }: Props) {
   const navigate = useNavigate()
   const tag = naechsterTag(days, setsByExercise)
-  const t = trainingszeitDaten(sessions)
   const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
 
   const e1 = baseE1RM(plan)
@@ -34,12 +34,7 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
   const wochenTonnage = days.reduce((a, d) => a + tonnageOf((d.exercises.map(ex => setsByExercise.get(ex.id) ?? [])).flat()), 0)
   const gesamtVolumen = gesamtWochenVolumen(days, setsByExercise)
   const einheiten = einheitenDaten(days, sessions, allSets)
-
-  // Vorwoche zum Vergleich — aus den ohnehin geladenen allSets (alle
-  // Wochen) herausgefiltert, statt einer eigenen Abfrage.
-  const setsByExerciseVorwoche = gruppeSetsByExercise(allSets.filter(s => s.week === week - 1))
-  const wochenTonnageVorwoche = days.reduce((a, d) => a + tonnageOf((d.exercises.map(ex => setsByExerciseVorwoche.get(ex.id) ?? [])).flat()), 0)
-  const gesamtVolumenVorwoche = gesamtWochenVolumen(days, setsByExerciseVorwoche)
+  const pensum = wochenPensum(days, sessions, week)
 
   return (
     <>
@@ -53,7 +48,7 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
         <PlanPicker />
       </div>
 
-      <div style={{ ...cssVars({ '--i': 1 }), marginBottom: 14 }}>
+      <div style={{ ...cssVars({ '--i': 1, '--f': tag ? tagFarbe(days, tag.id) : 'var(--neon)' }), marginBottom: 14 }}>
         <StartCard
           tag={tag}
           info={startInfo(tag, sessions)}
@@ -61,31 +56,30 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
         />
       </div>
 
-      <div className="kpirow" style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
-        <KpiCard label="Geschätztes 1RM" value={<CountUp value={e1} decimals={1} />} unit="kg" />
-        <WochenpensumCard {...wochenPensum(days, sessions, week)} />
-        <KpiCard
-          label={`Tonnage ${wochenLabel(week, plan).split(' ·')[0]}`}
-          value={<CountUp value={Math.round(wochenTonnage / 1000 * 10) / 10} decimals={1} />}
-          unit="t"
-          deltaPct={prozentAenderung(wochenTonnage, wochenTonnageVorwoche)}
+      {/* Das 1RM führt: bei einem Bankfokus-Plan ist es die Zahl, um die
+          sich alles dreht. */}
+      <div style={{ ...cssVars({ '--i': 2 }), marginBottom: 14 }}>
+        <KennzahlBand
+          werte={[
+            { label: '1RM', wert: <CountUp value={e1} decimals={1} />, einheit: 'kg', fuehrend: true },
+            { label: 'Einheiten', wert: `${pensum.erledigt}/${pensum.geplant}` },
+            { label: 'Tonnage', wert: <CountUp value={Math.round(wochenTonnage / 1000 * 10) / 10} decimals={1} />, einheit: 't' },
+            { label: 'Volumen', wert: <CountUp value={gesamtVolumen} /> },
+          ]}
         />
-        <KpiCard
-          label="Wochenvolumen"
-          value={<CountUp value={gesamtVolumen} />}
-          unit="Sätze"
-          deltaPct={prozentAenderung(gesamtVolumen, gesamtVolumenVorwoche)}
-        />
-        <TrainingszeitCard woche={t.woche} vorwoche={t.vorwoche} />
-        <RuhetageCard tage={ruhetage(sessions)} />
       </div>
 
-      <div className="kachelgrid" style={cssVars({ '--i': 3 })}>
-        <LetzteEinheitenCard sessions={sessions} days={days} />
-        <SternbildCard punkte={einheiten} />
-        <TonnageEinheitenCard punkte={einheiten} />
-        <DauerEinheitenCard punkte={einheiten} />
-        <UebungsdauerCard eintraege={dauerJeUebung} />
+      <div style={cssVars({ '--i': 3 })}>
+        <SternbildCard punkte={einheiten} gross />
+      </div>
+
+      <div style={{ ...cssVars({ '--i': 4 }), marginTop: 12 }}>
+        <Auswertungen>
+          <LetzteEinheitenCard sessions={sessions} days={days} />
+          <TonnageEinheitenCard punkte={einheiten} />
+          <DauerEinheitenCard punkte={einheiten} />
+          <UebungsdauerCard eintraege={dauerJeUebung} />
+        </Auswertungen>
       </div>
     </>
   )

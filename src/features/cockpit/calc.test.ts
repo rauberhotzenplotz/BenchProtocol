@@ -12,6 +12,7 @@ function session(patch: Partial<TrainingSession>): TrainingSession {
     ended_at: '2026-08-17T11:00:00.000Z',
     minutes: 60,
     status: 'completed',
+    paused_at: null,
     ...patch,
   }
 }

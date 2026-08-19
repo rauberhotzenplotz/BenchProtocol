@@ -12,10 +12,13 @@ import {
   useUpdateExercise,
   useUpsertSet,
 } from './queries'
-import { setsOf, tonnageOf, wochenLabel, istBankdruecken } from './calc'
+import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags } from './calc'
+import { LetzteEinheitPanel } from './LetzteEinheitPanel'
+import { MuskelChips } from '../../components/MuskelChips'
+import { SessionMenu } from './SessionMenu'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
-import { GymMode, type GymPosition } from './GymMode'
+import { GymModeAP } from './GymModeAP'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useVolumeRows } from '../volume/queries'
@@ -38,7 +41,11 @@ interface Props {
   week: number
   setsByExercise: Map<string, LoggedSet[]>
   alleSaetzeJemals: LoggedSet[]
-  alleSaetzeJemalsBereit: boolean
+  /** Ob die Historie fertig geladen ist. Wird seit der Umstellung auf
+      GymModeAP hier nicht mehr ausgewertet (der neue Gym-Modus belegt
+      keine Eingabefelder mehr vorab vor), bleibt aber Teil der
+      Schnittstelle, solange TrainingPage sie liefert. */
+  alleSaetzeJemalsBereit?: boolean
   session: TrainingSession | null | undefined
   onBack: () => void
   /** Kommt man aus dem Cockpit über "Als Nächstes": Session sofort starten
@@ -53,7 +60,6 @@ export function SessionView({
   week,
   setsByExercise,
   alleSaetzeJemals,
-  alleSaetzeJemalsBereit,
   session,
   onBack,
   autoStartGym,
@@ -132,23 +138,11 @@ export function SessionView({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- gymStarten/startSession sind pro Render neue Referenzen, sollen die Wächter-Logik hier aber nicht erneut auslösen
   }, [autoStartGym, laeuft, day.id, day.exercises.length, week])
 
-  // Kommt man aus dem Gym-Modus zum Prüfen zurück, sollen die Sätze nicht
-  // erst einzeln aufgeklappt werden müssen.
-  const [saetzeOffen, setSaetzeOffen] = useState(false)
-
-  // Zuletzt bekannte Position im Gym-Modus dieser Einheit — hier statt in
-  // GymMode selbst gehalten, damit sie ein Schließen und Wiederöffnen
-  // übersteht (GymMode wird dabei komplett ab- und neu aufgebaut). Bei
-  // einer neuen Session (z. B. "Erneut starten") beginnt die Zählung
-  // wieder bei null, sonst startete die frische Einheit mitten in der
-  // alten Position der vorigen.
-  const [gymPos, setGymPos] = useState<GymPosition | null>(null)
-  const [letzteSessionId, setLetzteSessionId] = useState(session?.id ?? null)
-  if ((session?.id ?? null) !== letzteSessionId) {
-    setLetzteSessionId(session?.id ?? null)
-    setGymPos(null)
-  }
-  const onGymPositionChange = useCallback((pos: GymPosition) => setGymPos(pos), [])
+  // Der Gym-Modus (GymModeAP) zeigt die ganze Übung als Tabelle statt einen
+  // Satz pro Bildschirm und merkt sich seine Position selbst — die früher
+  // hier gehaltene Positionsverfolgung entfällt dadurch. Aufgeklappt wird
+  // die Satzliste nur noch vom Nutzer selbst.
+  const saetzeOffen = false
 
   // Solange diese Einheit offen ist, kann die schwebende Pausenleiste
   // (außerhalb des Gym-Modus) über einen Tap direkt wieder in den
@@ -164,6 +158,7 @@ export function SessionView({
   const gesamtTonnage = day.exercises.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
   const gesamtGeplant = day.exercises.reduce((a, ex) => a + setsOf(ex.scheme), 0)
   const gesamtErledigt = day.exercises.reduce((a, ex) => a + (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length, 0)
+  const muskelgruppenDesTagsListe = muskelgruppenDesTags(day.exercises)
 
   return (
     <section className="view on frisch">
@@ -220,9 +215,15 @@ export function SessionView({
         </div>
       </div>
 
+      {muskelgruppenDesTagsListe.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <MuskelChips gruppen={muskelgruppenDesTagsListe} />
+        </div>
+      )}
+
       <div className={'laufbar ' + (laeuft ? 'an' : 'aus')} style={cssVars({ '--i': 1 })}>
         <div>
-          <div className="lab">{laeuft ? 'Läuft seit' : session?.minutes ? 'Gedauert' : 'Dauer'}</div>
+          <div className="lab">{session?.paused_at ? 'Pausiert' : laeuft ? 'Läuft seit' : session?.minutes ? 'Gedauert' : 'Dauer'}</div>
           <div className="uhr">{session?.minutes ? `${session.minutes} min` : '—'}</div>
         </div>
         <div>
@@ -249,9 +250,15 @@ export function SessionView({
                 Gym
               </button>
             )}
-            <button className="btn danger" onClick={() => void beenden()}>
-              Beenden
-            </button>
+            {session && (
+              <SessionMenu
+                session={session}
+                dayId={day.id}
+                week={week}
+                exerciseIds={day.exercises.map(ex => ex.id)}
+                onAbschliessen={beenden}
+              />
+            )}
           </>
         ) : (
           <button className="btn primary" onClick={() => startSession.mutate({ dayId: day.id, week })}>
@@ -275,6 +282,8 @@ export function SessionView({
             aufklappen={saetzeOffen}
             muskelgruppen={muskelgruppen}
             plate={plan.plate ?? 2.5}
+            alleSaetzeJemals={alleSaetzeJemals}
+            plan={plan}
           />
         ))}
       </div>
@@ -319,21 +328,14 @@ export function SessionView({
           // Containing Block — ohne Portal würde der Gym-Modus dadurch auf
           // die Größe der Section zusammengequetscht statt den Bildschirm
           // zu füllen (Aufwärmen/Sätze wirken dann verschoben/überlappend).
-          <GymMode
+          <GymModeAP
             plan={plan}
             day={day}
             week={week}
             setsByExercise={setsByExercise}
             alleSaetzeJemals={alleSaetzeJemals}
-            alleSaetzeJemalsBereit={alleSaetzeJemalsBereit}
             session={session}
-            initialPosition={gymPos}
-            onPositionChange={onGymPositionChange}
             onClose={() => setGymOffen(false)}
-            onPruefen={() => {
-              setGymOffen(false)
-              setSaetzeOffen(true)
-            }}
           />,
           document.body,
         )}
@@ -451,6 +453,8 @@ function ExerciseBlock({
   aufklappen,
   muskelgruppen,
   plate,
+  alleSaetzeJemals,
+  plan,
 }: {
   planTyp: Plan['typ']
   exercise: Exercise
@@ -464,6 +468,8 @@ function ExerciseBlock({
       bleibt das Auf- und Zuklappen wieder ganz beim Nutzer. */
   aufklappen: boolean
   plate: number
+  alleSaetzeJemals: LoggedSet[]
+  plan: Plan
 }) {
   const [auf, setAuf] = useState(aufklappen)
   // Abgeleiteter Zustand beim Rendern nachgezogen — dasselbe Muster wie
@@ -486,6 +492,7 @@ function ExerciseBlock({
   const naechstePosition = sets.length ? Math.max(...sets.map(s => s.position)) + 1 : 0
   const bankdruecken = istBankdruecken(exercise)
   const anteil = soll > 0 ? Math.min(1, ok / soll) : 0
+  const letzteEinheit = letzteEinheitFuerUebung(exercise.id, alleSaetzeJemals, week)
 
   return (
     <div className={'ueb' + (auf ? ' auf' : '') + (fertig ? ' fertig' : '') + (bankdruecken ? ' bank' : '')}>
@@ -530,7 +537,8 @@ function ExerciseBlock({
             <span>Gewicht</span>
             <span>Wdh.</span>
             {bankdruecken && <span>RPE</span>}
-            <span>OK</span>
+            <span style={{ textAlign: 'center' }}>1RM</span>
+            <span style={{ textAlign: 'center' }}>OK</span>
             <span />
           </div>
           <div className="setgrid">
@@ -565,6 +573,7 @@ function ExerciseBlock({
               />
             ))}
           </div>
+          <LetzteEinheitPanel saetze={letzteEinheit} label={wochenLabel(letzteEinheit[0]?.week ?? week, plan)} />
           <div className="ueb-fuss">
             <button
               className="btn sm"
@@ -719,12 +728,15 @@ function SetRow({
     if (wirdErledigt && autoPauseAn() && restSeconds > 0) restTimer.start(restSeconds, exerciseName)
   }
 
+  const rm = satzE1rm(set.kg, set.reps, set.rpe)
+
   return (
     <div className={'setline' + (set.done ? ' ok' : '') + (zeigtRpe ? '' : ' ohne-rpe')}>
       <span className="nr">{set.position + 1}</span>
       <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" einheit="kg" className="mono kgw" leerOption onWahl={kg => onChange({ kg })} />
       <ZahlEingabe wert={set.reps} werte={REP_WERTE} titel="Wiederholungen" className="mono repw" leerOption onWahl={reps => onChange({ reps })} />
       {zeigtRpe && <ZahlEingabe wert={set.rpe} werte={RPE_WERTE} titel="RPE" className="mono rpew" leerOption onWahl={rpe => onChange({ rpe })} />}
+      <span className="rm">{rm != null ? Math.round(rm) : '—'}</span>
       <button
         className="sethaken"
         aria-pressed={set.done}

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
-import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken, tonnageOf } from './calc'
+import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken, tonnageOf, satzE1rm, letzteEinheitFuerUebung, wochenLabel } from './calc'
+import { LetzteEinheitPanel } from './LetzteEinheitPanel'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
 import { useUpsertSet, useEndSession } from './queries'
@@ -10,6 +11,7 @@ import { benchLoad } from '../bench/calc'
 import { GymRing } from '../../components/GymRing'
 import { zeitText } from '../../lib/zeit'
 import { GymUebungsWahl } from '../../components/GymUebungsWahl'
+import { SessionMenu } from './SessionMenu'
 import { SatzQuittung } from './SatzQuittung'
 import { GymFertig } from './GymFertig'
 import { Supernova } from './Supernova'
@@ -448,6 +450,8 @@ export function GymMode({
       </>
     )
   } else {
+    const rm = satzE1rm(kg, reps, istBankdruecken(exercise) ? rpe || null : null)
+    const letzteEinheit = letzteEinheitFuerUebung(exercise.id, alleSaetzeJemals, week)
     inhalt = (
       <>
         <div className="gym-kopf">
@@ -497,6 +501,11 @@ export function GymMode({
               </button>
             </div>
           )}
+          {rm != null && (
+            <div className="gym-rm">
+              geschätztes 1RM <b>{Math.round(rm)} kg</b>
+            </div>
+          )}
           {restTimer.label != null && restTimer.secondsLeft <= 0 ? (
             <div className="gym-ueberzogen">
               Pause überzogen
@@ -506,6 +515,8 @@ export function GymMode({
             exercise.rest && <div className="gym-hinweis">Pause {exercise.rest}</div>
           )}
         </div>
+
+        <LetzteEinheitPanel saetze={letzteEinheit} label={wochenLabel(letzteEinheit[0]?.week ?? week, plan)} />
 
         <div className="gym-tasten zwei">
           <button className="gym-taste grau" onClick={naechster}>
@@ -529,6 +540,18 @@ export function GymMode({
           <path d="M6 6l12 12M18 6L6 18" />
         </svg>
       </button>
+
+      {session && (
+        <SessionMenu
+          session={session}
+          dayId={day.id}
+          week={week}
+          exerciseIds={uebungen.map(ex => ex.id)}
+          onAbschliessen={beenden}
+          menuAlign="left"
+          wrapStyle={{ position: 'absolute', top: 'max(12px, env(safe-area-inset-top))', left: 12, zIndex: 2 }}
+        />
+      )}
 
       <div className="gym-inhalt">{inhalt}</div>
 
