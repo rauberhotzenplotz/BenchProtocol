@@ -38,7 +38,7 @@ function rollbackSessions(qc: QueryClient, dayId: string, week: number, ctx: Ses
 export type TagAnlegen = Pick<PlanDay, 'id' | 'plan_id' | 'name' | 'sort_order'>
 export type UebungAnlegen = Pick<
   Exercise,
-  'id' | 'day_id' | 'name' | 'scheme' | 'rest' | 'note' | 'bench_slot' | 'muscle_group' | 'sort_order'
+  'id' | 'day_id' | 'name' | 'scheme' | 'rest' | 'note' | 'bench_slot' | 'muscle_group' | 'sort_order' | 'library_id'
 >
 
 export function registriereTrainingMutationen(qc: QueryClient) {

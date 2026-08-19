@@ -57,6 +57,13 @@ export interface Exercise {
       für das automatisch aus echten Sätzen berechnete Wochenvolumen. */
   muscle_group: string | null
   sort_order: number
+  /** Woher die Übung stammt, sofern über den Bibliotheks-Picker angelegt
+      (siehe UebungAuswahl in SessionView.tsx) — nur beim Anlegen gesetzt,
+      keine laufende Synchronisation (Umbenennen hier ändert nie die
+      Bibliothek und umgekehrt). Grundlage für planübergreifende Rekorde:
+      dieselbe library_id fasst RecordsPage zu einer Bestenliste zusammen,
+      auch wenn die Übung in mehreren Plänen angelegt wurde. */
+  library_id: string | null
 }
 
 /** Übungskatalog: von Hand angelegte Vorlagen (nur Name/Schema/Pause)

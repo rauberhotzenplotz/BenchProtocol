@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { LoggedSet, Plan, TrainingSession } from '../../types/db'
+import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import { useUpsertSet, useEndSession } from './queries'
-import { setsOf, letzteEinheitFuerUebung, satzE1rm, wochenLabel, istBankdruecken } from './calc'
+import { setsOf, letzteEinheitFuerUebung, satzE1rm, wochenLabel, istBankdruecken, anzeigeName } from './calc'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
+import { useBenchProgression, benchRowsFor } from '../bench/queries'
+import { benchLoad } from '../bench/calc'
 import { ZahlRad } from '../../components/ZahlRad'
 import { zahlenBereich } from '../../lib/zahlen'
 import { zeitText } from '../../lib/zeit'
@@ -52,6 +54,26 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const upsertSet = useUpsertSet()
   const endSession = useEndSession()
   const restTimer = useRestTimer()
+  const { data: progression } = useBenchProgression(plan.id)
+
+  // Bank-Progression schlägt vor, welches Gewicht/Schema diese Woche für
+  // "Bank schwer"/"Bank leicht" gilt — unabhängig davon, was zuletzt
+  // geloggt wurde. Ohne das (Regression beim Neubau dieses Gym-Modus)
+  // schlug jede Woche nur "wie beim letzten Mal" vor, in der Deload-Woche
+  // also fälschlich das volle Gewicht der Vorwoche statt der
+  // automatischen Absenkung. Ohne gesetzte Bank-Zuordnung, aber
+  // erkennbarem Namen ("Bankdrücken"), wird der schwere Slot (d1)
+  // angenommen — dieselbe Erkennung wie beim Aufwärmen. Gleiches Muster
+  // wie im alten GymMode (bench/queries.ts benchLoad/benchRowsFor).
+  const progressionZeileFuer = (ex: Exercise) => {
+    if (!progression) return undefined
+    const slot = ex.bench_slot ?? (istBankdruecken(ex) ? 'd1' : null)
+    return slot ? benchRowsFor(progression, slot).find(r => r.week === week) : undefined
+  }
+  const sollFuer = (ex: Exercise) => {
+    const zeile = progressionZeileFuer(ex)
+    return setsOf(zeile ? zeile.scheme : ex.scheme)
+  }
 
   // Solange der Gym-Modus offen ist, übernimmt der Timer-Knopf im Fuß
   // selbst die Pausenanzeige — die schwebende RestTimerBar (z-index 130,
@@ -68,7 +90,8 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const uebungen = day.exercises
   const [uebIdx, setUebIdx] = useState(0)
   const exercise = uebungen[Math.min(uebIdx, uebungen.length - 1)]
-  const soll = setsOf(exercise.scheme)
+  const progressionZeile = progressionZeileFuer(exercise)
+  const soll = sollFuer(exercise)
   const sets = setsByExercise.get(exercise.id) ?? []
 
   // Aktive Zeile: erster noch nicht abgehakter Satz der Übung.
@@ -92,11 +115,14 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const aktiveZeile = zeilen[aktiv]
 
   // Wie in der Vorlage steht in der aktiven Zeile schon etwas, bevor man
-  // tippt: der Satz derselben Position aus der letzten Einheit, sonst
-  // deren letzter Satz. Erst beim Abhaken wird der Vorschlag geschrieben.
+  // tippt. Erste Wahl ist die Bank-Progression dieser Woche (siehe oben) —
+  // die weiß, dass diese Woche schwerer oder in der Deload-Woche leichter
+  // sein soll, während "letzte Einheit" nur "wie beim letzten Mal" weiß.
+  // Ohne passende Progression (kein Bank-Slot oder kein Bankfokus-Plan)
+  // bleibt die Historie der Vorschlag, wie gehabt.
   const vorschlag = letzteEinheit.find(s => s.position === aktiv) ?? letzteEinheit[letzteEinheit.length - 1] ?? null
-  const aktKg = aktiveZeile?.satz?.kg ?? vorschlag?.kg ?? null
-  const aktReps = aktiveZeile?.satz?.reps ?? vorschlag?.reps ?? zielWdh(exercise.scheme)
+  const aktKg = aktiveZeile?.satz?.kg ?? (progressionZeile ? benchLoad(plan, progressionZeile) : vorschlag?.kg) ?? null
+  const aktReps = aktiveZeile?.satz?.reps ?? (progressionZeile ? zielWdh(progressionZeile.scheme) : vorschlag?.reps) ?? zielWdh(exercise.scheme)
 
   const plate = plan.plate ?? 2.5
   const kgWerte = zahlenBereich(plate, 300, plate)
@@ -146,7 +172,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
       <div className="ap-streifen">
         {uebungen.map((ex, i) => {
           const exSets = setsByExercise.get(ex.id) ?? []
-          const fertig = exSets.filter(s => s.done).length >= setsOf(ex.scheme)
+          const fertig = exSets.filter(s => s.done).length >= sollFuer(ex)
           return (
             <button
               key={ex.id}
@@ -165,11 +191,11 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
       </div>
 
       <div className="ap-inhalt">
-        <h1 className="ap-uebung">{exercise.name}</h1>
+        <h1 className="ap-uebung">{anzeigeName(exercise, plan, week)}</h1>
 
         <div className="ap-meta">
           {exercise.muscle_group && <span>{exercise.muscle_group}</span>}
-          <span>{zielWdh(exercise.scheme)} Wdh</span>
+          <span>{zielWdh(progressionZeile ? progressionZeile.scheme : exercise.scheme)} Wdh</span>
           {exercise.rest && <span>Pause {exercise.rest}</span>}
         </div>
 

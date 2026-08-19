@@ -4,7 +4,7 @@ import type { DayWithExercises } from '../training/queries'
 import type { Exercise, LoggedSet } from '../../types/db'
 
 function exercise(patch: Partial<Exercise>): Exercise {
-  return { id: 'ex1', day_id: 'd1', user_id: 'u1', name: 'Übung', scheme: '3 × 10', rest: null, note: null, bench_slot: null, muscle_group: null, sort_order: 0, ...patch }
+  return { id: 'ex1', day_id: 'd1', user_id: 'u1', name: 'Übung', scheme: '3 × 10', rest: null, note: null, bench_slot: null, muscle_group: null, sort_order: 0, library_id: null, ...patch }
 }
 
 function tag(id: string, exercises: Exercise[]): DayWithExercises {

@@ -235,6 +235,19 @@ export function muskelgruppenDesTags(exercises: Exercise[]): MuskelgruppenSatz[]
   return [...map.entries()].map(([gruppe, saetze]) => ({ gruppe, saetze })).sort((a, b) => b.saetze - a.saetze)
 }
 
+/** Angezeigter Übungsname für die Deload-Woche eines Bankfokus-Plans:
+    hängt "(Deload)" an, sobald die Übung einem Bank-Slot zugeordnet ist
+    und Woche 4 läuft — egal wie die Übung selbst heißt ("Bankdrücken
+    Langhantel", "Bankdrücken mit Pause" oder sonst etwas). Reine Anzeige:
+    die hinterlegte Übung (Name, Slot, Schema) bleibt unangetastet, das
+    tatsächliche Gewicht/Schema dieser Woche kommt ohnehin aus der
+    Bank-Progression (siehe bench/queries.ts benchRowsFor), nicht aus
+    diesem Namen. Sonst unverändert der normale Name. */
+export function anzeigeName(exercise: Pick<Exercise, 'name' | 'bench_slot'>, plan: Plan, week: number): string {
+  if (plan.typ === 'bench' && week === 4 && exercise.bench_slot) return `${exercise.name} (Deload)`
+  return exercise.name
+}
+
 export function gruppeSetsByExercise(sets: LoggedSet[]): Map<string, LoggedSet[]> {
   const m = new Map<string, LoggedSet[]>()
   sets.forEach(s => {

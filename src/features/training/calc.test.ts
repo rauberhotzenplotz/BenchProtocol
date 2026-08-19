@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt } from './calc'
-import type { Exercise, LoggedSet, TrainingSession } from '../../types/db'
+import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName } from './calc'
+import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 
 function einheit(patch: Partial<TrainingSession>): TrainingSession {
   return {
@@ -12,7 +12,18 @@ function einheit(patch: Partial<TrainingSession>): TrainingSession {
 }
 
 function exercise(patch: Partial<Exercise>): Exercise {
-  return { id: 'ex1', day_id: 'd1', user_id: 'u1', name: 'Bankdrücken', scheme: '4 × 5', rest: '2 min', note: null, bench_slot: null, muscle_group: null, sort_order: 0, ...patch }
+  return { id: 'ex1', day_id: 'd1', user_id: 'u1', name: 'Bankdrücken', scheme: '4 × 5', rest: '2 min', note: null, bench_slot: null, muscle_group: null, sort_order: 0, library_id: null, ...patch }
+}
+
+function plan(patch: Partial<Plan>): Plan {
+  return {
+    id: 'p1', user_id: 'u1', name: 'TrainingsplanBench', typ: 'bench', week: 1,
+    week_started_at: '2026-08-17T10:00:00.000Z', sort_order: 0,
+    work: 80, reps: 5, rir: 2, plate: 2.5, block: 1, goal: null, goal_from: null,
+    beruehrt: true, rpe: null, last_delta_note: null,
+    created_at: '', updated_at: '',
+    ...patch,
+  }
 }
 
 function satz(patch: Partial<LoggedSet>): LoggedSet {
@@ -141,5 +152,33 @@ describe('wocheErledigt', () => {
 
   it('ist ohne Trainingstage nie erledigt', () => {
     expect(wocheErledigt([], [], 1)).toBe(false)
+  })
+})
+
+describe('anzeigeName', () => {
+  it('hängt "(Deload)" an, wenn Bankfokus-Plan, Woche 4 und Bank-Slot zusammentreffen', () => {
+    const ex = exercise({ name: 'Bankdrücken Langhantel', bench_slot: 'd1' })
+    expect(anzeigeName(ex, plan({ typ: 'bench' }), 4)).toBe('Bankdrücken Langhantel (Deload)')
+  })
+
+  it('funktioniert unabhängig vom tatsächlichen Übungsnamen', () => {
+    const ex = exercise({ name: 'Bankdrücken mit Pause', bench_slot: 'd3' })
+    expect(anzeigeName(ex, plan({ typ: 'bench' }), 4)).toBe('Bankdrücken mit Pause (Deload)')
+  })
+
+  it('lässt den Namen in anderen Wochen unverändert', () => {
+    const ex = exercise({ name: 'Bankdrücken Langhantel', bench_slot: 'd1' })
+    expect(anzeigeName(ex, plan({ typ: 'bench' }), 1)).toBe('Bankdrücken Langhantel')
+    expect(anzeigeName(ex, plan({ typ: 'bench' }), 3)).toBe('Bankdrücken Langhantel')
+  })
+
+  it('lässt den Namen ohne Bank-Zuordnung unverändert, auch in Woche 4', () => {
+    const ex = exercise({ name: 'Klimmzüge', bench_slot: null })
+    expect(anzeigeName(ex, plan({ typ: 'bench' }), 4)).toBe('Klimmzüge')
+  })
+
+  it('lässt den Namen bei allgemeinen Plänen unverändert, auch in Woche 4', () => {
+    const ex = exercise({ name: 'Bankdrücken Langhantel', bench_slot: 'd1' })
+    expect(anzeigeName(ex, plan({ typ: 'general' }), 4)).toBe('Bankdrücken Langhantel')
   })
 })

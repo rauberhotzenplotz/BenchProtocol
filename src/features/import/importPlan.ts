@@ -71,6 +71,7 @@ export function baueImportZeilen(parsed: ParsedWorkbook, name: string, typ: Plan
       bench_slot: null,
       muscle_group: null,
       sort_order: ei,
+      library_id: null,
     })),
   )
 

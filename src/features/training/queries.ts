@@ -28,6 +28,22 @@ export function useDays(planId: string | undefined) {
   })
 }
 
+/** Alle Übungen über alle Pläne hinweg, nicht nur den aktiven — RLS grenzt
+    ohnehin auf den angemeldeten Nutzer ein. Grundlage für planübergreifende
+    Rekorde (RecordsPage): dieselbe Katalog-Übung kann in mehreren Plänen
+    angelegt sein, über exercises.library_id lassen sich ihre Sätze
+    trotzdem zu einer gemeinsamen Bestenliste zusammenfassen. */
+export function useAlleUebungenJemals() {
+  return useQuery({
+    queryKey: ['exercises-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('exercises').select('*')
+      if (error) throw error
+      return data as Exercise[]
+    },
+  })
+}
+
 // Alle schreibenden Hooks tragen nur noch ihren Schlüssel; Verhalten,
 // optimistische Cache-Updates und Rollback stehen zentral in
 // src/lib/offline/training.ts. Die Zeilen bringen ihre Zugehörigkeit selbst

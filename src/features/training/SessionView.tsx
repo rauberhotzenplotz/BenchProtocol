@@ -12,7 +12,8 @@ import {
   useUpdateExercise,
   useUpsertSet,
 } from './queries'
-import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags } from './calc'
+import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, anzeigeName } from './calc'
+import { useBenchProgression, benchRowsFor } from '../bench/queries'
 import { LetzteEinheitPanel } from './LetzteEinheitPanel'
 import { MuskelChips } from '../../components/MuskelChips'
 import { SessionMenu } from './SessionMenu'
@@ -353,7 +354,15 @@ function UebungAuswahl({
 }: {
   planTyp: Plan['typ']
   muskelgruppen: string[]
-  onAnlegen: (w: { name: string; scheme: string; rest: string; note: string; bench_slot: BenchSlot | null; muscle_group: string | null }) => void
+  onAnlegen: (w: {
+    name: string
+    scheme: string
+    rest: string
+    note: string
+    bench_slot: BenchSlot | null
+    muscle_group: string | null
+    library_id: string | null
+  }) => void
   onAbbrechen: () => void
 }) {
   const [suche, setSuche] = useState('')
@@ -502,7 +511,15 @@ function UebungAuswahl({
           <button
             className="btn primary sm"
             onClick={() =>
-              onAnlegen({ name: gewaehlt.name, scheme, rest: formatPause(restMin), note: '', bench_slot: benchSlot, muscle_group: muscleGroup })
+              onAnlegen({
+                name: gewaehlt.name,
+                scheme,
+                rest: formatPause(restMin),
+                note: '',
+                bench_slot: benchSlot,
+                muscle_group: muscleGroup,
+                library_id: gewaehlt.id,
+              })
             }
           >
             Anlegen
@@ -555,14 +572,26 @@ function ExerciseBlock({
   const deleteExercise = useDeleteExercise()
   const upsertSet = useUpsertSet()
   const deleteSetM = useDeleteSet()
+  const { data: progression } = useBenchProgression(planTyp === 'bench' ? plan.id : undefined)
 
-  const soll = setsOf(exercise.scheme)
+  // Die Bank-Progression kennt das für diese Woche vorgesehene Schema
+  // unabhängig vom statischen exercise.scheme — sonst zeigte die Woche-4-
+  // Deload-Übung hier weiterhin "4 Sätze" an, obwohl bench_progression für
+  // diese Woche nur 3 vorsieht (gleiches Muster wie in GymModeAP und
+  // wochenAbschluss.ts).
+  const progressionZeile = (() => {
+    if (!progression) return undefined
+    const slot = exercise.bench_slot ?? (istBankdruecken(exercise) ? 'd1' : null)
+    return slot ? benchRowsFor(progression, slot).find(r => r.week === week) : undefined
+  })()
+  const soll = setsOf(progressionZeile ? progressionZeile.scheme : exercise.scheme)
   const ok = sets.filter(s => s.done).length
   const fertig = sets.length > 0 && ok >= Math.min(soll, sets.length) && ok >= soll
   const naechstePosition = sets.length ? Math.max(...sets.map(s => s.position)) + 1 : 0
   const bankdruecken = istBankdruecken(exercise)
   const anteil = soll > 0 ? Math.min(1, ok / soll) : 0
   const letzteEinheit = letzteEinheitFuerUebung(exercise.id, alleSaetzeJemals, week)
+  const angezeigterName = anzeigeName(exercise, plan, week)
 
   return (
     <div className={'ueb' + (auf ? ' auf' : '') + (fertig ? ' fertig' : '') + (bankdruecken ? ' bank' : '')}>
@@ -573,7 +602,7 @@ function ExerciseBlock({
         <button className="ueb-kopf" aria-expanded={auf} onClick={() => setAuf(a => !a)}>
           <span className="ueb-nr">{nummer}</span>
           <span className="ueb-titel">
-            <b>{exercise.name}</b>
+            <b>{angezeigterName}</b>
             {/* Zugeklappt nur das Schema: auf einem Handy bleiben neben
                 Nummer, Satzstand und Pfeil keine 150 px für vier Marken —
                 sie liefen bloß in die Ausblendkante. Pause, Bank und
@@ -618,7 +647,7 @@ function ExerciseBlock({
                 key={s.id}
                 set={s}
                 laeuft={laeuft}
-                exerciseName={exercise.name}
+                exerciseName={angezeigterName}
                 restSeconds={pauseSekunden(exercise.rest)}
                 plate={plate}
                 zeigtRpe={bankdruecken}

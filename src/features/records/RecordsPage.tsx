@@ -1,49 +1,28 @@
 import { useState } from 'react'
-import { useActivePlan } from '../plans/active-plan-context'
-import { useDays, useAllSetsForExercises } from '../training/queries'
-import { e1rm, round } from '../bench/calc'
+import { useAlleUebungenJemals, useAllSetsForExercises } from '../training/queries'
+import { gruppiere, besteRekorde, type Rekord } from './calc'
 import { cssVars } from '../../lib/style'
-import type { LoggedSet } from '../../types/db'
-
-interface Rekord {
-  reps: number
-  kg: number
-  e1: number
-  woche: number
-}
-
-/** Bester Satz je Wiederholungszahl einer Übung, nach geschätztem 1RM. */
-function besteRekorde(sets: LoggedSet[], exerciseId: string): Rekord[] {
-  if (!exerciseId) return []
-  const je = new Map<number, Rekord>()
-  sets
-    .filter(s => s.exercise_id === exerciseId && s.kg && s.reps)
-    .forEach(s => {
-      const wert = round(e1rm(s.kg!, s.reps!), 1)
-      const bisher = je.get(s.reps!)
-      if (!bisher || wert > bisher.e1) je.set(s.reps!, { reps: s.reps!, kg: s.kg!, e1: wert, woche: s.week })
-    })
-  return [...je.values()].sort((a, b) => a.reps - b.reps)
-}
 
 export function RecordsPage() {
-  const { activePlan } = useActivePlan()
-  const { data: days } = useDays(activePlan?.id)
-  const alleExercises = (days ?? []).flatMap(d => d.exercises)
-  const exerciseIds = alleExercises.map(e => e.id)
+  // Bewusst planübergreifend (nicht useDays(activePlan?.id)): dieselbe
+  // Katalog-Übung soll ihre Bestenliste behalten, auch wenn sie in einem
+  // anderen Plan weitertrainiert wird — siehe gruppiere() in calc.ts.
+  const { data: alleUebungen } = useAlleUebungenJemals()
+  const gruppen = gruppiere(alleUebungen ?? [])
+  const exerciseIds = (alleUebungen ?? []).map(e => e.id)
   const { data: sets } = useAllSetsForExercises(exerciseIds)
 
   const [gewaehlt, setGewaehlt] = useState<string>('')
-  const aktivId = gewaehlt || alleExercises[0]?.id || ''
-  const aktiveUebung = alleExercises.find(e => e.id === aktivId)
+  const aktivKey = gewaehlt || gruppen[0]?.key || ''
+  const aktiveGruppe = gruppen.find(g => g.key === aktivKey)
 
-  // Kleine Datenmenge (Sätze einer Übung) — kein useMemo nötig, wird bei
-  // jedem Render einfach neu berechnet.
-  const rekorde = besteRekorde(sets ?? [], aktivId)
+  // Kleine Datenmenge — kein useMemo nötig, wird bei jedem Render einfach
+  // neu berechnet.
+  const rekorde = besteRekorde(sets ?? [], aktiveGruppe?.exerciseIds ?? [])
 
   const bestGesamt = rekorde.reduce<Rekord | null>((a, r) => (!a || r.e1 > a.e1 ? r : a), null)
 
-  if (!activePlan || !alleExercises.length) {
+  if (!gruppen.length) {
     return (
       <section className="view on frisch">
         <div className="view-head">
@@ -65,10 +44,10 @@ export function RecordsPage() {
 
       <div className="card" style={cssVars({ '--i': 1 })}>
         <div className="row" style={{ marginBottom: 14, gap: 12 }}>
-          <select className="inp" value={aktivId} onChange={e => setGewaehlt(e.target.value)} style={{ maxWidth: 320 }}>
-            {alleExercises.map(ex => (
-              <option key={ex.id} value={ex.id}>
-                {ex.name}
+          <select className="inp" value={aktivKey} onChange={e => setGewaehlt(e.target.value)} style={{ maxWidth: 320 }}>
+            {gruppen.map(g => (
+              <option key={g.key} value={g.key}>
+                {g.name}
               </option>
             ))}
           </select>
@@ -81,7 +60,7 @@ export function RecordsPage() {
 
         {rekorde.length === 0 ? (
           <p className="muted tiny" style={{ padding: '22px 0', textAlign: 'center', margin: 0 }}>
-            Für „{aktiveUebung?.name}“ ist noch nichts geloggt.
+            Für „{aktiveGruppe?.name}“ ist noch nichts geloggt.
           </p>
         ) : (
           <table className="t">
