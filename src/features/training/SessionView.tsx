@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { BenchSlot, Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
+import type { BenchSlot, Exercise, ExerciseLibraryEntry, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import {
   useCreateExercise,
@@ -16,12 +16,13 @@ import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinhei
 import { LetzteEinheitPanel } from './LetzteEinheitPanel'
 import { MuskelChips } from '../../components/MuskelChips'
 import { SessionMenu } from './SessionMenu'
-import { pauseSekunden, autoPauseAn } from './pause'
+import { pauseSekunden, autoPauseAn, PAUSE_MINUTEN, formatPause, pauseMinuten } from './pause'
 import { useRestTimer } from './rest-timer-context'
 import { GymModeAP } from './GymModeAP'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useVolumeRows } from '../volume/queries'
+import { useExerciseLibrary } from '../exerciseLibrary/queries'
 import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
 import { ZahlEingabe } from '../../components/ZahlRad'
@@ -29,11 +30,6 @@ import { zahlenBereich } from '../../lib/zahlen'
 
 const REP_WERTE = zahlenBereich(1, 30, 1)
 const RPE_WERTE = zahlenBereich(5, 10, 0.5)
-const PAUSE_MINUTEN = zahlenBereich(0.5, 6, 0.5)
-
-function formatPause(min: number): string {
-  return (Number.isInteger(min) ? String(min) : min.toFixed(1).replace('.', ',')) + ' min'
-}
 
 interface Props {
   plan: Plan
@@ -71,6 +67,7 @@ export function SessionView({
   const updateDay = useUpdateDay()
   const { data: volumeRows } = useVolumeRows(plan.id)
   const muskelgruppen = (volumeRows ?? []).map(r => r.muscle_group)
+  const { data: bibliothek } = useExerciseLibrary()
   const restTimer = useRestTimer()
 
   const [nameBearbeiten, setNameBearbeiten] = useState(false)
@@ -293,6 +290,7 @@ export function SessionView({
           <NeueUebungForm
             planTyp={plan.typ}
             muskelgruppen={muskelgruppen}
+            bibliothek={bibliothek ?? []}
             onAbbrechen={() => setNeueUebung(false)}
             onAnlegen={werte => {
               // Nicht auf den Server warten: offline pausiert die Mutation,
@@ -346,11 +344,13 @@ export function SessionView({
 function NeueUebungForm({
   planTyp,
   muskelgruppen,
+  bibliothek,
   onAnlegen,
   onAbbrechen,
 }: {
   planTyp: Plan['typ']
   muskelgruppen: string[]
+  bibliothek: ExerciseLibraryEntry[]
   onAnlegen: (w: { name: string; scheme: string; rest: string; note: string; bench_slot: BenchSlot | null; muscle_group: string | null }) => void
   onAbbrechen: () => void
 }) {
@@ -360,12 +360,37 @@ function NeueUebungForm({
   const [benchSlot, setBenchSlot] = useState<BenchSlot | null>(null)
   const [muscleGroup, setMuscleGroup] = useState<string | null>(null)
 
+  // Trifft der eingetippte/gewählte Name genau einen Bibliothekseintrag,
+  // werden Schema und Pause daraus übernommen — reine Vorbelegung, keine
+  // dauerhafte Verknüpfung. Wer danach weiter tippt (kein Treffer mehr),
+  // behält die zuletzt übernommenen Werte, statt dass sie verschwinden.
+  const uebernehmeAusBibliothek = (n: string) => {
+    setName(n)
+    const treffer = bibliothek.find(e => e.name.toLowerCase() === n.trim().toLowerCase())
+    if (!treffer) return
+    if (treffer.scheme) setScheme(treffer.scheme)
+    if (treffer.rest) setRestMin(pauseMinuten(treffer.rest) || 2)
+  }
+
   return (
     <div className="card">
       <div className="stack">
         <div className="field">
           <label>Übungsname</label>
-          <input className="inp" autoFocus value={name} onChange={e => setName(e.target.value)} />
+          <input
+            className="inp"
+            autoFocus
+            list="uebung-bibliothek"
+            value={name}
+            onChange={e => uebernehmeAusBibliothek(e.target.value)}
+          />
+          {bibliothek.length > 0 && (
+            <datalist id="uebung-bibliothek">
+              {bibliothek.map(e => (
+                <option key={e.id} value={e.name} />
+              ))}
+            </datalist>
+          )}
         </div>
         <div className="grid g2" style={{ gap: 10 }}>
           <div className="field">

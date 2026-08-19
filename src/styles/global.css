@@ -3453,3 +3453,22 @@ body:has(.gym) .nebel { display: none; }
 .ap-timer:hover { color: var(--ink); border-color: var(--ink-4); }
 .ap-timer.laeuft { color: var(--neon); border-color: rgba(53,240,208,.45); box-shadow: 0 0 24px -10px var(--neon); }
 .ap-timer svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── Übungsbibliothek ───────────────────────────────────────────
+   Vier Spalten (Name, Schema, Pause, Löschen) — dieselbe Kopf+Zeilen-
+   Bauart wie die Satztabelle (.setkopf/.setline), nur ohne deren
+   Aktiv-/Erledigt-Zustände, da hier nichts abgehakt wird. */
+.bib-liste { display: flex; flex-direction: column; gap: 6px; }
+.bib-kopf, .bib-zeile { display: grid; grid-template-columns: 1.4fr 1fr 100px 26px; gap: 8px; align-items: center; }
+.bib-kopf {
+  padding: 0 2px 4px; font-family: var(--f-mono); font-size: 9.5px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--ink-4);
+}
+.bib-zeile .inp { border-color: var(--line-soft); background: rgba(255,255,255,.03); font-size: 13px; padding: 7px 8px; }
+.bib-zeile .inp:hover { border-color: var(--line); background: rgba(255,255,255,.05); }
+.bib-neu { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.bib-neu .bib-zeile { grid-template-columns: 1.4fr 1fr 100px 0; }
+@media (max-width: 640px) {
+  .bib-kopf, .bib-zeile, .bib-neu .bib-zeile { grid-template-columns: 1fr 84px 84px 26px; gap: 5px; }
+  .bib-neu .bib-zeile { grid-template-columns: 1fr 84px 84px 0; }
+}

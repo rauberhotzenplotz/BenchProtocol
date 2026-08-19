@@ -14,6 +14,7 @@ import { SettingsPage } from './features/settings/SettingsPage'
 import { GuidePage } from './features/guide/GuidePage'
 import { ImportPage } from './features/import/ImportPage'
 import { RpeBlockPage } from './features/rpeblock/RpeBlockPage'
+import { ExerciseLibraryPage } from './features/exerciseLibrary/ExerciseLibraryPage'
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/rekorde" element={<RecordsPage />} />
           <Route path="/volumen" element={<VolumePage />} />
           <Route path="/bloecke" element={<RpeBlockPage />} />
+          <Route path="/uebungen" element={<ExerciseLibraryPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/anleitung" element={<GuidePage />} />
           <Route path="/einstellungen" element={<SettingsPage />} />

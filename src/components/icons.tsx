@@ -38,6 +38,11 @@ export function IconGuide() {
 export function IconBlocks() {
   return <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 20l3-8-3-8" />
 }
+export function IconLibrary() {
+  return (
+    <path d="M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM17 7h2v13h-2M8 8h6M8 12h6" />
+  )
+}
 export function IconSettings() {
   return (
     <>

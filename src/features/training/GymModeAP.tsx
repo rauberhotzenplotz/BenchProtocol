@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import { useUpsertSet, useEndSession } from './queries'
@@ -52,6 +52,18 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const upsertSet = useUpsertSet()
   const endSession = useEndSession()
   const restTimer = useRestTimer()
+
+  // Solange der Gym-Modus offen ist, übernimmt der Timer-Knopf im Fuß
+  // selbst die Pausenanzeige — die schwebende RestTimerBar (z-index 130,
+  // liegt bewusst ÜBER dem Gym-Modus für den Fall, dass er zu ist) bleibt
+  // aus. Ohne das poppte sie bei jedem "Abhaken" zusätzlich ein, sobald
+  // die Pause startet — genau das sah wie ein kurzer Sprung des ganzen
+  // Bildschirms aus. Gleiches Muster wie im alten GymMode.
+  useEffect(() => {
+    restTimer.setGymActive(true)
+    return () => restTimer.setGymActive(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Mounten/Unmounten schalten, nicht bei jeder Timer-Änderung
+  }, [])
 
   const uebungen = day.exercises
   const [uebIdx, setUebIdx] = useState(0)

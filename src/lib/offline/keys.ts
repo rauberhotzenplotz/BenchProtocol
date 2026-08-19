@@ -39,6 +39,10 @@ export const MUTATION_KEYS = {
   logWeek: ['logWeek'],
   setBlockStatus: ['setBlockStatus'],
   deleteBlock: ['deleteBlock'],
+  // Übungsbibliothek
+  createLibraryEntry: ['createLibraryEntry'],
+  updateLibraryEntry: ['updateLibraryEntry'],
+  deleteLibraryEntry: ['deleteLibraryEntry'],
   // Massenvorgänge
   importPlan: ['importPlan'],
   importCsvSets: ['importCsvSets'],

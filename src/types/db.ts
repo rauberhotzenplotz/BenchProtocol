@@ -59,6 +59,20 @@ export interface Exercise {
   sort_order: number
 }
 
+/** Vorlage für empfohlenes Schema + Pausenzeit einer Übung. Wird beim
+    Anlegen einer Übung nur kopiert (siehe NeueUebungForm) — keine
+    dauerhafte Verknüpfung, die Übung bleibt danach unabhängig
+    editierbar. */
+export interface ExerciseLibraryEntry {
+  id: string
+  user_id: string
+  name: string
+  scheme: string | null
+  rest: string | null
+  sort_order: number
+  created_at: string
+}
+
 export interface BenchProgressionRow {
   id: string
   plan_id: string

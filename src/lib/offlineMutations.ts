@@ -20,6 +20,7 @@ import { registriereBenchMutationen } from './offline/bench'
 import { registriereVolumenMutationen } from './offline/volume'
 import { registriereRpeBlockMutationen } from './offline/rpeblock'
 import { registriereMassenMutationen } from './offline/bulk'
+import { registriereBibliothekMutationen } from './offline/exerciseLibrary'
 
 export function registerOfflineMutationDefaults(qc: QueryClient) {
   registrierePlanMutationen(qc)
@@ -28,4 +29,5 @@ export function registerOfflineMutationDefaults(qc: QueryClient) {
   registriereVolumenMutationen(qc)
   registriereRpeBlockMutationen(qc)
   registriereMassenMutationen(qc)
+  registriereBibliothekMutationen(qc)
 }
