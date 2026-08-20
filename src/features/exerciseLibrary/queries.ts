@@ -81,6 +81,78 @@ export function useLibrarySearch(suchtext: string, muskelgruppe: string | null =
   })
 }
 
+/** Schlanke Kopie des gesamten Katalogs für den Betrieb ohne Netz.
+
+    Die Suche oben läuft serverseitig — ohne Verbindung liefert sie nichts,
+    und damit ließ sich offline keine einzige Übung hinzufügen (genau so
+    gemeldet). Deshalb wird der Katalog einmal komplett geholt und über den
+    persistierten Cache mitgesichert; die Suche fällt ohne Netz auf diese
+    lokale Kopie zurück (siehe UebungAuswahl in training/SessionView.tsx).
+
+    Bewusst nur die Felder, die Auswahl und Anzeige brauchen: mit allen
+    Spalten wäre die gesicherte Kopie ein Vielfaches groß, ohne dass die
+    zusätzlichen Angaben im Picker je auftauchen. Supabase liefert
+    standardmäßig höchstens 1000 Zeilen je Anfrage, deshalb seitenweise.
+
+    Lange staleTime, weil sich ein importierter Katalog praktisch nie
+    ändert — ein unnötiger Neuabruf würde nur Datenvolumen kosten. */
+export type KatalogEintrag = Pick<
+  ExerciseLibraryEntry,
+  'id' | 'name' | 'name_en' | 'name_de_raw' | 'scheme' | 'rest' | 'bench_slot' | 'muscle_group' | 'equipment' | 'difficulty' | 'popularity'
+>
+
+const KATALOG_FELDER = 'id,name,name_en,name_de_raw,scheme,rest,bench_slot,muscle_group,equipment,difficulty,popularity'
+const KATALOG_SEITE = 1000
+
+export function useLibraryKatalog() {
+  return useQuery({
+    queryKey: ['exercise-library-katalog'],
+    staleTime: 7 * 24 * 60 * 60 * 1000,
+    gcTime: Infinity,
+    queryFn: async () => {
+      const alle: KatalogEintrag[] = []
+      for (let von = 0; ; von += KATALOG_SEITE) {
+        const { data, error } = await supabase
+          .from('exercise_library')
+          .select(KATALOG_FELDER)
+          .order('popularity')
+          .order('name')
+          .range(von, von + KATALOG_SEITE - 1)
+        if (error) throw error
+        const seite = (data ?? []) as unknown as KatalogEintrag[]
+        alle.push(...seite)
+        if (seite.length < KATALOG_SEITE) break
+      }
+      return alle
+    },
+  })
+}
+
+/** Dieselbe Auswahl wie die serverseitige Suche, nur lokal auf dem
+    zwischengespeicherten Katalog — Grundlage des Offline-Betriebs im
+    Übungs-Picker. Reihenfolge wie online: erst Bekanntheit, dann Name. */
+export function katalogFiltern(
+  katalog: KatalogEintrag[] | undefined,
+  suche: string,
+  muskelgruppe: string | null,
+  grenze = 30,
+): KatalogEintrag[] {
+  if (!katalog) return []
+  const q = suche.trim().toLowerCase()
+  const treffer = katalog.filter(e => {
+    if (muskelgruppe && e.muscle_group !== muskelgruppe) return false
+    if (!q) return true
+    return (
+      e.name.toLowerCase().includes(q) ||
+      (e.name_en?.toLowerCase().includes(q) ?? false) ||
+      (e.name_de_raw?.toLowerCase().includes(q) ?? false)
+    )
+  })
+  return treffer
+    .sort((a, b) => a.popularity - b.popularity || a.name.localeCompare(b.name))
+    .slice(0, grenze)
+}
+
 const SEITENGROESSE = 24
 
 /** Übungen einer Muskelgruppe, nach Bekanntheit sortiert (siehe

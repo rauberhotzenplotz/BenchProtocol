@@ -12,7 +12,7 @@ export function VolumePage() {
   const { activePlan } = useActivePlan()
   const { data: days } = useDays(activePlan?.id)
   const exerciseIds = (days ?? []).flatMap(d => d.exercises.map(ex => ex.id))
-  const { data: saetzeWoche } = useSetsForExercises(exerciseIds, activePlan?.week ?? 1)
+  const { data: saetzeWoche } = useSetsForExercises(exerciseIds, activePlan?.week ?? 1, activePlan?.id ?? 'ohne-plan')
   const { data: rows } = useVolumeRows(activePlan?.id)
   const createRow = useCreateVolumeRow()
   const updateRow = useUpdateVolumeRow()

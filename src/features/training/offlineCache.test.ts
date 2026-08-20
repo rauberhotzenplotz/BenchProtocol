@@ -5,8 +5,8 @@ import {
   arrayContainsId,
   buildOptimisticSession,
   upsertSessionInArray,
-  matchesExerciseWeek,
-  matchesDayWeek,
+  bereichEnthaeltUebung,
+  bereichEnthaeltTag,
 } from './offlineCache'
 import type { LoggedSet, TrainingSession } from '../../types/db'
 
@@ -104,15 +104,28 @@ describe('upsertSessionInArray', () => {
   })
 })
 
-describe('matchesExerciseWeek / matchesDayWeek', () => {
-  it('matchesExerciseWeek prüft Woche und Übungs-id', () => {
-    expect(matchesExerciseWeek(['ex1', 'ex2'], 1, 'ex1', 1)).toBe(true)
-    expect(matchesExerciseWeek(['ex1'], 1, 'ex1', 2)).toBe(false)
-    expect(matchesExerciseWeek(['ex1'], 1, 'ex2', 1)).toBe(false)
+describe('bereichEnthaeltUebung / bereichEnthaeltTag', () => {
+  const tage = [
+    { id: 'd1', exercises: [{ id: 'ex1' }, { id: 'ex2' }] },
+    { id: 'd2', exercises: [{ id: 'ex3' }] },
+  ]
+
+  it('erkennt Übungen des Bereichs', () => {
+    expect(bereichEnthaeltUebung(tage, 'ex1')).toBe(true)
+    expect(bereichEnthaeltUebung(tage, 'ex3')).toBe(true)
+    expect(bereichEnthaeltUebung(tage, 'fremd')).toBe(false)
   })
 
-  it('matchesDayWeek prüft Woche und Tag-id', () => {
-    expect(matchesDayWeek(['d1', 'd2'], 1, 'd1', 1)).toBe(true)
-    expect(matchesDayWeek(['d1'], 1, 'd1', 2)).toBe(false)
+  it('erkennt Tage des Bereichs', () => {
+    expect(bereichEnthaeltTag(tage, 'd2')).toBe(true)
+    expect(bereichEnthaeltTag(tage, 'fremd')).toBe(false)
+  })
+
+  // Ohne geladenen Tages-Cache lieber anwenden als verwerfen: ein Patch zu
+  // viel korrigiert sich beim nächsten Serverabgleich, ein verlorener Satz
+  // mitten im Training nicht.
+  it('wendet im Zweifel an, wenn der Tages-Cache fehlt', () => {
+    expect(bereichEnthaeltUebung(undefined, 'ex1')).toBe(true)
+    expect(bereichEnthaeltTag(undefined, 'd1')).toBe(true)
   })
 })

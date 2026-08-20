@@ -10,6 +10,7 @@ import { BootScreen } from './BootScreen'
 import { useAuth } from '../auth/auth-context'
 import { useActivePlan } from '../features/plans/active-plan-context'
 import { pruefeWochenabschluss } from '../features/training/wochenAbschluss'
+import { useLibraryKatalog } from '../features/exerciseLibrary/queries'
 import { nebelPhase } from './nebelPhase'
 
 function useClock() {
@@ -79,6 +80,13 @@ export function AppShell() {
   const { activePlan } = useActivePlan()
   useNebelPhase()
   useWochenAbschluss(activePlan)
+  // Übungskatalog im Hintergrund vorhalten, solange Netz da ist: nur so
+  // lässt sich später ohne Verbindung überhaupt eine Übung hinzufügen
+  // (die Suche im Picker läuft sonst rein serverseitig). Hier statt im
+  // Picker selbst, weil der Katalog sonst erst beim ersten Öffnen käme —
+  // im Studio ohne Empfang also nie. Läuft dank langer staleTime und
+  // gesichertem Cache höchstens einmal pro Woche wirklich los.
+  useLibraryKatalog()
 
   return (
     <div className="app">

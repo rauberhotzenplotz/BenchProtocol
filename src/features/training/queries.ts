@@ -74,9 +74,20 @@ export function useDeleteExercise() {
 
 // ── Sätze ──────────────────────────────────────────────────────────
 
-export function useSetsForExercises(exerciseIds: string[], week: number) {
+/** `bereich` ist der stabile Teil des Cache-Schlüssels — in aller Regel die
+    Plan-ID, für planübergreifende Auswertungen 'alle'.
+
+    Warum nicht die Übungs-IDs selbst, wie ursprünglich: Der Schlüssel
+    änderte sich dann bei jeder hinzugefügten Übung. Ohne Netz gab es für
+    den neuen Schlüssel noch keinen Cache-Eintrag, die optimistischen
+    Updates aus lib/offline/cache.ts liefen ins Leere (setQueriesData
+    schreibt nur in bereits vorhandene Einträge) und die Satzliste blieb
+    leer. Mit einem festen Schlüssel je Plan überlebt der Cache das
+    Hinzufügen von Übungen. Die IDs bestimmen weiterhin, was geladen wird —
+    nur eben nicht mehr, wohin es im Cache gehört. */
+export function useSetsForExercises(exerciseIds: string[], week: number, bereich: string) {
   return useQuery({
-    queryKey: ['sets', [...exerciseIds].sort(), week],
+    queryKey: ['sets', bereich, week],
     enabled: exerciseIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -93,9 +104,9 @@ export function useSetsForExercises(exerciseIds: string[], week: number) {
 
 /** Ungefiltert nach Woche — für Cockpit-Auswertungen wie "Tonnage letztes
     Training", die über mehrere Wochen hinweg schauen müssen. */
-export function useAllSetsForExercises(exerciseIds: string[]) {
+export function useAllSetsForExercises(exerciseIds: string[], bereich: string) {
   return useQuery({
-    queryKey: ['sets-all', [...exerciseIds].sort()],
+    queryKey: ['sets-all', bereich],
     enabled: exerciseIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase.from('logged_sets').select('*').in('exercise_id', exerciseIds)
@@ -126,9 +137,9 @@ export function useDeleteSet() {
 
 /** Alle Sitzungen mehrerer Tage einer Woche in einem Rutsch — für die
     Tage-Übersicht, damit sie nicht pro Tag einzeln nachfragen muss. */
-export function useSessionsForDays(dayIds: string[], week: number) {
+export function useSessionsForDays(dayIds: string[], week: number, bereich: string) {
   return useQuery({
-    queryKey: ['sessions', [...dayIds].sort(), week],
+    queryKey: ['sessions', bereich, week],
     enabled: dayIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -144,9 +155,9 @@ export function useSessionsForDays(dayIds: string[], week: number) {
 
 /** Für Cockpit-Kennzahlen (Frequenz, Trainingszeit, letzte Einheiten) —
     über alle Wochen hinweg, nicht nur die aktuell angezeigte. */
-export function useAllSessionsForDays(dayIds: string[]) {
+export function useAllSessionsForDays(dayIds: string[], bereich: string) {
   return useQuery({
-    queryKey: ['sessions-all', [...dayIds].sort()],
+    queryKey: ['sessions-all', bereich],
     enabled: dayIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase

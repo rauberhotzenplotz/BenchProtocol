@@ -12,9 +12,12 @@ export function CockpitPage() {
   const dayIds = (days ?? []).map(d => d.id)
   const week = activePlan?.week ?? 1
 
-  const { data: saetzeWoche } = useSetsForExercises(exerciseIds, week)
-  const { data: alleSaetze } = useAllSetsForExercises(exerciseIds)
-  const { data: sessions } = useAllSessionsForDays(dayIds)
+  // Plan-ID als Cache-Bereich (siehe useSetsForExercises) — dadurch bleibt
+  // der Schlüssel stabil, auch wenn Übungen dazukommen oder wegfallen.
+  const bereich = activePlan?.id ?? 'ohne-plan'
+  const { data: saetzeWoche } = useSetsForExercises(exerciseIds, week, bereich)
+  const { data: alleSaetze } = useAllSetsForExercises(exerciseIds, bereich)
+  const { data: sessions } = useAllSessionsForDays(dayIds, bereich)
 
   if (!activePlan) {
     return (

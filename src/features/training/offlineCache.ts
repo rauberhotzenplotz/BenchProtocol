@@ -93,10 +93,31 @@ export function upsertSessionInArray(old: TrainingSession[] | undefined, session
   return liste.map((s, i) => (i === idx ? session : s))
 }
 
-export function matchesExerciseWeek(exerciseIds: readonly string[], week: number, exerciseId: string, targetWeek: number): boolean {
-  return week === targetWeek && exerciseIds.includes(exerciseId)
+/** Gehört die Übung in den Cache-Bereich (= Plan-ID, siehe
+    useSetsForExercises)?
+
+    Die Satz- und Sitzungs-Caches liegen seit der Offline-Überarbeitung
+    unter einem festen Bereich statt unter der Liste ihrer IDs. Ob ein
+    optimistischer Patch in einen konkreten Eintrag gehört, lässt sich
+    daher nicht mehr am Schlüssel ablesen — die Antwort steht im
+    Tages-Cache desselben Bereichs.
+
+    `tage === undefined` heißt: wir wissen es gerade nicht (Cache noch
+    nicht geladen). Dann wird bewusst angewendet statt verworfen — ein
+    Patch zu viel korrigiert sich beim nächsten Abgleich mit dem Server
+    von selbst, ein verlorener Satz mitten im Training nicht. */
+export function bereichEnthaeltUebung(
+  tage: ReadonlyArray<{ exercises: ReadonlyArray<{ id: string }> }> | undefined,
+  exerciseId: string,
+): boolean {
+  if (!tage) return true
+  return tage.some(t => t.exercises.some(e => e.id === exerciseId))
 }
 
-export function matchesDayWeek(dayIds: readonly string[], week: number, dayId: string, targetWeek: number): boolean {
-  return week === targetWeek && dayIds.includes(dayId)
+export function bereichEnthaeltTag(
+  tage: ReadonlyArray<{ id: string }> | undefined,
+  dayId: string,
+): boolean {
+  if (!tage) return true
+  return tage.some(t => t.id === dayId)
 }

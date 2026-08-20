@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { BenchSlot, Exercise, ExerciseLibraryEntry, LoggedSet, Plan, TrainingSession } from '../../types/db'
+import type { BenchSlot, Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import {
   useCreateExercise,
@@ -23,7 +23,8 @@ import { GymModeAP } from './GymModeAP'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useVolumeRows } from '../volume/queries'
-import { useLibrarySearch, MUSKELGRUPPEN, useLibraryByMuscleGroup } from '../exerciseLibrary/queries'
+import { useLibrarySearch, MUSKELGRUPPEN, useLibraryByMuscleGroup, useLibraryKatalog, katalogFiltern, type KatalogEintrag } from '../exerciseLibrary/queries'
+import { useIstOnline } from '../../lib/offline/netz'
 import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
 import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
@@ -383,7 +384,7 @@ function UebungAuswahl({
   // Zeichen sind, ohne dass die gewählte Gruppe deshalb verlorenginge.
   // Ist bereits eine Gruppe gewählt, filtert die Suche zusätzlich darauf.
   const [muskelgruppe, setMuskelgruppe] = useState<string | null>(null)
-  const { data: treffer, isFetching } = useLibrarySearch(suche, muskelgruppe)
+  const { data: serverTreffer, isFetching } = useLibrarySearch(suche, muskelgruppe)
   const {
     data: browseSeiten,
     fetchNextPage,
@@ -391,7 +392,19 @@ function UebungAuswahl({
     isFetchingNextPage,
     isLoading: browseLaedt,
   } = useLibraryByMuscleGroup(muskelgruppe)
-  const browseTreffer = browseSeiten?.pages.flat() ?? []
+
+  // Ohne Netz liefern beide Abfragen oben nichts — dann übernimmt die
+  // lokale Kopie des Katalogs (siehe useLibraryKatalog), sonst ließe sich
+  // offline keine Übung hinzufügen. Der Katalog wird im Hintergrund
+  // gehalten und mitgesichert, das Umschalten kostet also keine Ladezeit.
+  const istOnline = useIstOnline()
+  const { data: katalog } = useLibraryKatalog()
+  const offlineKatalog = !istOnline && !!katalog?.length
+
+  const treffer = offlineKatalog ? katalogFiltern(katalog, suche, muskelgruppe) : serverTreffer
+  const browseTreffer = offlineKatalog
+    ? katalogFiltern(katalog, '', muskelgruppe, 200)
+    : (browseSeiten?.pages.flat() ?? [])
 
   // IntersectionObserver auf einer unsichtbaren Wächter-Zeile am
   // Listenende statt eines Scroll-Ereignishorchers: löst zuverlässig aus,
@@ -415,13 +428,13 @@ function UebungAuswahl({
     return () => beobachter.disconnect()
   }, [hasNextPage, fetchNextPage, muskelgruppe])
 
-  const [gewaehlt, setGewaehlt] = useState<ExerciseLibraryEntry | null>(null)
+  const [gewaehlt, setGewaehlt] = useState<KatalogEintrag | null>(null)
   const [scheme, setScheme] = useState('3 × 10')
   const [restMin, setRestMin] = useState(2)
   const [benchSlot, setBenchSlot] = useState<BenchSlot | null>(null)
   const [muscleGroup, setMuscleGroup] = useState<string | null>(null)
 
-  const waehlen = (e: ExerciseLibraryEntry) => {
+  const waehlen = (e: KatalogEintrag) => {
     setGewaehlt(e)
     setScheme(e.scheme || '3 × 10')
     setRestMin(e.rest ? pauseMinuten(e.rest) || 2 : 2)

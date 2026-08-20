@@ -10,7 +10,9 @@ export function RecordsPage() {
   const { data: alleUebungen } = useAlleUebungenJemals()
   const gruppen = gruppiere(alleUebungen ?? [])
   const exerciseIds = (alleUebungen ?? []).map(e => e.id)
-  const { data: sets } = useAllSetsForExercises(exerciseIds)
+  // Eigener Cache-Bereich: Rekorde schauen planübergreifend über alle
+  // Übungen, nicht nur die des aktiven Plans.
+  const { data: sets } = useAllSetsForExercises(exerciseIds, 'alle')
 
   const [gewaehlt, setGewaehlt] = useState<string>('')
   const aktivKey = gewaehlt || gruppen[0]?.key || ''

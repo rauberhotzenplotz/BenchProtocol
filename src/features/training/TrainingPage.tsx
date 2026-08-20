@@ -23,10 +23,13 @@ export function TrainingPage() {
   const alleDayIds = (days ?? []).map(d => d.id)
   const week = activePlan?.week ?? 1
 
-  const { data: alleSaetze } = useSetsForExercises(alleExerciseIds, week)
-  const { data: saetzeJemals } = useAllSetsForExercises(alleExerciseIds)
-  const { data: sessions } = useSessionsForDays(alleDayIds, week)
-  const { data: sessionenJemals } = useAllSessionsForDays(alleDayIds)
+  // Plan-ID als Cache-Bereich (siehe useSetsForExercises) — dadurch bleibt
+  // der Schlüssel stabil, auch wenn Übungen dazukommen oder wegfallen.
+  const bereich = activePlan?.id ?? 'ohne-plan'
+  const { data: alleSaetze } = useSetsForExercises(alleExerciseIds, week, bereich)
+  const { data: saetzeJemals } = useAllSetsForExercises(alleExerciseIds, bereich)
+  const { data: sessions } = useSessionsForDays(alleDayIds, week, bereich)
+  const { data: sessionenJemals } = useAllSessionsForDays(alleDayIds, bereich)
   const offenerTagDaten = days?.find(d => d.id === offenerTag)
   const { data: session } = useSession(offenerTag ?? undefined, week)
 

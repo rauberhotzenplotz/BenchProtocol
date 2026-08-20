@@ -9,8 +9,8 @@ import {
   arrayContainsId,
   buildOptimisticSession,
   upsertSessionInArray,
-  matchesExerciseWeek,
-  matchesDayWeek,
+  bereichEnthaeltUebung,
+  bereichEnthaeltTag,
 } from '../../features/training/offlineCache'
 import { MUTATION_KEYS, SYNC_SCOPE } from './keys'
 import { optimistisch, zurueckrollen, type Schnappschuss } from './cache'
@@ -42,6 +42,18 @@ export type UebungAnlegen = Pick<
 >
 
 export function registriereTrainingMutationen(qc: QueryClient) {
+  // Die Satz-/Sitzungs-Caches liegen unter einem festen Bereich (Plan-ID,
+  // bzw. 'alle' für die planübergreifenden Rekorde). Welche Übungen und
+  // Tage dazugehören, steht im Tages-Cache desselben Bereichs.
+  const tageDesBereichs = (bereich: unknown): DayWithExercises[] | undefined =>
+    typeof bereich === 'string' ? qc.getQueryData<DayWithExercises[]>(['days', bereich]) : undefined
+
+  const passtZuUebung = (q: Query, exerciseId: string) =>
+    q.queryKey[1] === 'alle' || bereichEnthaeltUebung(tageDesBereichs(q.queryKey[1]), exerciseId)
+
+  const passtZuTag = (q: Query, dayId: string) =>
+    q.queryKey[1] === 'alle' || bereichEnthaeltTag(tageDesBereichs(q.queryKey[1]), dayId)
+
   // ── Tage und Übungen ─────────────────────────────────────────────
   // Der Tages-Cache liegt unter ['days', planId] und trägt die Übungen
   // verschachtelt mit (DayWithExercises). Gearbeitet wird bewusst über den
@@ -162,11 +174,11 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       const prevSets = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets'] })
       const prevSetsAll = qc.getQueriesData<LoggedSet[]>({ queryKey: ['sets-all'] })
       qc.setQueriesData<LoggedSet[]>(
-        { queryKey: ['sets'], predicate: (q: Query) => matchesExerciseWeek(q.queryKey[1] as string[], q.queryKey[2] as number, row.exercise_id, row.week) },
+        { queryKey: ['sets'], predicate: (q: Query) => q.queryKey[2] === row.week && passtZuUebung(q, row.exercise_id) },
         old => upsertInArray(old, row),
       )
       qc.setQueriesData<LoggedSet[]>(
-        { queryKey: ['sets-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(row.exercise_id) },
+        { queryKey: ['sets-all'], predicate: (q: Query) => passtZuUebung(q, row.exercise_id) },
         old => upsertInArray(old, row),
       )
       return { prevSets, prevSetsAll } satisfies SetsContext
@@ -245,11 +257,11 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       })
       qc.setQueryData(['session', dayId, week], optimistic)
       qc.setQueriesData<TrainingSession[]>(
-        { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+        { queryKey: ['sessions'], predicate: (q: Query) => q.queryKey[2] === week && passtZuTag(q, dayId) },
         old => upsertSessionInArray(old, optimistic),
       )
       qc.setQueriesData<TrainingSession[]>(
-        { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+        { queryKey: ['sessions-all'], predicate: (q: Query) => passtZuTag(q, dayId) },
         old => upsertSessionInArray(old, optimistic),
       )
       return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
@@ -278,11 +290,11 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, started_at: jetzt, ended_at: jetzt, minutes: 0, status: 'skipped' })
       qc.setQueryData(['session', dayId, week], optimistic)
       qc.setQueriesData<TrainingSession[]>(
-        { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+        { queryKey: ['sessions'], predicate: (q: Query) => q.queryKey[2] === week && passtZuTag(q, dayId) },
         old => upsertSessionInArray(old, optimistic),
       )
       qc.setQueriesData<TrainingSession[]>(
-        { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+        { queryKey: ['sessions-all'], predicate: (q: Query) => passtZuTag(q, dayId) },
         old => upsertSessionInArray(old, optimistic),
       )
       return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
@@ -313,11 +325,11 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, ended_at: new Date().toISOString(), minutes })
       qc.setQueryData(['session', dayId, week], optimistic)
       qc.setQueriesData<TrainingSession[]>(
-        { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+        { queryKey: ['sessions'], predicate: (q: Query) => q.queryKey[2] === week && passtZuTag(q, dayId) },
         old => upsertSessionInArray(old, optimistic),
       )
       qc.setQueriesData<TrainingSession[]>(
-        { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+        { queryKey: ['sessions-all'], predicate: (q: Query) => passtZuTag(q, dayId) },
         old => upsertSessionInArray(old, optimistic),
       )
       return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
@@ -381,11 +393,11 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, paused_at: new Date().toISOString() })
       qc.setQueryData(['session', dayId, week], optimistic)
       qc.setQueriesData<TrainingSession[]>(
-        { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+        { queryKey: ['sessions'], predicate: (q: Query) => q.queryKey[2] === week && passtZuTag(q, dayId) },
         old => upsertSessionInArray(old, optimistic),
       )
       qc.setQueriesData<TrainingSession[]>(
-        { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+        { queryKey: ['sessions-all'], predicate: (q: Query) => passtZuTag(q, dayId) },
         old => upsertSessionInArray(old, optimistic),
       )
       return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
@@ -418,11 +430,11 @@ export function registriereTrainingMutationen(qc: QueryClient) {
         const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, started_at: neuerStart, paused_at: null })
         qc.setQueryData(['session', dayId, week], optimistic)
         qc.setQueriesData<TrainingSession[]>(
-          { queryKey: ['sessions'], predicate: (q: Query) => matchesDayWeek(q.queryKey[1] as string[], q.queryKey[2] as number, dayId, week) },
+          { queryKey: ['sessions'], predicate: (q: Query) => q.queryKey[2] === week && passtZuTag(q, dayId) },
           old => upsertSessionInArray(old, optimistic),
         )
         qc.setQueriesData<TrainingSession[]>(
-          { queryKey: ['sessions-all'], predicate: (q: Query) => (q.queryKey[1] as string[]).includes(dayId) },
+          { queryKey: ['sessions-all'], predicate: (q: Query) => passtZuTag(q, dayId) },
           old => upsertSessionInArray(old, optimistic),
         )
         return { prevSession, prevSessions, prevSessionsAll } satisfies SessionsContext
