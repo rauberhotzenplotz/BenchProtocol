@@ -4,6 +4,7 @@ import { PAUSE_MINUTEN, formatPause, pauseMinuten } from '../training/pause'
 import { ZahlEingabe } from '../../components/ZahlRad'
 import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 /** Bibliothek aus Übungsvorlagen: Schema und Pause je Übungsname, einmal
     gepflegt statt bei jedem neuen Plan erneut eingetippt. Nicht an einen
@@ -64,11 +65,19 @@ export function ExerciseLibraryPage() {
 
         <div className="field" style={{ marginBottom: 14 }}>
           <label>Suchen</label>
+          {/* onKeyDown fängt einen Android-WebView-Bug ab (siehe
+              onKeyDownAndroidBackspaceFix in lib/nativeShell.ts) - alle
+              Textfelder dieser Seite bekommen ihn deshalb mit. */}
           <input
             className="inp"
             placeholder="Name auf Deutsch oder Englisch, ab zwei Zeichen"
-            value={suche}
+            defaultValue={suche}
             onChange={e => setSuche(e.target.value)}
+            onKeyDown={onKeyDownAndroidBackspaceFix}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
           />
         </div>
 
@@ -91,6 +100,7 @@ export function ExerciseLibraryPage() {
                     <input
                       className="inp"
                       defaultValue={e.name}
+                      onKeyDown={onKeyDownAndroidBackspaceFix}
                       onBlur={ev => {
                         const wert = ev.target.value.trim()
                         if (wert && wert !== e.name) updateEntry.mutate({ id: e.id, patch: { name: wert } })
@@ -101,6 +111,7 @@ export function ExerciseLibraryPage() {
                       className="inp mono"
                       defaultValue={e.scheme ?? ''}
                       placeholder="z. B. 4 × 8"
+                      onKeyDown={onKeyDownAndroidBackspaceFix}
                       onBlur={ev => updateEntry.mutate({ id: e.id, patch: { scheme: ev.target.value.trim() || null } })}
                     />
                     <ZahlEingabe
@@ -127,15 +138,21 @@ export function ExerciseLibraryPage() {
         {neuOffen ? (
           <div className="bib-neu">
             <div className="bib-zeile">
+              {/* siehe Kommentar am Suchfeld oben in dieser Datei -
+                  onKeyDownAndroidBackspaceFix fängt den Android-WebView-
+                  Backspace-Bug ab. */}
               <input
                 className="inp"
                 autoFocus
                 placeholder="Übungsname"
-                value={neuName}
+                defaultValue={neuName}
                 onChange={e => setNeuName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && anlegen()}
+                onKeyDown={e => {
+                  onKeyDownAndroidBackspaceFix(e)
+                  if (e.key === 'Enter') anlegen()
+                }}
               />
-              <input className="inp mono" value={neuScheme} onChange={e => setNeuScheme(e.target.value)} />
+              <input className="inp mono" defaultValue={neuScheme} onChange={e => setNeuScheme(e.target.value)} onKeyDown={onKeyDownAndroidBackspaceFix} />
               <ZahlEingabe
                 wert={neuRestMin}
                 werte={PAUSE_MINUTEN}

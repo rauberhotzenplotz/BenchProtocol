@@ -4,6 +4,7 @@ import { usePlannedSets, useLogWeek, useSetBlockStatus, useDeleteBlock } from '.
 import { blockAuswertung, empfehlung, type WochenEintrag, type BlockEmpfehlungTyp } from './blockAuswertung'
 import { geschaetztes1RM } from './e1rm'
 import { E1rmVerlauf } from './E1rmVerlauf'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 const EMPFEHLUNG_LABEL: Record<BlockEmpfehlungTyp, string> = {
   PROGRESS: 'Fortschritt',
@@ -144,9 +145,11 @@ function WochenZeile({ woche }: { woche: RpePlannedSet }) {
       </div>
       {!bereitsGeloggt && (
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <input className="inp mono" placeholder="kg" inputMode="decimal" value={gewicht} onChange={e => setGewicht(e.target.value)} style={{ maxWidth: 90 }} />
-          <input className="inp mono" placeholder="Wdh" inputMode="numeric" value={wdh} onChange={e => setWdh(e.target.value)} style={{ maxWidth: 70 }} />
-          <input className="inp mono" placeholder="RPE" inputMode="decimal" value={rpe} onChange={e => setRpe(e.target.value)} style={{ maxWidth: 70 }} />
+          {/* onKeyDown an allen drei Feldern fängt einen Android-WebView-Bug
+              ab (siehe onKeyDownAndroidBackspaceFix in lib/nativeShell.ts). */}
+          <input className="inp mono" placeholder="kg" inputMode="decimal" defaultValue={gewicht} onChange={e => setGewicht(e.target.value)} onKeyDown={onKeyDownAndroidBackspaceFix} style={{ maxWidth: 90 }} />
+          <input className="inp mono" placeholder="Wdh" inputMode="numeric" defaultValue={wdh} onChange={e => setWdh(e.target.value)} onKeyDown={onKeyDownAndroidBackspaceFix} style={{ maxWidth: 70 }} />
+          <input className="inp mono" placeholder="RPE" inputMode="decimal" defaultValue={rpe} onChange={e => setRpe(e.target.value)} onKeyDown={onKeyDownAndroidBackspaceFix} style={{ maxWidth: 70 }} />
           <button className="btn sm primary" onClick={eintragen}>
             Eintragen
           </button>

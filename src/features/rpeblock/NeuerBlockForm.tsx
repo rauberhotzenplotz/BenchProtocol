@@ -4,6 +4,7 @@ import { useCreateBlock, usePlannedSets } from './queries'
 import { planeWochen } from './blockPlanung'
 import { blockAuswertung, type WochenEintrag } from './blockAuswertung'
 import { neueId } from '../../lib/offline/keys'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 /** Schätzt das Start-1RM für einen neuen Block aus dem besten e1RM des
     letzten Blocks derselben Übung — null, wenn es noch keinen gibt oder
@@ -77,12 +78,17 @@ export function NeuerBlockForm({ exerciseId, vorherigeBlocks, onFertig }: { exer
           </div>
           <div className="field">
             <label>Start-1RM (geschätzt)</label>
+            {/* onKeyDown fängt einen Android-WebView-Bug ab (siehe
+                onKeyDownAndroidBackspaceFix in lib/nativeShell.ts). Betrifft
+                nur dieses freie Textfeld, nicht die type="number"-Felder
+                oben (die ihren Wert bewusst live nachklemmen). */}
             <input
               className="inp mono"
               placeholder={vorschlagE1rm != null ? `z. B. ${vorschlagE1rm.toFixed(1)}` : 'optional'}
               inputMode="decimal"
-              value={startE1rmText}
+              defaultValue={startE1rmText}
               onChange={e => setStartE1rmText(e.target.value)}
+              onKeyDown={onKeyDownAndroidBackspaceFix}
             />
             <small>
               {vorschlagE1rm != null

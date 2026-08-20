@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { e1rm, brzycki, round, mround } from './calc'
 import { useUpdatePlan } from '../plans/queries'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 const STUFEN = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50]
 
@@ -27,11 +28,13 @@ export function RechnerCard({ planId, plate }: { planId: string; plate: number }
       <div className="grid g2" style={{ gap: 10, marginBottom: 14 }}>
         <div className="field">
           <label>Gewicht</label>
-          <input className="inp big" value={kg} onChange={e => setKg(e.target.value)} inputMode="decimal" />
+          {/* onKeyDown fängt einen Android-WebView-Bug ab (siehe
+              onKeyDownAndroidBackspaceFix in lib/nativeShell.ts). */}
+          <input className="inp big" defaultValue={kg} onChange={e => setKg(e.target.value)} onKeyDown={onKeyDownAndroidBackspaceFix} inputMode="decimal" />
         </div>
         <div className="field">
           <label>Wiederholungen</label>
-          <input className="inp big" value={reps} onChange={e => setReps(e.target.value)} inputMode="numeric" />
+          <input className="inp big" defaultValue={reps} onChange={e => setReps(e.target.value)} onKeyDown={onKeyDownAndroidBackspaceFix} inputMode="numeric" />
         </div>
       </div>
       <div className="grid g2" style={{ gap: 10, marginBottom: 14 }}>
@@ -55,6 +58,7 @@ export function RechnerCard({ planId, plate }: { planId: string; plate: number }
           style={{ width: 64 }}
           defaultValue={plate}
           inputMode="decimal"
+          onKeyDown={onKeyDownAndroidBackspaceFix}
           onBlur={e => {
             const v = parseFloat(e.target.value.replace(',', '.'))
             if (!isNaN(v) && v > 0) updatePlan.mutate({ id: planId, patch: { plate: v } })

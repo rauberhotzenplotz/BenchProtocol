@@ -26,6 +26,7 @@ import { useVolumeRows } from '../volume/queries'
 import { useLibrarySearch, MUSKELGRUPPEN, useLibraryByMuscleGroup } from '../exerciseLibrary/queries'
 import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 import { ZahlEingabe } from '../../components/ZahlRad'
 import { zahlenBereich } from '../../lib/zahlen'
 
@@ -174,13 +175,21 @@ export function SessionView({
             {plan.typ === 'bench' ? ` · Block ${plan.block ?? 1}` : ''}
           </span>
           {nameBearbeiten ? (
+            // onKeyDown fängt einen Android-WebView-Bug ab (siehe
+            // onKeyDownAndroidBackspaceFix in lib/nativeShell.ts, dort die
+            // ausführliche Erklärung) - Backspace/Entf bleiben auf einem
+            // Testgerät sonst wirkungslos, obwohl die Tastatur reagiert.
+            // defaultValue statt value, weil der Input ohnehin bei jedem
+            // Öffnen/Schließen neu gemountet wird (siehe
+            // nameBearbeiten-Bedingung).
             <input
               className="inp"
               autoFocus
-              value={neuerName}
+              defaultValue={neuerName}
               onChange={e => setNeuerName(e.target.value)}
               onBlur={nameSpeichern}
               onKeyDown={e => {
+                onKeyDownAndroidBackspaceFix(e)
                 if (e.key === 'Enter') nameSpeichern()
                 if (e.key === 'Escape') {
                   setNeuerName(day.name)
@@ -438,12 +447,24 @@ function UebungAuswahl({
         <div className="stack">
           <div className="field">
             <label>Übung suchen</label>
+            {/* onKeyDown fängt einen Android-WebView-Bug ab (siehe
+                onKeyDownAndroidBackspaceFix in lib/nativeShell.ts) -
+                Backspace bleibt auf einem Testgerät sonst wirkungslos,
+                obwohl die Tastatur reagiert. defaultValue statt value, da
+                suche hier nie von außen gesetzt wird (nur über dieses
+                onChange selbst). autoCorrect/autoCapitalize/spellCheck aus,
+                da Übungsnamen keine Rechtschreibprüfung brauchen. */}
             <input
               className="inp"
               autoFocus
               placeholder="z. B. Bankdrücken oder Bench Press"
-              value={suche}
+              defaultValue={suche}
               onChange={e => setSuche(e.target.value)}
+              onKeyDown={onKeyDownAndroidBackspaceFix}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
 
@@ -536,7 +557,14 @@ function UebungAuswahl({
         <div className="grid g2" style={{ gap: 10 }}>
           <div className="field">
             <label>Schema</label>
-            <input className="inp mono" value={scheme} onChange={e => setScheme(e.target.value)} />
+            {/* siehe Kommentar am Suchfeld weiter oben in dieser Datei -
+                onKeyDown fängt den Android-WebView-Backspace-Bug ab. */}
+            <input
+              className="inp mono"
+              defaultValue={scheme}
+              onChange={e => setScheme(e.target.value)}
+              onKeyDown={onKeyDownAndroidBackspaceFix}
+            />
           </div>
           <div className="field">
             <label>Pause</label>
@@ -816,6 +844,7 @@ function ExerciseBlock({
                   placeholder="z. B. Griffbreite, Sitzposition"
                   defaultValue={exercise.note ?? ''}
                   onBlur={e => updateExercise.mutate({ id: exercise.id, patch: { note: e.target.value } })}
+                  onKeyDown={onKeyDownAndroidBackspaceFix}
                 />
               </label>
               {planTyp === 'bench' && (

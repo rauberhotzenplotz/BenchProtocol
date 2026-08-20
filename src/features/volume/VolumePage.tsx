@@ -6,6 +6,7 @@ import { useVolumeRows, useCreateVolumeRow, useUpdateVolumeRow, useDeleteVolumeR
 import { istSaetzeJeGruppeUndTag, istGesamt } from './calc'
 import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 export function VolumePage() {
   const { activePlan } = useActivePlan()
@@ -17,6 +18,10 @@ export function VolumePage() {
   const updateRow = useUpdateVolumeRow()
   const deleteRow = useDeleteVolumeRow()
   const [neuerName, setNeuerName] = useState('')
+  // Erzwingt einen frischen Input-Knoten nach "Hinzufügen" (siehe unten) -
+  // das Feld bleibt sonst dauerhaft gemountet, defaultValue würde die
+  // Anzeige beim Leeren also nicht mitziehen.
+  const [neuerNameKey, setNeuerNameKey] = useState(0)
 
   if (!activePlan) {
     return (
@@ -79,6 +84,7 @@ export function VolumePage() {
                       <input
                         className="inp voll dim"
                         defaultValue={r.note ?? ''}
+                        onKeyDown={onKeyDownAndroidBackspaceFix}
                         onBlur={e => updateRow.mutate({ id: r.id, patch: { note: e.target.value } })}
                       />
                     </td>
@@ -101,11 +107,17 @@ export function VolumePage() {
         </p>
 
         <div className="row" style={{ marginTop: 14, gap: 8 }}>
+          {/* defaultValue + key: der key erzwingt nach "Hinzufügen" einen
+              frischen, leeren Input-Knoten. onKeyDown fängt einen Android-
+              WebView-Bug ab (siehe onKeyDownAndroidBackspaceFix in
+              lib/nativeShell.ts). */}
           <input
+            key={neuerNameKey}
             className="inp"
             placeholder="Neue Muskelgruppe"
-            value={neuerName}
+            defaultValue={neuerName}
             onChange={e => setNeuerName(e.target.value)}
+            onKeyDown={onKeyDownAndroidBackspaceFix}
             style={{ maxWidth: 220 }}
           />
           <button
@@ -119,6 +131,7 @@ export function VolumePage() {
                 sort_order: (rows ?? []).length,
               })
               setNeuerName('')
+              setNeuerNameKey(k => k + 1)
             }}
           >
             Hinzufügen

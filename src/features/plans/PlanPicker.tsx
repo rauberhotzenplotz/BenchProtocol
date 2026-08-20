@@ -4,6 +4,7 @@ import { useActivePlan } from './active-plan-context'
 import { useCreatePlan, useDeletePlan, useUpdatePlan } from './queries'
 import { neueId } from '../../lib/offline/keys'
 import type { PlanTyp } from '../../types/db'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 /** Knopf mit dem Namen des aktiven Plans, öffnet die Verwaltung — Pendant
     zu #planBtn / planVerwaltung() aus der alten App. */
@@ -132,13 +133,16 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
                   </button>
                 </div>
               ) : umbenennenId === p.id ? (
+                // onKeyDown fängt einen Android-WebView-Bug ab (siehe
+                // onKeyDownAndroidBackspaceFix in lib/nativeShell.ts).
                 <input
                   className="inp"
                   autoFocus
-                  value={umbenennenName}
+                  defaultValue={umbenennenName}
                   onChange={e => setUmbenennenName(e.target.value)}
                   onBlur={() => void umbenennen(p.id)}
                   onKeyDown={e => {
+                    onKeyDownAndroidBackspaceFix(e)
                     if (e.key === 'Enter') void umbenennen(p.id)
                     if (e.key === 'Escape') setUmbenennenId(null)
                   }}
@@ -217,14 +221,20 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
               </button>
             </p>
             <div className="row">
+              {/* onKeyDown an allen vier Feldern unten fängt einen Android-
+                  WebView-Bug ab (siehe onKeyDownAndroidBackspaceFix in
+                  lib/nativeShell.ts). */}
               <input
                 className="inp"
                 placeholder="Name für den Plan"
                 maxLength={40}
                 autoFocus
-                value={name}
+                defaultValue={name}
                 onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && void anlegen()}
+                onKeyDown={e => {
+                  onKeyDownAndroidBackspaceFix(e)
+                  if (e.key === 'Enter') void anlegen()
+                }}
               />
             </div>
 
@@ -238,24 +248,27 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
                     className="inp mono"
                     placeholder="kg"
                     inputMode="decimal"
-                    value={testGewicht}
+                    defaultValue={testGewicht}
                     onChange={e => setTestGewicht(e.target.value)}
+                    onKeyDown={onKeyDownAndroidBackspaceFix}
                     style={{ maxWidth: 90 }}
                   />
                   <input
                     className="inp mono"
                     placeholder="Wdh"
                     inputMode="numeric"
-                    value={testWdh}
+                    defaultValue={testWdh}
                     onChange={e => setTestWdh(e.target.value)}
+                    onKeyDown={onKeyDownAndroidBackspaceFix}
                     style={{ maxWidth: 70 }}
                   />
                   <input
                     className="inp mono"
                     placeholder="RPE"
                     inputMode="decimal"
-                    value={testRpe}
+                    defaultValue={testRpe}
                     onChange={e => setTestRpe(e.target.value)}
+                    onKeyDown={onKeyDownAndroidBackspaceFix}
                     style={{ maxWidth: 70 }}
                   />
                 </div>

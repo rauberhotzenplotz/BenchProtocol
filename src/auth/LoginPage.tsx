@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './auth-context'
 import { Mark } from '../components/Mark'
+import { onKeyDownAndroidBackspaceFix } from '../lib/nativeShell'
 
 type Verfahren = 'passwort' | 'magic'
 type Modus = 'anmelden' | 'registrieren'
@@ -103,13 +104,19 @@ export function LoginPage() {
           <form onSubmit={e => void absenden(e)} className="stack">
             <div className="field">
               <label>E-Mail</label>
+              {/* defaultValue statt value: siehe Kommentar an den
+                  Suchfeldern in training/SessionView.tsx - Android-WebViews
+                  (auf einem Testgerät reproduziert) verlieren beim Löschen
+                  den Anschluss, wenn React den value-Prop bei jedem
+                  Tastendruck neu erzwingt. */}
               <input
                 className="inp big"
                 type="email"
                 required
                 autoComplete="email"
-                value={email}
+                defaultValue={email}
                 onChange={e => setEmail(e.target.value)}
+                onKeyDown={onKeyDownAndroidBackspaceFix}
               />
             </div>
 
@@ -122,8 +129,9 @@ export function LoginPage() {
                   required
                   minLength={6}
                   autoComplete={modus === 'anmelden' ? 'current-password' : 'new-password'}
-                  value={passwort}
+                  defaultValue={passwort}
                   onChange={e => setPasswort(e.target.value)}
+                  onKeyDown={onKeyDownAndroidBackspaceFix}
                 />
               </div>
             )}

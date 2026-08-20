@@ -1,6 +1,7 @@
 import type { BenchProgressionRow, Plan } from '../../types/db'
 import { useUpdateBenchProgressionRow } from './queries'
 import { benchLoad } from './calc'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 export function ProgressionTable({ plan, rows, dim }: { plan: Plan; rows: BenchProgressionRow[]; dim: boolean }) {
   const updateRow = useUpdateBenchProgressionRow()
@@ -23,9 +24,12 @@ export function ProgressionTable({ plan, rows, dim }: { plan: Plan; rows: BenchP
               <td className="wk">{r.week === 4 ? 'W4 · Deload' : `Woche ${r.week}`}</td>
               <td className="mono muted">{r.scheme}</td>
               <td className="pct">
+                {/* onKeyDown fängt einen Android-WebView-Bug ab (siehe
+                    onKeyDownAndroidBackspaceFix in lib/nativeShell.ts). */}
                 <input
                   className="inp mono pctinp"
                   defaultValue={Math.round((r.pct ?? 0) * 100)}
+                  onKeyDown={onKeyDownAndroidBackspaceFix}
                   onBlur={e => {
                     const v = parseFloat(e.target.value.replace(',', '.'))
                     if (!isNaN(v) && v > 0) updateRow.mutate({ id: r.id, pct: v / 100 })

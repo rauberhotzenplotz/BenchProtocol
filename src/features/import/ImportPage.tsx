@@ -9,6 +9,7 @@ import { useActivePlan } from '../plans/active-plan-context'
 import { useDays } from '../training/queries'
 import type { PlanTyp } from '../../types/db'
 import { cssVars } from '../../lib/style'
+import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 function fehlertext(err: unknown, fallback: string): string {
   return err && typeof err === 'object' && 'message' in err && typeof err.message === 'string' && err.message ? err.message : fallback
@@ -179,7 +180,9 @@ export function ImportPage() {
             </div>
 
             <div className="row" style={{ gap: 10 }}>
-              <input className="inp" value={name} onChange={e => setName(e.target.value)} maxLength={40} style={{ maxWidth: 320 }} />
+              {/* onKeyDown fängt einen Android-WebView-Bug ab (siehe
+                  onKeyDownAndroidBackspaceFix in lib/nativeShell.ts). */}
+              <input className="inp" defaultValue={name} onChange={e => setName(e.target.value)} onKeyDown={onKeyDownAndroidBackspaceFix} maxLength={40} style={{ maxWidth: 320 }} />
               <button className="btn primary sm" disabled={!name.trim() || importPlan.isPending} onClick={einlesen}>
                 Anlegen &amp; einlesen
               </button>
