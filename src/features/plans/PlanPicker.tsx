@@ -48,11 +48,31 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
   const [umbenennenName, setUmbenennenName] = useState('')
   const [loeschenId, setLoeschenId] = useState<string | null>(null)
 
+  // Ohne diese Prüfung verschwand ein ungültig eingetragener Testsatz
+  // (z. B. RPE außerhalb 6-10, oder nur zwei der drei Felder ausgefüllt)
+  // bislang stillschweigend hinter den Platzhalterwerten (60kg/6/RIR2) -
+  // der Nutzer dachte, sein Testsatz sei übernommen worden, tatsächlich
+  // wurde er beim Anlegen kommentarlos verworfen. Komplett leer bleibt
+  // weiterhin erlaubt (siehe Label "optional").
+  const testsatzBegonnen = !!(testGewicht.trim() || testWdh.trim() || testRpe.trim())
+  const testsatzFehler = !testsatzBegonnen
+    ? null
+    : !testGewicht.trim() || !testWdh.trim() || !testRpe.trim()
+      ? 'Bitte alle drei Felder ausfüllen oder alle drei leer lassen.'
+      : !(parseFloat(testGewicht.replace(',', '.')) > 0)
+        ? 'Gewicht muss größer als 0 sein.'
+        : !(parseInt(testWdh, 10) > 0)
+          ? 'Wiederholungen müssen größer als 0 sein.'
+          : !(parseFloat(testRpe.replace(',', '.')) >= 6 && parseFloat(testRpe.replace(',', '.')) <= 10)
+            ? 'RPE muss zwischen 6 und 10 liegen.'
+            : null
+
   const anlegen = async () => {
     const trimmed = name.trim()
     if (!trimmed || !neuerTyp) return
+    if (neuerTyp === 'bench' && testsatzFehler) return
     const testsatz =
-      neuerTyp === 'bench' && testGewicht.trim() && testWdh.trim() && testRpe.trim()
+      neuerTyp === 'bench' && testsatzBegonnen
         ? {
             work: parseFloat(testGewicht.replace(',', '.')),
             reps: parseInt(testWdh, 10),
@@ -239,12 +259,20 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
                     style={{ maxWidth: 70 }}
                   />
                 </div>
-                <small className="muted tiny">Ohne Angabe startest du mit Beispielwerten — trägst du sie später im Bank-Tab nach.</small>
+                {testsatzFehler ? (
+                  <small className="tiny" style={{ color: 'var(--crit)' }}>{testsatzFehler}</small>
+                ) : (
+                  <small className="muted tiny">Ohne Angabe startest du mit Beispielwerten — trägst du sie später im Bank-Tab nach.</small>
+                )}
               </div>
             )}
 
             <div className="row end" style={{ marginTop: 10 }}>
-              <button className="btn sm primary" onClick={() => void anlegen()}>
+              <button
+                className="btn sm primary"
+                disabled={!name.trim() || (neuerTyp === 'bench' && !!testsatzFehler)}
+                onClick={() => void anlegen()}
+              >
                 Anlegen
               </button>
             </div>
