@@ -69,6 +69,7 @@ export function useLibrarySearch(suchtext: string) {
         .from('exercise_library')
         .select('*')
         .or(`name.ilike."%${q}%",name_en.ilike."%${q}%",name_de_raw.ilike."%${q}%"`)
+        .order('popularity')
         .order('name')
         .limit(30)
       if (error) throw error
