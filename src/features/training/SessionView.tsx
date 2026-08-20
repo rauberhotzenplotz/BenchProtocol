@@ -366,14 +366,15 @@ function UebungAuswahl({
   onAbbrechen: () => void
 }) {
   const [suche, setSuche] = useState('')
-  const { data: treffer, isFetching } = useLibrarySearch(suche)
   const sucheAktiv = suche.trim().length >= 2
 
   // Durchsuchen nach Muskelgruppe: eigener Zustand statt Teil der
   // Textsuche, weil beides gleichzeitig verfügbar bleiben soll (siehe
   // Aufgabenstellung) — Tippen gewinnt einfach optisch, sobald es zwei
   // Zeichen sind, ohne dass die gewählte Gruppe deshalb verlorenginge.
+  // Ist bereits eine Gruppe gewählt, filtert die Suche zusätzlich darauf.
   const [muskelgruppe, setMuskelgruppe] = useState<string | null>(null)
+  const { data: treffer, isFetching } = useLibrarySearch(suche, muskelgruppe)
   const {
     data: browseSeiten,
     fetchNextPage,

@@ -51,8 +51,12 @@ function fuerFilterSaeubern(text: string): string {
     Bankdrücken". Erst ab zwei Zeichen aktiv (sonst kämen bei einem
     Buchstaben hunderte Treffer), auf 30 begrenzt: eine Auswahlliste, kein
     Ersatz für die Volltextsuche. 250 ms entprellt, damit nicht jeder
-    Tastendruck eine eigene Abfrage auslöst. */
-export function useLibrarySearch(suchtext: string) {
+    Tastendruck eine eigene Abfrage auslöst.
+
+    Ist eine Muskelgruppe im Picker bereits gewählt, filtert die Suche
+    zusätzlich darauf — wer erst "Rücken" antippt und dann sucht, will
+    vermutlich keine Bein-Übung als Treffer sehen. */
+export function useLibrarySearch(suchtext: string, muskelgruppe: string | null = null) {
   const [entprellt, setEntprellt] = useState(suchtext)
   useEffect(() => {
     const timer = setTimeout(() => setEntprellt(suchtext), 250)
@@ -62,16 +66,15 @@ export function useLibrarySearch(suchtext: string) {
   const q = fuerFilterSaeubern(entprellt.trim())
 
   return useQuery({
-    queryKey: ['exercise-library-search', q],
+    queryKey: ['exercise-library-search', q, muskelgruppe],
     enabled: q.length >= 2,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('exercise_library')
         .select('*')
         .or(`name.ilike."%${q}%",name_en.ilike."%${q}%",name_de_raw.ilike."%${q}%"`)
-        .order('popularity')
-        .order('name')
-        .limit(30)
+      if (muskelgruppe) query = query.eq('muscle_group', muskelgruppe)
+      const { data, error } = await query.order('popularity').order('name').limit(30)
       if (error) throw error
       return data as ExerciseLibraryEntry[]
     },
