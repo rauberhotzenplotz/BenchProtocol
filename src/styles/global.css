@@ -82,6 +82,26 @@ body {
 * { scrollbar-width: none; -ms-overflow-style: none; }
 ::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
+/* Androids blauer Aufblitz beim Antippen — einmal global aus statt in
+   jeder einzelnen Regel. Er passt nicht zur Optik der App und legte sich
+   zuletzt auch über Stellen, die eine eigene Hervorhebung mitbringen
+   (etwa die aktuelle Satzzeile im Gym-Modus).
+
+   Dazu für alles Antippbare die Textauswahl aus: Ohne das markiert ein
+   etwas längerer Druck auf einen Knopf dessen Beschriftung blau, statt
+   ihn auszulösen — im Training mit schwitzigen Händen der Normalfall.
+   Eingabefelder stehen bewusst nicht in der Liste, dort muss man
+   markieren können. */
+* { -webkit-tap-highlight-color: transparent; }
+button, a, label, summary, [role='button'] {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+/* Muss nach der Regel darüber stehen: user-select vererbt sich, und
+   mindestens ein Eingabefeld steckt in einem <label> (die Notiz einer
+   Übung in SessionView). Ohne diese Zeile ließe sich dort kein Text mehr
+   markieren. */
+input, textarea, select { -webkit-user-select: text; user-select: text; }
+
 /* ══ Weltraum-Nebel im Hintergrund ══════════════════════════
    Siehe Nebel.tsx. Alle Ebenen liegen hier, damit die Komponente
    selbst nur die Reihenfolge festlegt.
@@ -3444,8 +3464,13 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
 /* Schon abgehakt: gedämpft, damit das Zurücknehmen nicht wie die
    Hauptaktion aussieht. Die Animation läuft genau einmal, wenn die Klasse
    dazukommt — also beim Abhaken, nicht bei jedem Rendern. */
+/* Erledigt heißt grau, nicht blassgrün: Grün steht in dieser Ansicht für
+   "hier musst du noch ran". Ein abgehakter Satz ist erledigt und soll
+   sich optisch zurückziehen, statt weiter mitzuleuchten. Der grüne Puls
+   beim Abhaken bleibt als kurze Bestätigung und endet auf genau diesem
+   Grau (siehe ap-haken-puls), damit es am Ende nicht sichtbar umspringt. */
 .ap-haken.an {
-  border-color: rgba(63,224,138,.28); background: rgba(63,224,138,.06); color: rgba(63,224,138,.55);
+  border-color: var(--line); background: rgba(255,255,255,.04); color: var(--ink-4);
   animation: ap-haken-puls .5s cubic-bezier(.2,.8,.2,1);
 }
 .ap-haken svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -3457,7 +3482,9 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
 @keyframes ap-haken-puls {
   0%   { transform: scale(1);    background: rgba(63,224,138,.5);  box-shadow: 0 0 0 0 rgba(63,224,138,.55); }
   40%  { transform: scale(1.14); background: rgba(63,224,138,.34); box-shadow: 0 0 0 12px rgba(63,224,138,0); }
-  100% { transform: scale(1);    background: rgba(63,224,138,.06); box-shadow: 0 0 0 0 rgba(63,224,138,0); }
+  /* Endet auf dem Grau des Ruhezustands, nicht auf Grün — sonst springt
+     die Farbe im letzten Bild sichtbar um. */
+  100% { transform: scale(1);    background: rgba(255,255,255,.04); box-shadow: 0 0 0 0 rgba(63,224,138,0); }
 }
 @keyframes ap-haken-strich {
   from { stroke-dasharray: 34; stroke-dashoffset: 34; }
