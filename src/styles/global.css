@@ -3377,9 +3377,19 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   text-transform: uppercase; color: var(--ink-4);
 }
 .ap-tabkopf.klein { margin-top: 8px; font-size: 9px; grid-template-columns: 1fr 1fr 1fr 1fr; }
-.ap-zeile { padding: 5px 0; cursor: pointer; }
+/* tap-highlight aus: Android legte beim Antippen einer Zeile sonst seinen
+   blauen Systemschleier darüber — die Hervorhebung der aktuellen Zeile
+   soll allein von .aktiv kommen. user-select aus, damit ein etwas
+   längerer Druck nicht die Zahlen markiert statt die Zeile zu wählen. */
+.ap-zeile {
+  padding: 5px 0; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+  border-radius: var(--r-m); transition: background .16s;
+}
 .ap-zeile:not(.aktiv) { color: var(--ink-4); }
 .ap-zeile.erledigt:not(.aktiv) { color: var(--ink-3); }
+/* Nur die aktuelle Zeile hebt sich ab, dezent statt flächig gefärbt. */
+.ap-zeile.aktiv { background: rgba(255,255,255,.02); }
 
 .ap-nr {
   position: relative; display: inline-flex; align-items: center; justify-content: center;
@@ -3426,9 +3436,93 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
 .ap-haken:active { transform: scale(.96); }
 .ap-haken:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
 /* Schon abgehakt: gedämpft, damit das Zurücknehmen nicht wie die
-   Hauptaktion aussieht. */
-.ap-haken.an { border-color: rgba(63,224,138,.28); background: rgba(63,224,138,.06); color: rgba(63,224,138,.55); }
+   Hauptaktion aussieht. Die Animation läuft genau einmal, wenn die Klasse
+   dazukommt — also beim Abhaken, nicht bei jedem Rendern. */
+.ap-haken.an {
+  border-color: rgba(63,224,138,.28); background: rgba(63,224,138,.06); color: rgba(63,224,138,.55);
+  animation: ap-haken-puls .5s cubic-bezier(.2,.8,.2,1);
+}
 .ap-haken svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+/* Der Haken selbst wird beim Abhaken kurz "gezeichnet" statt einfach da
+   zu sein — 34 ist etwas mehr als die Pfadlänge, damit er sicher ganz
+   verschwindet und wieder auftaucht. */
+.ap-haken.an svg path { animation: ap-haken-strich .45s ease-out; }
+
+@keyframes ap-haken-puls {
+  0%   { transform: scale(1);    background: rgba(63,224,138,.5);  box-shadow: 0 0 0 0 rgba(63,224,138,.55); }
+  40%  { transform: scale(1.14); background: rgba(63,224,138,.34); box-shadow: 0 0 0 12px rgba(63,224,138,0); }
+  100% { transform: scale(1);    background: rgba(63,224,138,.06); box-shadow: 0 0 0 0 rgba(63,224,138,0); }
+}
+@keyframes ap-haken-strich {
+  from { stroke-dasharray: 34; stroke-dashoffset: 34; }
+  to   { stroke-dasharray: 34; stroke-dashoffset: 0; }
+}
+/* Die ganze Zeile blitzt einmal mit auf — das Signal soll aus dem
+   Augenwinkel erkennbar sein, wenn die Hantel noch in der Hand ist. */
+.ap-zeile.erledigt { animation: ap-zeile-blitz .5s ease-out; }
+@keyframes ap-zeile-blitz {
+  0%   { background: rgba(63,224,138,.16); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-haken.an, .ap-haken.an svg path, .ap-zeile.erledigt { animation: none; }
+}
+
+/* Sätze im Training ergänzen oder wegnehmen. Bewusst unter der Tabelle
+   statt als Symbol in jeder Zeile: es geht um die Übung als Ganzes. */
+.ap-satzknoepfe { display: flex; gap: 8px; margin-top: 12px; }
+.ap-satzbtn {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  padding: 9px 16px; border-radius: 99px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--ink-3);
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  -webkit-tap-highlight-color: transparent; transition: border-color .15s, background .15s, color .15s;
+}
+.ap-satzbtn:hover:not(:disabled) { border-color: var(--ink-4); background: rgba(255,255,255,.06); color: var(--ink); }
+.ap-satzbtn:disabled { opacity: .4; cursor: default; }
+
+/* Große Pausenuhr im Gym-Modus — steht dort, wo vorher die Historie
+   dauerhaft klebte. */
+.ap-pause {
+  /* .gym-ring bezieht Breite und Höhe aus --ring; ohne diese Zeile bliebe
+     der Ring 0 Pixel groß. Bewusst deutlich größer als der kleine
+     Timer-Knopf im Fuß, aber kleiner als die formatfüllende Uhr des alten
+     Vollbild-Pausenschirms (.gym-pause), damit die Satztabelle darunter
+     sichtbar bleibt. */
+  --ring: min(58vw, 30vh);
+  margin-top: 18px; padding: 16px; border-radius: var(--r-l);
+  border: 1px solid var(--line); background: rgba(8,11,16,.55);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.ap-pause-stop {
+  appearance: none; -webkit-appearance: none; cursor: pointer; background: none;
+  border: 0; padding: 4px 8px; color: var(--ink-4);
+  font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+  -webkit-tap-highlight-color: transparent;
+}
+.ap-pause-stop:hover { color: var(--ink-2); }
+
+/* Rückfrage beim Beenden, wenn sich die Satzanzahl geändert hat. */
+.ap-frage-overlay {
+  position: fixed; inset: 0; z-index: 140; display: grid; place-items: center;
+  padding: 24px; background: rgba(4,6,10,.72); backdrop-filter: blur(3px);
+}
+/* Optik wie .modal — eigene Klasse nur, weil der Dialog über dem
+   Gym-Modus (z-index 120) liegen muss. */
+.ap-frage {
+  width: min(420px, 100%); padding: 22px 24px 20px; border-radius: var(--r-l);
+  border: 1px solid var(--line);
+  background: linear-gradient(158deg, rgba(21,29,40,.99), rgba(14,19,27,.99));
+  box-shadow: 0 34px 90px -34px rgba(0,0,0,.96), 0 0 0 1px rgba(53,240,208,.07);
+}
+.ap-frage h4 { margin: 0 0 8px; }
+/* Auf Handybreite stapeln sich die beiden Knöpfe sonst rechtsbündig
+   untereinander und wirken verrutscht — hier lieber volle Breite. */
+.ap-frage-tasten { display: flex; gap: 8px; margin-top: 16px; }
+.ap-frage-tasten .btn { flex: 1; justify-content: center; }
+@media (max-width: 420px) {
+  .ap-frage-tasten { flex-direction: column-reverse; }
+}
 
 /* Letzte Einheit derselben Übung — bei der Vorlage direkt unter der
    Tabelle als eigene Karte, hier in unserer Kartenoptik (.card). */
@@ -3436,10 +3530,23 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   margin: 22px 0 16px; padding: 12px 14px 14px; border-radius: var(--r-l);
   border: 1px solid var(--line); background: rgba(8,11,16,.55);
 }
+/* Jetzt ein Aufklapp-Knopf statt einer festen Zeile: die letzte Einheit
+   soll auf Wunsch da sein, nicht dauerhaft Platz kosten. */
 .ap-historie-kopf {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  width: 100%; padding: 0; border: 0; background: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
   font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .16em;
   text-transform: uppercase; color: var(--ink-3);
+  -webkit-tap-highlight-color: transparent;
 }
+.ap-historie-kopf:hover { color: var(--ink-2); }
+.ap-historie-kopf svg {
+  width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform .18s;
+}
+.ap-historie-kopf svg.auf { transform: rotate(180deg); }
 .ap-hzeile {
   display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; padding: 3px 0;
   font-family: var(--f-display); font-variant-numeric: tabular-nums;

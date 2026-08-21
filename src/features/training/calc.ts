@@ -21,6 +21,27 @@ export function setsOf(scheme: string | null | undefined): number {
   return m ? +m[1] : 3
 }
 
+/** Setzt die Satzanzahl in einem Schema neu, ohne den Rest anzufassen:
+    "4 × 8" mit 5 wird zu "5 × 8", "3 × 10–12" zu "4 × 10–12".
+
+    Für den Gym-Modus, wo sich beim Training herausstellt, dass es ein Satz
+    mehr oder weniger sein soll — der Nutzer wird danach gefragt, ob das in
+    den Plan übernommen wird. Passt das Muster nicht (Freitext ohne "×"),
+    wird ein sauberes Schema erzeugt statt am Bestehenden herumzuraten. */
+export function schemaMitSaetzen(scheme: string | null | undefined, saetze: number): string {
+  const text = String(scheme ?? '').trim()
+  const m = text.match(/^(\s*)(\d+)(\s*[×x*]\s*)(.*)$/i)
+  if (!m) return `${saetze} × ${zielTeil(text) || '10'}`
+  return `${m[1]}${saetze}${m[3]}${m[4]}`
+}
+
+/** Der Wiederholungsteil eines Schemas ohne die Satzanzahl — "4 × 10–12"
+    ergibt "10–12". Nur für schemaMitSaetzen gedacht. */
+function zielTeil(scheme: string): string {
+  const m = scheme.match(/[×x*]\s*(.+)$/i)
+  return m ? m[1].trim() : ''
+}
+
 export function tonnageOf(sets: LoggedSet[]): number {
   return sets.reduce((sum, s) => sum + (s.kg && s.reps ? s.kg * s.reps : 0), 0)
 }

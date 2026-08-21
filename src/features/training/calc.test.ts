@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName } from './calc'
+import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen } from './calc'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 
 function einheit(patch: Partial<TrainingSession>): TrainingSession {
@@ -180,5 +180,18 @@ describe('anzeigeName', () => {
   it('lässt den Namen bei allgemeinen Plänen unverändert, auch in Woche 4', () => {
     const ex = exercise({ name: 'Bankdrücken Langhantel', bench_slot: 'd1' })
     expect(anzeigeName(ex, plan({ typ: 'general' }), 4)).toBe('Bankdrücken Langhantel')
+  })
+})
+
+describe('schemaMitSaetzen', () => {
+  it('tauscht nur die Satzanzahl, der Rest bleibt', () => {
+    expect(schemaMitSaetzen('4 × 8', 5)).toBe('5 × 8')
+    expect(schemaMitSaetzen('3 × 10–12', 4)).toBe('4 × 10–12')
+    expect(schemaMitSaetzen('3x10', 2)).toBe('2x10')
+  })
+
+  it('erzeugt ein sauberes Schema, wenn keins erkennbar ist', () => {
+    expect(schemaMitSaetzen('', 3)).toBe('3 × 10')
+    expect(schemaMitSaetzen(null, 4)).toBe('4 × 10')
   })
 })
