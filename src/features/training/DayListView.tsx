@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import { useSkipSession } from './queries'
 import { tagFortschritt, gruppeSetsByExercise, wochenLabel } from './calc'
 import { PlanPicker } from '../plans/PlanPicker'
+import { PlanEditor } from '../plans/PlanEditor'
 import { DateStrip } from './DateStrip'
 import { tagFarbe } from './dayColor'
 import { cssVars } from '../../lib/style'
@@ -21,6 +23,7 @@ interface Props {
 export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJemals, alleSaetzeJemals, onOpen }: Props) {
   const setsByExercise = gruppeSetsByExercise(alleSaetze)
   const skipSession = useSkipSession()
+  const [editorOffen, setEditorOffen] = useState(false)
 
   return (
     <section className="view on frisch">
@@ -31,8 +34,20 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
           </span>
           <h2>Training</h2>
         </div>
-        <PlanPicker />
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <PlanPicker />
+          {/* Zahnrad direkt neben der Planauswahl: Wer den Plan wechselt,
+              will ihn oft auch bearbeiten — beides gehört nebeneinander. */}
+          <button className="planbearbeiten" onClick={() => setEditorOffen(true)} title="Plan bearbeiten" aria-label="Plan bearbeiten">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {editorOffen && <PlanEditor plan={plan} days={days} onClose={() => setEditorOffen(false)} />}
 
       <div style={{ marginBottom: 14 }}>
         <DateStrip plan={plan} days={days} sessions={alleSessionenJemals} alleSaetze={alleSaetzeJemals} />

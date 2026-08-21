@@ -3654,3 +3654,78 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
    16 Gruppen zwangsläufig auf mehrere Zeilen, deshalb flex-wrap statt
    horizontalem Scrollen (auf schmalen Handys sonst schwer zu überblicken). */
 .bib-muskelgruppen { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+
+/* ══ Plan bearbeiten ═══════════════════════════════════════════
+   Zahnrad neben der Planauswahl (DayListView) und der Vollbild-Editor
+   dahinter (PlanEditor.tsx). Blau/violett statt Neon, damit es sich vom
+   "los geht's"-Grün der Trainingsknöpfe abhebt — Bearbeiten ist kein
+   Trainingsschritt. */
+.planbearbeiten {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  flex: none; width: 40px; height: 40px; border-radius: var(--r-m);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(139,124,255,.42); background: rgba(139,124,255,.12); color: var(--violet);
+  transition: background .16s, border-color .16s, box-shadow .16s;
+}
+.planbearbeiten:hover { background: rgba(139,124,255,.22); border-color: rgba(139,124,255,.6); box-shadow: 0 0 24px -8px var(--violet); }
+.planbearbeiten:active { transform: scale(.96); }
+.planbearbeiten svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.planed {
+  position: fixed; inset: 0; z-index: 125;
+  background: var(--ground); color: var(--ink);
+  display: flex; flex-direction: column;
+  padding-top: max(8px, env(safe-area-inset-top));
+  overscroll-behavior: contain;
+}
+.planed-kopf {
+  flex: none; display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px 12px; border-bottom: 1px solid var(--line-soft);
+}
+.planed-inhalt {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 16px 16px calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+.planed-tag {
+  margin-top: 10px; border-radius: var(--r-l);
+  border: 1px solid var(--line); background: rgba(8,11,16,.55);
+  overflow: hidden;
+}
+.planed-tag.offen { border-color: rgba(139,124,255,.35); }
+.planed-tagkopf { display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px; }
+.planed-auf {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+  padding: 12px; border: 0; background: none; color: inherit; text-align: left;
+}
+.planed-tagname {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--f-display); font-size: 15px; letter-spacing: .03em; text-transform: uppercase;
+}
+.planed-tagzahl {
+  flex: none; font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-4);
+}
+.planed-auf svg {
+  width: 18px; height: 18px; flex: none; stroke: var(--ink-3); fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s;
+}
+.planed-auf svg.auf { transform: rotate(180deg); }
+.planed-tagtasten { display: flex; gap: 2px; flex: none; }
+.planed-tagkoerper { padding: 0 12px 14px; }
+
+.planed-ueb {
+  margin-top: 8px; padding: 10px 12px; border-radius: var(--r-m);
+  border: 1px solid var(--line-soft); background: rgba(255,255,255,.02);
+}
+.planed-ueb-kopf { display: flex; align-items: center; gap: 8px; }
+.planed-ueb-name { flex: 1; min-width: 0; font-size: 13.5px; color: var(--ink); }
+.planed-ueb-felder { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.planed-klein { display: flex; flex-direction: column; gap: 4px; }
+.planed-klein > span {
+  font-family: var(--f-mono); font-size: 9px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-4);
+}
+.planed-klein .inp { padding: 7px 9px; font-size: 13px; }
+.planed-tagfuss { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
