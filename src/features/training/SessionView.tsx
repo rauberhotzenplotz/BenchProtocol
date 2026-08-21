@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { BenchSlot, Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
@@ -23,7 +23,7 @@ import { GymModeAP } from './GymModeAP'
 import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useVolumeRows } from '../volume/queries'
-import { useLibrarySearch, MUSKELGRUPPEN, useLibraryByMuscleGroup, useLibraryKatalog, katalogFiltern, type KatalogEintrag } from '../exerciseLibrary/queries'
+import { useLibrarySearch, MUSKELGRUPPEN, useLibraryByMuscleGroup, useLibraryKatalog, katalogFiltern, SEITENGROESSE, type KatalogEintrag } from '../exerciseLibrary/queries'
 import { useIstOnline } from '../../lib/offline/netz'
 import { neueId } from '../../lib/offline/keys'
 import { cssVars } from '../../lib/style'
@@ -401,10 +401,32 @@ function UebungAuswahl({
   const { data: katalog } = useLibraryKatalog()
   const offlineKatalog = !istOnline && !!katalog?.length
 
-  const treffer = offlineKatalog ? katalogFiltern(katalog, suche, muskelgruppe) : serverTreffer
+  const treffer = offlineKatalog ? katalogFiltern(katalog, suche, muskelgruppe, 30) : serverTreffer
+
+  // Blättern ohne Netz: dieselbe Seitengröße und dieselbe Wächter-Zeile wie
+  // online, nur zählt hier ein lokaler Seitenzähler statt fetchNextPage.
+  // Der gefilterte Katalog wird gemerkt, sonst würde bei jedem Nachschub
+  // erneut über alle 3246 Einträge sortiert.
+  // Der Seitenzähler hängt an der Muskelgruppe, statt beim Wechsel per
+  // Effekt zurückgesetzt zu werden — abgeleiteter Zustand beim Rendern,
+  // dasselbe Muster wie in ZahlRad.tsx. Ein Effekt wäre hier nicht nur
+  // unnötig, sondern würde eine Kaskade auslösen: erst die neue Gruppe
+  // rendern, dann den Zähler zurücksetzen, dann erneut rendern.
+  const [blaettern, setBlaettern] = useState<{ gruppe: string | null; seiten: number }>({ gruppe: null, seiten: 1 })
+  const offlineSeiten = blaettern.gruppe === muskelgruppe ? blaettern.seiten : 1
+  const offlineGefiltert = useMemo(
+    () => (offlineKatalog ? katalogFiltern(katalog, '', muskelgruppe) : []),
+    [offlineKatalog, katalog, muskelgruppe],
+  )
+
   const browseTreffer = offlineKatalog
-    ? katalogFiltern(katalog, '', muskelgruppe, 200)
+    ? offlineGefiltert.slice(0, offlineSeiten * SEITENGROESSE)
     : (browseSeiten?.pages.flat() ?? [])
+  const hatMehr = offlineKatalog ? browseTreffer.length < offlineGefiltert.length : hasNextPage
+  const mehrLaden = useCallback(() => {
+    if (offlineKatalog) setBlaettern(v => ({ gruppe: muskelgruppe, seiten: (v.gruppe === muskelgruppe ? v.seiten : 1) + 1 }))
+    else void fetchNextPage()
+  }, [offlineKatalog, fetchNextPage, muskelgruppe])
 
   // IntersectionObserver auf einer unsichtbaren Wächter-Zeile am
   // Listenende statt eines Scroll-Ereignishorchers: löst zuverlässig aus,
@@ -414,19 +436,19 @@ function UebungAuswahl({
   const listeRef = useRef<HTMLDivElement | null>(null)
   const waechterRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
-    if (!hasNextPage) return
+    if (!hatMehr) return
     const waechter = waechterRef.current
     const wurzel = listeRef.current
     if (!waechter || !wurzel) return
     const beobachter = new IntersectionObserver(
       eintraege => {
-        if (eintraege[0].isIntersecting) fetchNextPage()
+        if (eintraege[0].isIntersecting) mehrLaden()
       },
       { root: wurzel, rootMargin: '200px' },
     )
     beobachter.observe(waechter)
     return () => beobachter.disconnect()
-  }, [hasNextPage, fetchNextPage, muskelgruppe])
+  }, [hatMehr, mehrLaden, muskelgruppe])
 
   const [gewaehlt, setGewaehlt] = useState<KatalogEintrag | null>(null)
   const [scheme, setScheme] = useState('3 × 10')
@@ -521,8 +543,8 @@ function UebungAuswahl({
 
           {zeigtBrowse && (
             <div className="bib-treffer" ref={listeRef}>
-              {browseLaedt && <p className="muted tiny" style={{ margin: 0 }}>Lädt …</p>}
-              {!browseLaedt && browseTreffer.length === 0 && (
+              {browseLaedt && !offlineKatalog && <p className="muted tiny" style={{ margin: 0 }}>Lädt …</p>}
+              {(!browseLaedt || offlineKatalog) && browseTreffer.length === 0 && (
                 <p className="muted tiny" style={{ margin: 0 }}>Keine Übung für „{muskelgruppe}“.</p>
               )}
               {browseTreffer.map(e => (
@@ -533,10 +555,10 @@ function UebungAuswahl({
               ))}
               {/* Unsichtbare Wächter-Zeile statt eines "Mehr laden"-Knopfs:
                   kommt sie ins Bild, holt der IntersectionObserver oben
-                  von selbst die nächste Seite. isFetchingNextPage zeigt
-                  während des Nachladens einen kurzen Hinweis statt eines
-                  Sprungs im Layout. */}
-              {hasNextPage && (
+                  von selbst die nächste Seite — ohne Netz aus dem lokalen
+                  Katalog, sonst vom Server. Der Hinweis erscheint nur beim
+                  echten Nachladen; offline ist der Nachschub sofort da. */}
+              {hatMehr && (
                 <div ref={waechterRef} className="muted tiny" style={{ textAlign: 'center', padding: '6px 0' }}>
                   {isFetchingNextPage ? 'Lädt weitere …' : ''}
                 </div>

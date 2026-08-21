@@ -135,7 +135,10 @@ export function katalogFiltern(
   katalog: KatalogEintrag[] | undefined,
   suche: string,
   muskelgruppe: string | null,
-  grenze = 30,
+  /** Ohne Angabe alle Treffer — das Blättern nach Muskelgruppe schneidet
+      selbst seitenweise zu (siehe UebungAuswahl). Die Textsuche gibt
+      dagegen 30 mit, passend zum .limit(30) der Serverabfrage. */
+  grenze?: number,
 ): KatalogEintrag[] {
   if (!katalog) return []
   const q = suche.trim().toLowerCase()
@@ -148,12 +151,13 @@ export function katalogFiltern(
       (e.name_de_raw?.toLowerCase().includes(q) ?? false)
     )
   })
-  return treffer
-    .sort((a, b) => a.popularity - b.popularity || a.name.localeCompare(b.name))
-    .slice(0, grenze)
+  const sortiert = treffer.sort((a, b) => a.popularity - b.popularity || a.name.localeCompare(b.name))
+  return grenze === undefined ? sortiert : sortiert.slice(0, grenze)
 }
 
-const SEITENGROESSE = 24
+/** Auch vom Offline-Blättern genutzt, damit ohne Netz genauso viele
+    Einträge je Nachschub kommen wie mit. */
+export const SEITENGROESSE = 24
 
 /** Übungen einer Muskelgruppe, nach Bekanntheit sortiert (siehe
     exercise_library.popularity, Migration 0012) — Grundlage des
