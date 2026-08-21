@@ -16,7 +16,20 @@
     </style>
 
 
+    <!-- Startschirm bewusst ohne Bild: hier stand @drawable/splash, ein
+         320x480-PNG. Als Fenster-Hintergrund zieht Android eine Bitmap auf
+         die volle Bildschirmgröße auseinander - auf einem 1080x2340-Gerät
+         wurde das Logo dadurch sichtbar in die Länge gezogen, bevor die
+         eigentliche Startanimation der App überhaupt lief.
+
+         Jetzt nur noch die Hintergrundfarbe der App. Der native Schirm ist
+         damit nicht mehr von der startenden App zu unterscheiden, und die
+         Animation (siehe BootScreen.tsx) wirkt als das Erste, was passiert.
+         windowSplashScreenBackground deckt Android 12+ ab, android:background
+         die älteren Versionen. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <item name="android:background">@color/splashBackground</item>
+        <item name="windowSplashScreenBackground">@color/splashBackground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

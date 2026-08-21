@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Exakt die Hintergrundfarbe der App (Variable "ground" in
+         global.css und background_color im Manifest). Dadurch ist der
+         native Startschirm von der geladenen App nicht zu unterscheiden:
+         man sieht keinen Übergang, sondern direkt die Startanimation. -->
+    <color name="splashBackground">#080B10</color>
+</resources>
