@@ -1995,7 +1995,13 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 /* Der Schleier ist nicht bloß dunkel: von unten, wo das Blatt aufsteigt,
    glimmt es türkis herein — als läge dort die Lichtquelle. */
 .zahlrad-overlay {
-  position: fixed; inset: 0; z-index: 92;
+  /* Muss über allem liegen, aus dem es geöffnet werden kann. Mit den
+     früheren 92 lag es im Gym-Modus (z-index 120) dahinter: das Rad war
+     zwar da, aber unsichtbar und nicht antippbar — Gewicht und
+     Wiederholungen ließen sich dort deshalb gar nicht einstellen.
+     150 liegt zusätzlich über der Pausenleiste (130) und der
+     Plan-Rückfrage (140). */
+  position: fixed; inset: 0; z-index: 150;
   background:
     radial-gradient(ellipse 90% 46% at 50% 104%, rgba(53,240,208,.14), transparent 68%),
     rgba(4,6,9,.74);
