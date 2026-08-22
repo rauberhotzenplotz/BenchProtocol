@@ -15,14 +15,26 @@
    stellte die Alternating-Variante nach vorn — wer "Bankdrücken" suchte,
    fand das Langhantel-Bankdrücken erst weit unten.
 
-   Drei Stufen, jede deutlich schwächer als die vorige:
+   Vier Stufen, jede deutlich schwächer als die vorige:
    1. Bewegung   (*1000) — welche Übung überhaupt: Bankdrücken vor Fly.
    2. Gerät      (*100)  — Langhantel vor Kurzhantel vor Exotik.
-   3. Wortzahl   (*1)    — die kanonische Variante hat den kürzesten
+   3. Kombi      (*900)  — Ableitungen und Verbundübungen nach hinten:
+                           "Barbell Squat Snatch" ist keine Kniebeuge, die
+                           man sucht, wenn man "Kniebeuge" eingibt, und
+                           "Row To Rotational Shoulder Press" kein Rudern.
+   4. Wortzahl   (*1)    — die kanonische Variante hat den kürzesten
                            Namen. "Barbell Bench Press" (3 Wörter) schlägt
                            "Barbell Top Down Decline Bench Press" (6).
-   Erst wenn alle drei gleich sind, entscheidet der Name (ORDER BY name
-   in der Abfrage). */
+   Die Stufen überlappen nicht: Kombi (900) plus Wortzahl (höchstens 40)
+   bleibt unter einer Bewegungsstufe (1000). Der Abzug ist bewusst groß —
+   mit 50 reichte er nicht, um eine Verbundübung hinter die einfachen
+   Varianten der gesuchten Bewegung zu schieben. Erst wenn alle vier gleich sind,
+   entscheidet der Name (ORDER BY name in der Abfrage).
+
+   Bekannte Grenze: Der Rang ist nur innerhalb einer Muskelgruppe
+   aussagekräftig, die Textsuche geht aber über alle. Eine sehr bekannte
+   Schulterübung kann deshalb vor einer mittelbekannten Rückenübung
+   landen, wenn beide denselben Suchbegriff im Namen tragen. */
 
 /** Bekannteste Bewegungen je Muskelgruppe, absteigend. Geprüft gegen
     name_en, erster Treffer gewinnt. */
@@ -61,14 +73,21 @@ export const GERAETE_TIER = {
   'Slam Ball': 5, 'Wall Ball': 5, 'Medicine Ball': 5, 'Climbing Rope': 5,
 }
 
+/** Ableitungen aus dem Gewichtheben und Verbundübungen aus zwei
+    Bewegungen. Beide tragen den Namen der Grundübung, sind aber nicht
+    das, was jemand sucht, der die Grundübung eingibt. Das " to " erkennt
+    Verbindungen wie "Row To Rotational Shoulder Press". */
+const KOMBI = /\bto\b|\bclean\b|\bsnatch\b|\bjerk\b|\bthruster\b|\bcomplex\b|\bburpee\b/i
+
 export function bewerte(zeile) {
   const name = zeile.name_en || zeile.name || ''
   const anker = ANKER[zeile.muscle_group] ?? []
   let bewegung = anker.findIndex(muster => muster.test(name))
   if (bewegung === -1) bewegung = anker.length
   const geraet = GERAETE_TIER[zeile.equipment] ?? 4
-  // Gedeckelt, damit ein ungewöhnlich langer Name nie in die Gerätestufe
-  // hineinreicht (100 wäre die nächste Stufe).
+  const kombi = KOMBI.test(name) ? 1 : 0
+  // Gedeckelt, damit ein ungewöhnlich langer Name nie in die nächste
+  // Stufe hineinreicht.
   const woerter = Math.min(name.trim().split(/\s+/).filter(Boolean).length, 40)
-  return 1 + bewegung * 1000 + geraet * 100 + woerter
+  return 1 + bewegung * 1000 + geraet * 100 + kombi * 900 + woerter
 }
