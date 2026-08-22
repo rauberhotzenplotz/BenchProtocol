@@ -12,7 +12,7 @@ import {
   useUpdateExercise,
   useUpsertSet,
 } from './queries'
-import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, anzeigeName } from './calc'
+import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, anzeigeName, naechsteSortierung } from './calc'
 import { useBenchProgression, benchRowsFor } from '../bench/queries'
 import { LetzteEinheitPanel } from './LetzteEinheitPanel'
 import { MuskelChips } from '../../components/MuskelChips'
@@ -306,7 +306,7 @@ export function SessionView({
               createExercise.mutate({
                 id: neueId(),
                 day_id: day.id,
-                sort_order: day.exercises.length,
+                sort_order: naechsteSortierung(day.exercises),
                 ...werte,
               })
               setNeueUebung(false)

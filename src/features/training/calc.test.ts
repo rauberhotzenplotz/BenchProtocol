@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen } from './calc'
+import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen, naechsteSortierung } from './calc'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 
 function einheit(patch: Partial<TrainingSession>): TrainingSession {
@@ -193,5 +193,21 @@ describe('schemaMitSaetzen', () => {
   it('erzeugt ein sauberes Schema, wenn keins erkennbar ist', () => {
     expect(schemaMitSaetzen('', 3)).toBe('3 × 10')
     expect(schemaMitSaetzen(null, 4)).toBe('4 × 10')
+  })
+})
+
+describe('naechsteSortierung', () => {
+  it('liegt eins über der höchsten vergebenen Nummer', () => {
+    expect(naechsteSortierung([{ sort_order: 0 }, { sort_order: 1 }, { sort_order: 2 }])).toBe(3)
+  })
+
+  // Der eigentliche Grund für die Funktion: nach einer Löschung ist die
+  // Anzahl kleiner als die höchste Nummer und würde kollidieren.
+  it('kollidiert nicht mit einer Lücke durch Löschen', () => {
+    expect(naechsteSortierung([{ sort_order: 0 }, { sort_order: 2 }])).toBe(3)
+  })
+
+  it('beginnt bei 0, wenn noch nichts da ist', () => {
+    expect(naechsteSortierung([])).toBe(0)
   })
 })

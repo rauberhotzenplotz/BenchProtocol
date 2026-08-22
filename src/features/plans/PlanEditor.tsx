@@ -11,6 +11,7 @@ import {
   useDeleteExercise,
 } from '../training/queries'
 import { useUpdatePlan } from './queries'
+import { naechsteSortierung } from '../training/calc'
 import { useVolumeRows } from '../volume/queries'
 import { UebungAuswahl } from '../training/UebungAuswahl'
 import { neueId } from '../../lib/offline/keys'
@@ -59,7 +60,7 @@ export function PlanEditor({ plan, days, onClose }: Props) {
       id,
       plan_id: plan.id,
       name: `Tag ${sortierteTage.length + 1}`,
-      sort_order: sortierteTage.length,
+      sort_order: naechsteSortierung(sortierteTage),
     })
     setOffenerTag(id)
   }
@@ -275,7 +276,7 @@ export function PlanEditor({ plan, days, onClose }: Props) {
                           createExercise.mutate({
                             id: neueId(),
                             day_id: tag.id,
-                            sort_order: uebungen.length,
+                            sort_order: naechsteSortierung(uebungen),
                             ...werte,
                           })
                           setNeueUebungFuer(null)

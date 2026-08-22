@@ -42,6 +42,18 @@ function zielTeil(scheme: string): string {
   return m ? m[1].trim() : ''
 }
 
+/** Nächste freie Sortier-Nummer: eins über der höchsten vergebenen.
+
+    Vorher wurde schlicht die Anzahl der Einträge genommen. Sobald einer
+    gelöscht worden war, traf die Anzahl aber auf eine bereits vergebene
+    Nummer — in den echten Daten hatten dadurch zwei Übungen desselben
+    Tages dieselbe Nummer. Die Reihenfolge war damit von der Laune der
+    Sortierung abhängig, und "nach oben/unten" tauschte zwei gleiche Werte,
+    tat also sichtbar nichts. */
+export function naechsteSortierung(vorhandene: ReadonlyArray<{ sort_order: number }>): number {
+  return vorhandene.reduce((max, e) => Math.max(max, e.sort_order), -1) + 1
+}
+
 export function tonnageOf(sets: LoggedSet[]): number {
   return sets.reduce((sum, s) => sum + (s.kg && s.reps ? s.kg * s.reps : 0), 0)
 }
