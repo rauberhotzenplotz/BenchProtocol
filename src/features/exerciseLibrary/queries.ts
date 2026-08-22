@@ -159,7 +159,7 @@ function katalogSchreiben(eintraege: KatalogEintrag[]) {
 
 export function useLibraryKatalog() {
   const gespeichert = katalogLesen()
-  return useQuery({
+  const abfrage = useQuery({
     queryKey: ['exercise-library-katalog'],
     staleTime: 7 * 24 * 60 * 60 * 1000,
     gcTime: Infinity,
@@ -183,6 +183,20 @@ export function useLibraryKatalog() {
       return alle
     },
   })
+
+  // Umstieg von der Fassung, die den Katalog noch im gesicherten
+  // Query-Cache hielt: Dort liegt er nach dem Wiederherstellen noch,
+  // der eigene Speicherplatz ist aber leer. Ohne diese Zeilen wuerfe
+  // der naechste Sicherungslauf ihn heraus (er ist von
+  // shouldDehydrateQuery ausgenommen), und beim naechsten Start waere
+  // er ganz verschwunden — ohne Netz liesse sich dann keine Uebung
+  // mehr hinzufuegen. Genau der Zustand, der behoben werden sollte.
+  const daten = abfrage.data
+  useEffect(() => {
+    if (daten?.length && !katalogLesen()) katalogSchreiben(daten)
+  }, [daten])
+
+  return abfrage
 }
 
 /** Dieselbe Auswahl wie die serverseitige Suche, nur lokal auf dem
