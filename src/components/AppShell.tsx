@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useIsMutating, useQueryClient } from '@tanstack/react-query'
 import { Nav } from './Nav'
@@ -13,13 +13,19 @@ import { pruefeWochenabschluss } from '../features/training/wochenAbschluss'
 import { useLibraryKatalog } from '../features/exerciseLibrary/queries'
 import { nebelPhase } from './nebelPhase'
 
-function useClock() {
+/** Eigene Komponente statt eines Hooks in AppShell — und das ist keine
+    Kosmetik: Als Hook lag der Sekundentakt in AppShell selbst, jede
+    Sekunde rannte damit ein Render über den gesamten Baum darunter,
+    <Outlet /> und die ganze geöffnete Seite eingeschlossen. Gemessen:
+    vier React-Commits in vier Sekunden, ohne dass jemand die App
+    berührt hat. So bleibt der Takt auf diesen paar Zeichen Text. */
+function Uhr() {
   const [zeit, setZeit] = useState(() => new Date())
   useEffect(() => {
     const id = setInterval(() => setZeit(new Date()), 1000)
     return () => clearInterval(id)
   }, [])
-  return zeit.toLocaleTimeString('de-DE')
+  return <div className="clock">{zeit.toLocaleTimeString('de-DE')}</div>
 }
 
 /** Trägt die Blockphase ans <html>, damit der Hintergrundnebel sie
@@ -74,7 +80,6 @@ function useWochenAbschluss(plan: ReturnType<typeof useActivePlan>['activePlan']
 }
 
 export function AppShell() {
-  const uhrzeit = useClock()
   const speichertGerade = useIsMutating() > 0
   const { signOut } = useAuth()
   const { activePlan } = useActivePlan()
@@ -107,14 +112,21 @@ export function AppShell() {
           <UpdateBanner />
           <OfflineBanner />
           <span className="spacer" />
-          <div className="clock">{uhrzeit}</div>
+          <Uhr />
           <button className="btn ghost sm" onClick={() => void signOut()}>
             Abmelden
           </button>
         </header>
 
         <main className="stage">
-          <Outlet />
+          {/* Die meisten Seiten werden erst beim Aufrufen geladen (siehe
+              App.tsx). Der Platzhalter bleibt leer: Die Teile liegen lokal
+              im Cache und sind in wenigen Millisekunden da — ein
+              aufblitzender Ladehinweis wäre unruhiger als nichts. Kopf
+              und Navigation bleiben dabei stehen. */}
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       <RestTimerBar />

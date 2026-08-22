@@ -104,11 +104,67 @@ export type KatalogEintrag = Pick<
 const KATALOG_FELDER = 'id,name,name_en,name_de_raw,scheme,rest,bench_slot,muscle_group,equipment,difficulty,popularity'
 const KATALOG_SEITE = 1000
 
+/** Der Katalog liegt in einem eigenen Speicherplatz, nicht im
+    gesicherten Query-Cache.
+
+    Grund ist gemessen: Mit Katalog war der gesicherte Cache 1229 KB groß,
+    davon 1136 KB allein der Katalog. Der Persister schreibt bei jeder
+    Cache-Änderung den ganzen Stand neu — auf dem Rechner rund 13 ms je
+    Schreibvorgang, auf dem Handy ein Vielfaches. Beim Abhaken eines
+    Satzes ruckelte die Oberfläche dadurch spürbar, obwohl sich am
+    Katalog nie etwas ändert.
+
+    Jetzt wird er einmal je Abruf hierher geschrieben und beim Start von
+    hier gelesen; der laufend gesicherte Cache bleibt bei rund 90 KB. */
+const KATALOG_SPEICHER = 'benchProtocol.uebungskatalog'
+
+type KatalogStand = { stand: number; eintraege: KatalogEintrag[] }
+
+/** Einmal je Sitzung gelesen, danach aus dem Modul.
+
+    Ohne diesen Zwischenspeicher lief das Lesen bei *jedem* Render der
+    Hook-Aufrufer: JSON.parse über 1136 KB und 3246 Einträge, auf dem
+    Rechner 2–3 ms, auf dem Handy ein Vielfaches. AppShell ruft den Hook
+    auf, die Übungssuche ebenfalls — dort also ein verlorener Frame je
+    Tastendruck. `undefined` heißt "noch nicht nachgesehen", `null`
+    "nachgesehen, nichts da"; nur so fällt der leere Fall nicht bei jedem
+    Render erneut in den Speicherzugriff. */
+let katalogZwischenspeicher: KatalogStand | null | undefined
+
+function katalogLesen(): KatalogStand | undefined {
+  if (katalogZwischenspeicher !== undefined) return katalogZwischenspeicher ?? undefined
+  try {
+    const roh = localStorage.getItem(KATALOG_SPEICHER)
+    const wert = roh ? (JSON.parse(roh) as KatalogStand) : null
+    katalogZwischenspeicher = wert && Array.isArray(wert.eintraege) ? wert : null
+  } catch {
+    katalogZwischenspeicher = null
+  }
+  return katalogZwischenspeicher ?? undefined
+}
+
+function katalogSchreiben(eintraege: KatalogEintrag[]) {
+  const stand = { stand: Date.now(), eintraege }
+  // Zuerst den Zwischenspeicher, damit er auch dann stimmt, wenn das
+  // Schreiben unten scheitert — die Daten sind ja frisch geholt.
+  katalogZwischenspeicher = stand
+  try {
+    localStorage.setItem(KATALOG_SPEICHER, JSON.stringify(stand))
+  } catch {
+    // Speicher voll oder privater Modus — dann eben nur für diese Sitzung
+    // im Arbeitsspeicher. Offline fehlt der Katalog dann beim nächsten
+    // Start, die App bleibt aber benutzbar.
+  }
+}
+
 export function useLibraryKatalog() {
+  const gespeichert = katalogLesen()
   return useQuery({
     queryKey: ['exercise-library-katalog'],
     staleTime: 7 * 24 * 60 * 60 * 1000,
     gcTime: Infinity,
+    initialData: gespeichert?.eintraege,
+    initialDataUpdatedAt: gespeichert?.stand,
     queryFn: async () => {
       const alle: KatalogEintrag[] = []
       for (let von = 0; ; von += KATALOG_SEITE) {
@@ -123,6 +179,7 @@ export function useLibraryKatalog() {
         alle.push(...seite)
         if (seite.length < KATALOG_SEITE) break
       }
+      katalogSchreiben(alle)
       return alle
     },
   })

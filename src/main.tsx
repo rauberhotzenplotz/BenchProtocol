@@ -85,7 +85,14 @@ createRoot(document.getElementById('root')!).render(
           // deshalb vor "Kein Plan" (nachgestellt und gemessen). Gesichert
           // wird jetzt alles, wozu überhaupt Daten vorliegen; ein
           // fehlgeschlagener Aktualisierungsversuch ändert daran nichts.
-          shouldDehydrateQuery: abfrage => abfrage.state.data !== undefined,
+          // Der Übungskatalog ist ausgenommen: Er allein war 1136 der
+          // 1229 KB des gesicherten Standes, und der Persister schreibt
+          // bei jeder Änderung alles neu — beim Abhaken eines Satzes
+          // ruckelte die Oberfläche dadurch. Er hat einen eigenen
+          // Speicherplatz, der nur beim Abruf beschrieben wird (siehe
+          // useLibraryKatalog).
+          shouldDehydrateQuery: abfrage =>
+            abfrage.state.data !== undefined && abfrage.queryKey[0] !== 'exercise-library-katalog',
         },
       }}
       onSuccess={() => {

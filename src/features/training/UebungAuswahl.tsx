@@ -64,7 +64,15 @@ export function UebungAuswahl({
   const { data: katalog } = useLibraryKatalog()
   const offlineKatalog = !istOnline && !!katalog?.length
 
-  const treffer = offlineKatalog ? katalogFiltern(katalog, suche, muskelgruppe, 30) : serverTreffer
+  // Gemerkt aus demselben Grund wie offlineGefiltert weiter unten: Ohne
+  // Memo lief der Durchlauf über alle 3246 Einträge samt Sortierung bei
+  // jedem Render der Auswahl, nicht nur bei geänderter Eingabe — gemessen
+  // 1,2 bis 2,1 ms auf dem Rechner, auf dem Handy ein Vielfaches.
+  const offlineTreffer = useMemo(
+    () => (offlineKatalog ? katalogFiltern(katalog, suche, muskelgruppe, 30) : []),
+    [offlineKatalog, katalog, suche, muskelgruppe],
+  )
+  const treffer = offlineKatalog ? offlineTreffer : serverTreffer
 
   // Blättern ohne Netz: dieselbe Seitengröße und dieselbe Wächter-Zeile wie
   // online, nur zählt hier ein lokaler Seitenzähler statt fetchNextPage.
