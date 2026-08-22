@@ -147,6 +147,16 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   // Abschlussbildschirm hält sie fest.
   const [erzielteRekorde, setErzielteRekorde] = useState<string[]>([])
 
+  // Fortschritt über die ganze Einheit, nicht nur die offene Übung —
+  // Grundlage für "war das der letzte Satz?" (dann keine Pause mehr) und
+  // für den hervorgehobenen Beenden-Knopf.
+  const saetzeGeplant = uebungen.reduce((a, ex) => a + zeilenAnzahlFuer(ex), 0)
+  const saetzeErledigt = uebungen.reduce(
+    (a, ex) => a + (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length,
+    0,
+  )
+  const allesErledigt = saetzeErledigt >= saetzeGeplant
+
   const abhaken = (position: number) => {
     const { satz, kg, reps } = werteFuer(position)
     const jetztErledigt = !satz?.done
@@ -161,6 +171,17 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
     })
     if (!jetztErledigt) return
     vibrieren(SATZ_ERLEDIGT)
+
+    // War das der letzte offene Satz der ganzen Einheit, ist die Pause
+    // sinnlos — es kommt nichts mehr, worauf man sich erholen müsste.
+    // saetzeErledigt zählt den Stand vor diesem Haken, deshalb +1.
+    const warLetzterSatz = saetzeErledigt + 1 >= saetzeGeplant
+    if (warLetzterSatz) {
+      // Eine noch laufende Pause vom vorletzten Satz mit abräumen.
+      restTimer.stop()
+      return
+    }
+
     const sek = pauseSekunden(exercise.rest)
     if (autoPauseAn() && sek > 0) restTimer.start(sek, exercise.name)
     // Weiter zur nächsten offenen Zeile — innerhalb der Übung, sonst zur
@@ -411,8 +432,11 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
       </div>
 
       <div className="ap-fuss">
-        <button className="ap-beenden" onClick={beendenAngefordert}>
-          Beenden
+        {/* Sind alle Sätze abgehakt, ist Beenden der nächste Schritt und
+            nicht mehr der Abbruch mittendrin — deshalb größer und in Grün
+            statt klein und rot. */}
+        <button className={'ap-beenden' + (allesErledigt ? ' bereit' : '')} onClick={beendenAngefordert}>
+          {allesErledigt ? 'Training beenden' : 'Beenden'}
         </button>
 
         <button

@@ -3602,6 +3602,22 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   transition: color .2s;
 }
 .ap-beenden:hover { color: #ff8a8a; }
+/* Alle Sätze abgehakt: Beenden ist jetzt der nächste Schritt, nicht der
+   Abbruch mittendrin. Größer, als Fläche statt als Textlink, und in Grün
+   — dieselbe Farbe, die in der Satztabelle "erledigt" bedeutet. */
+.ap-beenden.bereit {
+  padding: 12px 18px; border-radius: var(--r-m);
+  border: 1.5px solid rgba(63,224,138,.55); background: rgba(63,224,138,.14);
+  color: var(--good); font-size: 12px; letter-spacing: .12em;
+  box-shadow: 0 0 30px -10px var(--good);
+  animation: ap-beenden-auf .32s cubic-bezier(.34,1.4,.64,1);
+}
+.ap-beenden.bereit:hover { background: rgba(63,224,138,.24); color: var(--good); }
+@keyframes ap-beenden-auf {
+  from { transform: scale(.9); opacity: .5; }
+  to   { transform: scale(1);  opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ap-beenden.bereit { animation: none; } }
 .ap-timer {
   appearance: none; -webkit-appearance: none; cursor: pointer;
   min-width: 82px; height: 48px; border-radius: var(--r-m);
