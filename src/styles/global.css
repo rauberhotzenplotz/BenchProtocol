@@ -1964,6 +1964,21 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   padding: 22px 24px 20px;
   box-shadow: 0 34px 90px -34px rgba(0,0,0,.96), 0 0 0 1px rgba(53,240,208,.07);
   animation: modalIn .32s cubic-bezier(.34,1.4,.64,1) both;
+  /* Ohne diese drei Zeilen wuchs ein langer Dialog einfach über den
+     Bildschirm hinaus: .overlay ist position:fixed und zentriert seinen
+     Inhalt, der Überhang stand also oben UND unten draußen und war mit
+     keiner Geste erreichbar. Gemessen an der Tagesansicht des Kalenders:
+     1543 px hoher Dialog bei 812 px Fenster, je 366 px unerreichbar.
+
+     44 px sind die 22 px Innenabstand des Overlays oben und unten. dvh,
+     damit die eingeblendete Adressleiste mobiler Browser nicht doch noch
+     abschneidet; die vh-Zeile davor bleibt als Rückfall. Der Scrollbalken
+     bleibt unsichtbar (globale Regel weiter oben), overscroll-behavior
+     verhindert, dass die Seite dahinter mitrollt. */
+  max-height: calc(100vh - 44px);
+  max-height: calc(100dvh - 44px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 @keyframes modalIn { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
 .modal h4 {
