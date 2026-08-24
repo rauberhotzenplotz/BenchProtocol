@@ -46,7 +46,22 @@ describe('Blättern über den lokalen Katalog (Offline-Pfad im Übungs-Picker)',
     expect(alle.map(t => t.name)).toEqual(['Frueh', 'Spaet'])
   })
 
-  it('die Textsuche bleibt bei 30 begrenzt wie die Serverabfrage', () => {
+  // Frueher war bei der Textsuche nach 30 Treffern hart Schluss, ohne
+  // Nachladen und ohne Hinweis. Jetzt blaettert auch sie seitenweise, der
+  // Filter selbst deckelt also nichts mehr.
+  it('die Textsuche liefert alle Treffer, nicht nur die ersten 30', () => {
+    expect(katalogFiltern(katalog, 'Ruecken', null)).toHaveLength(60)
+  })
+
+  it('geblaettert wird auch bei der Suche in Seiten der ueblichen Groesse', () => {
+    const alle = katalogFiltern(katalog, 'Ruecken', null)
+    expect(alle.slice(0, SEITENGROESSE)).toHaveLength(SEITENGROESSE)
+    expect(alle.slice(0, 3 * SEITENGROESSE)).toHaveLength(60)
+  })
+
+  // Die Grenze bleibt als Moeglichkeit erhalten, wird aber nicht mehr
+  // vom Picker genutzt.
+  it('haelt sich an eine ausdrueckliche Grenze, wenn eine kommt', () => {
     expect(katalogFiltern(katalog, 'Ruecken', null, 30)).toHaveLength(30)
   })
 })

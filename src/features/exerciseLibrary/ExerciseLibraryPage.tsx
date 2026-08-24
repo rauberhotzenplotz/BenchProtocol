@@ -23,7 +23,18 @@ import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
     Öffnen unbedienbar lang. */
 export function ExerciseLibraryPage() {
   const [suche, setSuche] = useState('')
-  const { data: eintraege, isFetching } = useLibrarySearch(suche)
+  const {
+    data: suchSeiten,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetching,
+  } = useLibrarySearch(suche)
+  // Die Suche liefert seitenweise (siehe useLibrarySearch); hier reicht
+  // ein Knopf statt der Wächter-Zeile aus dem Picker — diese Seite
+  // scrollt mit dem Fenster, hat also keine eigene Rollfläche, an der
+  // sich ein IntersectionObserver festmachen könnte.
+  const eintraege = suchSeiten?.pages.flat()
   const createEntry = useCreateLibraryEntry()
   const updateEntry = useUpdateLibraryEntry()
   const deleteEntry = useDeleteLibraryEntry()
@@ -131,6 +142,16 @@ export function ExerciseLibraryPage() {
                   </div>
                 ))}
               </div>
+            )}
+            {hasNextPage && (
+              <button
+                className="btn ghost sm"
+                style={{ marginBottom: 14 }}
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+              >
+                {isFetchingNextPage ? 'Lädt …' : 'Mehr laden'}
+              </button>
             )}
           </>
         )}

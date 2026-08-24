@@ -47,7 +47,13 @@ export function UebungAuswahl({
   // Zeichen sind, ohne dass die gewählte Gruppe deshalb verlorenginge.
   // Ist bereits eine Gruppe gewählt, filtert die Suche zusätzlich darauf.
   const [muskelgruppe, setMuskelgruppe] = useState<string | null>(null)
-  const { data: serverTreffer, isFetching } = useLibrarySearch(suche, muskelgruppe)
+  const {
+    data: suchSeiten,
+    fetchNextPage: sucheWeiter,
+    hasNextPage: sucheHatMehr,
+    isFetchingNextPage: sucheLaedtWeiter,
+    isFetching,
+  } = useLibrarySearch(suche, muskelgruppe)
   const {
     data: browseSeiten,
     fetchNextPage,
@@ -68,11 +74,12 @@ export function UebungAuswahl({
   // Memo lief der Durchlauf über alle 3246 Einträge samt Sortierung bei
   // jedem Render der Auswahl, nicht nur bei geänderter Eingabe — gemessen
   // 1,2 bis 2,1 ms auf dem Rechner, auf dem Handy ein Vielfaches.
+  // Ohne Grenze: Wie viel davon zu sehen ist, entscheidet weiter unten
+  // derselbe Seitenzähler wie beim Blättern.
   const offlineTreffer = useMemo(
-    () => (offlineKatalog ? katalogFiltern(katalog, suche, muskelgruppe, 30) : []),
+    () => (offlineKatalog ? katalogFiltern(katalog, suche, muskelgruppe) : []),
     [offlineKatalog, katalog, suche, muskelgruppe],
   )
-  const treffer = offlineKatalog ? offlineTreffer : serverTreffer
 
   // Blättern ohne Netz: dieselbe Seitengröße und dieselbe Wächter-Zeile wie
   // online, nur zählt hier ein lokaler Seitenzähler statt fetchNextPage.
@@ -83,21 +90,41 @@ export function UebungAuswahl({
   // dasselbe Muster wie in ZahlRad.tsx. Ein Effekt wäre hier nicht nur
   // unnötig, sondern würde eine Kaskade auslösen: erst die neue Gruppe
   // rendern, dann den Zähler zurücksetzen, dann erneut rendern.
-  const [blaettern, setBlaettern] = useState<{ gruppe: string | null; seiten: number }>({ gruppe: null, seiten: 1 })
-  const offlineSeiten = blaettern.gruppe === muskelgruppe ? blaettern.seiten : 1
+  // Ein Zähler für beide Listen. Der Schlüssel beschreibt, was gerade zu
+  // sehen ist — wechselt die Suche oder die Gruppe, fängt das Blättern von
+  // selbst wieder bei Seite 1 an, ohne Effekt und ohne Kaskade (dasselbe
+  // Muster wie in ZahlRad.tsx).
+  const [blaettern, setBlaettern] = useState<{ schluessel: string; seiten: number }>({ schluessel: '', seiten: 1 })
+  const zeigtSucheJetzt = sucheAktiv
+  const ansichtsSchluessel = zeigtSucheJetzt ? 'suche:' + suche.trim() + '|' + muskelgruppe : 'gruppe:' + muskelgruppe
+  const offlineSeiten = blaettern.schluessel === ansichtsSchluessel ? blaettern.seiten : 1
   const offlineGefiltert = useMemo(
     () => (offlineKatalog ? katalogFiltern(katalog, '', muskelgruppe) : []),
     [offlineKatalog, katalog, muskelgruppe],
   )
 
+  const treffer = offlineKatalog
+    ? offlineTreffer.slice(0, offlineSeiten * SEITENGROESSE)
+    : (suchSeiten?.pages.flat() ?? undefined)
   const browseTreffer = offlineKatalog
     ? offlineGefiltert.slice(0, offlineSeiten * SEITENGROESSE)
     : (browseSeiten?.pages.flat() ?? [])
-  const hatMehr = offlineKatalog ? browseTreffer.length < offlineGefiltert.length : hasNextPage
+
+  // Welche Liste gerade sichtbar ist, entscheidet, was nachgeladen wird —
+  // es steht immer nur eine von beiden auf dem Schirm.
+  const hatMehr = offlineKatalog
+    ? (zeigtSucheJetzt ? treffer!.length < offlineTreffer.length : browseTreffer.length < offlineGefiltert.length)
+    : (zeigtSucheJetzt ? sucheHatMehr : hasNextPage)
+  const laedtNach = zeigtSucheJetzt ? sucheLaedtWeiter : isFetchingNextPage
   const mehrLaden = useCallback(() => {
-    if (offlineKatalog) setBlaettern(v => ({ gruppe: muskelgruppe, seiten: (v.gruppe === muskelgruppe ? v.seiten : 1) + 1 }))
+    if (offlineKatalog) {
+      setBlaettern(v => ({
+        schluessel: ansichtsSchluessel,
+        seiten: (v.schluessel === ansichtsSchluessel ? v.seiten : 1) + 1,
+      }))
+    } else if (zeigtSucheJetzt) void sucheWeiter()
     else void fetchNextPage()
-  }, [offlineKatalog, fetchNextPage, muskelgruppe])
+  }, [offlineKatalog, ansichtsSchluessel, zeigtSucheJetzt, sucheWeiter, fetchNextPage])
 
   // IntersectionObserver auf einer unsichtbaren Wächter-Zeile am
   // Listenende statt eines Scroll-Ereignishorchers: löst zuverlässig aus,
@@ -119,7 +146,7 @@ export function UebungAuswahl({
     )
     beobachter.observe(waechter)
     return () => beobachter.disconnect()
-  }, [hatMehr, mehrLaden, muskelgruppe])
+  }, [hatMehr, mehrLaden, ansichtsSchluessel])
 
   const [gewaehlt, setGewaehlt] = useState<KatalogEintrag | null>(null)
   const [scheme, setScheme] = useState('3 × 10')
@@ -196,7 +223,7 @@ export function UebungAuswahl({
           )}
 
           {zeigtSuche && (
-            <div className="bib-treffer">
+            <div className="bib-treffer" ref={listeRef}>
               {isFetching && !treffer && <p className="muted tiny" style={{ margin: 0 }}>Suche …</p>}
               {treffer && treffer.length === 0 && (
                 <p className="muted tiny" style={{ margin: 0 }}>Keine Übung gefunden.</p>
@@ -209,6 +236,14 @@ export function UebungAuswahl({
                   </span>
                 </button>
               ))}
+              {/* Dieselbe Wächter-Zeile wie beim Blättern: Auch die Suche
+                  lädt jetzt nach, statt nach 30 Treffern kommentarlos
+                  aufzuhören. */}
+              {hatMehr && (
+                <div ref={waechterRef} className="muted tiny" style={{ textAlign: 'center', padding: '6px 0' }}>
+                  {laedtNach ? 'Lädt weitere …' : ''}
+                </div>
+              )}
             </div>
           )}
 
@@ -231,7 +266,7 @@ export function UebungAuswahl({
                   echten Nachladen; offline ist der Nachschub sofort da. */}
               {hatMehr && (
                 <div ref={waechterRef} className="muted tiny" style={{ textAlign: 'center', padding: '6px 0' }}>
-                  {isFetchingNextPage ? 'Lädt weitere …' : ''}
+                  {laedtNach ? 'Lädt weitere …' : ''}
                 </div>
               )}
             </div>

@@ -42,6 +42,10 @@ export function useExerciseLibrary() {
     grenzen sie ein — ein Suchbegriff mit einem dieser Zeichen würde den
     .or()-Ausdruck sonst zerschießen. Anführungszeichen ebenfalls raus,
     da der Wert unten selbst in welche eingepackt wird. */
+/** Wie viele Einträge eine Seite umfasst — für Suche wie Blättern, online
+    wie offline, damit der Nachschub sich überall gleich anfühlt. */
+export const SEITENGROESSE = 24
+
 function fuerFilterSaeubern(text: string): string {
   return text.replace(/[,()"]/g, ' ').trim()
 }
@@ -49,9 +53,13 @@ function fuerFilterSaeubern(text: string): string {
 /** Sucht serverseitig über Name, englischen Namen und den ungekürzten
     deutschen Namen — damit findet z. B. "Bench Press" auch "Langhantel
     Bankdrücken". Erst ab zwei Zeichen aktiv (sonst kämen bei einem
-    Buchstaben hunderte Treffer), auf 30 begrenzt: eine Auswahlliste, kein
-    Ersatz für die Volltextsuche. 250 ms entprellt, damit nicht jeder
+    Buchstaben hunderte Treffer). 250 ms entprellt, damit nicht jeder
     Tastendruck eine eigene Abfrage auslöst.
+
+    Seitenweise wie das Blättern nach Muskelgruppe: Früher war hier bei 30
+    Treffern hart Schluss, ohne Nachladen und ohne Hinweis. Wer nach einem
+    Gerätenamen suchte, von dem es viele Varianten gibt, bekam einen
+    willkürlichen Ausschnitt und hielt ihn für den ganzen Bestand.
 
     Ist eine Muskelgruppe im Picker bereits gewählt, filtert die Suche
     zusätzlich darauf — wer erst "Rücken" antippt und dann sucht, will
@@ -65,16 +73,20 @@ export function useLibrarySearch(suchtext: string, muskelgruppe: string | null =
 
   const q = fuerFilterSaeubern(entprellt.trim())
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['exercise-library-search', q, muskelgruppe],
     enabled: q.length >= 2,
-    queryFn: async () => {
+    initialPageParam: 0,
+    getNextPageParam: (letzteSeite: ExerciseLibraryEntry[], alleSeiten) =>
+      letzteSeite.length < SEITENGROESSE ? undefined : alleSeiten.length,
+    queryFn: async ({ pageParam }) => {
+      const von = pageParam * SEITENGROESSE
       let query = supabase
         .from('exercise_library')
         .select('*')
         .or(`name.ilike."%${q}%",name_en.ilike."%${q}%",name_de_raw.ilike."%${q}%"`)
       if (muskelgruppe) query = query.eq('muscle_group', muskelgruppe)
-      const { data, error } = await query.order('popularity').order('name').limit(30)
+      const { data, error } = await query.order('popularity').order('name').range(von, von + SEITENGROESSE - 1)
       if (error) throw error
       return data as ExerciseLibraryEntry[]
     },
@@ -225,10 +237,6 @@ export function katalogFiltern(
   const sortiert = treffer.sort((a, b) => a.popularity - b.popularity || a.name.localeCompare(b.name))
   return grenze === undefined ? sortiert : sortiert.slice(0, grenze)
 }
-
-/** Auch vom Offline-Blättern genutzt, damit ohne Netz genauso viele
-    Einträge je Nachschub kommen wie mit. */
-export const SEITENGROESSE = 24
 
 /** Übungen einer Muskelgruppe, nach Bekanntheit sortiert (siehe
     exercise_library.popularity, Migration 0012) — Grundlage des
