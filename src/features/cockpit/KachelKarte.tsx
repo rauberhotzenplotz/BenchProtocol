@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useSchliessenPerZurueck } from '../../lib/backClose'
 
 interface Props {
   titel: string
@@ -18,6 +19,8 @@ interface Props {
     Auswertungen verloren gehen. */
 export function KachelKarte({ titel, wert, einheit, hinweis, children }: Props) {
   const [offen, setOffen] = useState(false)
+
+  useSchliessenPerZurueck(offen, () => setOffen(false))
 
   useEffect(() => {
     if (!offen) return

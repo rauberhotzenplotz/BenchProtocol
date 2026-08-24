@@ -12,6 +12,7 @@ import {
   IconBlocks,
   IconLibrary,
 } from './icons'
+import { useSchliessenPerZurueck } from '../lib/backClose'
 
 /* Drei Bereiche haben einen eigenen Knopf, der Rest liegt hinter "Mehr" —
    sonst wird die Leiste auf dem Handy zu eng (Pendant zu NAV/MEHR aus der
@@ -45,6 +46,8 @@ function IconMehr() {
 export function Nav() {
   const [offen, setOffen] = useState(false)
   const location = useLocation()
+
+  useSchliessenPerZurueck(offen, () => setOffen(false))
 
   useEffect(() => {
     if (!offen) return

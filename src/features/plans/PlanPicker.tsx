@@ -5,6 +5,7 @@ import { useCreatePlan, useDeletePlan, useUpdatePlan } from './queries'
 import { neueId } from '../../lib/offline/keys'
 import type { PlanTyp } from '../../types/db'
 import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
+import { useSchliessenPerZurueck } from '../../lib/backClose'
 
 /** Knopf mit dem Namen des aktiven Plans, öffnet die Verwaltung — Pendant
     zu #planBtn / planVerwaltung() aus der alten App. */
@@ -39,6 +40,10 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
   const createPlan = useCreatePlan()
   const updatePlan = useUpdatePlan()
   const deletePlan = useDeletePlan()
+
+  // Wie GymModeAP: bedingt gemountet statt über ein offen-Prop, das
+  // Mounten selbst ist hier das Öffnen.
+  useSchliessenPerZurueck(true, onClose)
 
   const [neuerTyp, setNeuerTyp] = useState<PlanTyp | null>(null)
   const [name, setName] = useState('')

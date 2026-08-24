@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import type { TrainingSession } from '../../types/db'
 import { usePauseSession, useResumeSession, useResetSessionSets } from './queries'
+import { useSchliessenPerZurueck } from '../../lib/backClose'
 
 interface Props {
   session: TrainingSession
@@ -34,6 +35,12 @@ export function SessionMenu({ session, dayId, week, exerciseIds, onAbschliessen,
   const pauseSession = usePauseSession()
   const resumeSession = useResumeSession()
   const resetSessionSets = useResetSessionSets()
+
+  useSchliessenPerZurueck(offen, () => { setOffen(false); setZuruecksetzenBestaetigen(false) })
+  // Eigener Stapel-Eintrag für die Rückfrage: ein "Zurück" soll erst die
+  // Rückfrage abbrechen (zurück zum Menü) und ein zweites erst das Menü
+  // schließen, nicht beides auf einmal.
+  useSchliessenPerZurueck(zuruecksetzenBestaetigen, () => setZuruecksetzenBestaetigen(false))
 
   const pausiert = session.paused_at != null
 

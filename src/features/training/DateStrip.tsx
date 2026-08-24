@@ -5,6 +5,7 @@ import type { DayWithExercises } from './queries'
 import { TrainingCalendar } from './TrainingCalendar'
 import { tagFarbe } from './dayColor'
 import { cssVars } from '../../lib/style'
+import { useSchliessenPerZurueck } from '../../lib/backClose'
 
 const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 /** Eine volle Woche, heute ganz rechts — passt ohne Scrollen in den
@@ -29,6 +30,7 @@ interface Props {
     eingebetteten Monatsrasters. */
 export function DateStrip({ plan, days, sessions, alleSaetze }: Props) {
   const [offen, setOffen] = useState(false)
+  useSchliessenPerZurueck(offen, () => setOffen(false))
 
   const abgeschlossen = sessions.filter(s => s.status === 'completed')
   const nachTag = new Map<string, TrainingSession[]>()

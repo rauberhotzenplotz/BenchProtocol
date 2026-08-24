@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useSchliessenPerZurueck } from '../lib/backClose'
 
 interface ZahlRadProps {
   offen: boolean
@@ -30,6 +31,8 @@ const TASTEN = ['7', '8', '9', '4', '5', '6', '1', '2', '3', ',', '0', '⌫']
 export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einheit, nurNumpad, onWahl, onSchliessen }: ZahlRadProps) {
   const listeRef = useRef<HTMLDivElement>(null)
   const [eingabe, setEingabe] = useState('')
+
+  useSchliessenPerZurueck(offen, onSchliessen)
 
   useEffect(() => {
     if (!offen) return
