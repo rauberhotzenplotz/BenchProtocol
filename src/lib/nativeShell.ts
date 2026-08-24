@@ -1,22 +1,43 @@
 import type { KeyboardEvent } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
+import { ueberlagerungOffen } from './backClose'
+
+/** Steht die App auf ihrem allerersten Eintrag, gibt es nichts mehr, wohin
+    "Zurück" führen könnte — dann soll sie sich beenden, wie auf Android
+    üblich.
+
+    Gefragt wird react-router, das in history.state einen laufenden Index
+    mitführt. window.history.length taugt dafür nicht: Der Wert zählt auch
+    Einträge vor uns und schrumpft beim Zurückgehen nie wieder. */
+function amAnfangDerHistorie(): boolean {
+  const stand = window.history.state as { idx?: number } | null
+  return typeof stand?.idx === 'number' ? stand.idx === 0 : window.history.length <= 1
+}
 
 /** Android-Hardware-Zurück-Taste: ohne diesen Listener beendet sie die App
     sofort, egal wo man gerade ist — Capacitor fängt sie nicht automatisch
     ab. Läuft nur nativ (Capacitor.isNativePlatform()), auf der PWA im
-    Browser tut sich hier nichts. canGoBack spiegelt die Browser-History
-    der WebView wider, die react-router-dom (BrowserRouter) ganz normal
-    mitschreibt — ein Tab-Wechsel über Nav.tsx erzeugt also einen Eintrag,
-    den die Zurück-Taste rückgängig machen kann. Modal-artige Overlays
-    (ZahlRad, Gym-Modus, Kalender) laufen über lokalen Komponenten-State,
-    nicht über Routen — die Zurück-Taste schließt sie also (noch) nicht
-    gezielt, sondern navigiert/verlässt die App wie gewohnt. */
+    Browser tut sich hier nichts.
+
+    Bewusst ohne das mitgelieferte canGoBack: Das meldet die
+    Navigations-Historie der WebView, also tatsächlich geladene Seiten.
+    Eine Single-Page-App lädt genau einmal und legt danach nur noch
+    history-Einträge per pushState an — canGoBack bleibt deshalb dauerhaft
+    false, und die Zurück-Taste beendete die App selbst dann, wenn der
+    Gym-Modus offen war. Auf dem Gerät nachgewiesen: Das Logbuch zeigte
+    "Notifying listeners for event backButton" direkt gefolgt von
+    "exitApp", während die Seite drei history-Einträge hatte.
+
+    Reihenfolge der Prüfung: Erst eine offene Überlagerung (Gym-Modus,
+    ZahlRad, Menü …), die per history.back() ihr popstate bekommt und sich
+    selbst schließt (siehe backClose.ts). Sonst eine Seite zurück. Und nur
+    ganz am Anfang wirklich beenden. */
 export function registerNativeBackButton() {
   if (!Capacitor.isNativePlatform()) return
 
-  void App.addListener('backButton', ({ canGoBack }) => {
-    if (canGoBack) window.history.back()
+  void App.addListener('backButton', () => {
+    if (ueberlagerungOffen() || !amAnfangDerHistorie()) window.history.back()
     else void App.exitApp()
   })
 }

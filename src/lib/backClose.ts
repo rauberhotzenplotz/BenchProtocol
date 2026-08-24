@@ -36,6 +36,13 @@ let stapel: Array<() => void> = []
     Dev-Server überhaupt nicht mehr öffnen. */
 let eigeneRuecknahmen = 0
 
+/** Ob gerade eine Ueberlagerung offen ist, die ein "Zurueck" schliessen
+    wuerde. Die Hardware-Zurueck-Taste fragt das, bevor sie die App
+    beendet (siehe registerNativeBackButton in nativeShell.ts). */
+export function ueberlagerungOffen(): boolean {
+  return stapel.length > 0
+}
+
 function beiZurueck() {
   if (eigeneRuecknahmen > 0) {
     eigeneRuecknahmen--
