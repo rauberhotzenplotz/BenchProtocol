@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
 import { useUpsertSet, useDeleteSet, useEndSession, useUpdateExercise } from './queries'
@@ -11,6 +11,8 @@ import {
   istBankdruecken,
   anzeigeName,
   schemaMitSaetzen,
+  umsortieren,
+  neueSortierNummern,
 } from './calc'
 import { istRekord } from './rekord'
 import { pauseSekunden, autoPauseAn } from './pause'
@@ -23,6 +25,8 @@ import { GymFertig } from './GymFertig'
 import { zahlenBereich } from '../../lib/zahlen'
 import { zeitText } from '../../lib/zeit'
 import { vibrieren, SATZ_ERLEDIGT } from '../../lib/haptik'
+import { useSchliessenPerZurueck } from '../../lib/backClose'
+import { useZiehSortieren, ziehStil } from '../../lib/ziehSortieren'
 
 const REP_WERTE = zahlenBereich(1, 30, 1)
 
@@ -70,6 +74,11 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const restTimer = useRestTimer()
   const { data: progression } = useBenchProgression(plan.id)
 
+  // Solange der Gym-Modus gemountet ist, gilt er als "offen" — er wird
+  // nur bedingt gerendert (kein offen-Prop wie bei den Dialogen), das
+  // Mounten selbst ist hier das Öffnen.
+  useSchliessenPerZurueck(true, onClose)
+
   // Bank-Progression schlägt vor, welches Gewicht/Schema diese Woche für
   // "Bank schwer"/"Bank leicht" gilt — unabhängig davon, was zuletzt
   // geloggt wurde. Ohne gesetzte Bank-Zuordnung, aber erkennbarem Namen
@@ -93,7 +102,21 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Mounten/Unmounten schalten, nicht bei jeder Timer-Änderung
   }, [])
 
-  const uebungen = day.exercises
+  // Reihenfolge nur für diese Einheit. Wer im Studio umsortiert, weil
+  // eine Maschine besetzt ist, soll damit nicht seinen Plan umbauen —
+  // beim Beenden wird gefragt, genau wie bei geänderten Satzzahlen.
+  // null heißt: unverändert, es gilt die Reihenfolge des Plans.
+  const [eigeneReihenfolge, setEigeneReihenfolge] = useState<string[] | null>(null)
+  const uebungen = useMemo(() => {
+    if (!eigeneReihenfolge) return day.exercises
+    const nachId = new Map(day.exercises.map(e => [e.id, e]))
+    const sortiert = eigeneReihenfolge.map(id => nachId.get(id)).filter((e): e is Exercise => !!e)
+    // Was zwischendurch dazugekommen ist (etwa aus einer nachgeholten
+    // Offline-Mutation), hängt hinten an, statt zu verschwinden.
+    for (const e of day.exercises) if (!eigeneReihenfolge.includes(e.id)) sortiert.push(e)
+    return sortiert
+  }, [day.exercises, eigeneReihenfolge])
+
   const [uebIdx, setUebIdx] = useState(0)
   const exercise = uebungen[Math.min(uebIdx, uebungen.length - 1)]
   const progressionZeile = progressionZeileFuer(exercise)
@@ -103,6 +126,24 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   // Schema. Nur für diese Einheit — ob daraus ein dauerhafter Planeintrag
   // wird, entscheidet der Nutzer beim Beenden.
   const [zusatz, setZusatz] = useState<Record<string, number>>({})
+
+  /** Verschiebt eine Kachel und nimmt die gerade offene Übung mit: uebIdx
+      ist ein Platz, kein Verweis — ohne das Nachführen stünde nach dem
+      Ablegen plötzlich eine andere Übung auf dem Schirm. */
+  const uebungVerschieben = (von: number, nach: number) => {
+    const neu = umsortieren(uebungen, von, nach)
+    const offeneId = uebungen[Math.min(uebIdx, uebungen.length - 1)]?.id
+    setEigeneReihenfolge(neu.map(e => e.id))
+    const neuerPlatz = neu.findIndex(e => e.id === offeneId)
+    if (neuerPlatz >= 0) setUebIdx(neuerPlatz)
+  }
+  const [streifenKasten, setStreifenKasten] = useState<HTMLDivElement | null>(null)
+  const streifen = useZiehSortieren({
+    behaelter: streifenKasten,
+    achse: 'x',
+    aus: uebungen.length < 2,
+    onSortieren: uebungVerschieben,
+  })
   const zeilenAnzahlFuer = (ex: Exercise) => {
     const geloggt = (setsByExercise.get(ex.id) ?? []).length
     return Math.max(1, sollFuer(ex) + (zusatz[ex.id] ?? 0), geloggt)
@@ -211,9 +252,11 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   // Übungen, deren Satzanzahl von ihrem Schema abweicht — nur die werden
   // beim Beenden zur Übernahme angeboten.
   const geaenderteUebungen = uebungen.filter(ex => zeilenAnzahlFuer(ex) !== sollFuer(ex))
+  const reihenfolgeGeaendert = uebungen.some((ex, i) => day.exercises[i]?.id !== ex.id)
 
   const [fertig, setFertig] = useState(false)
   const [planFrage, setPlanFrage] = useState(false)
+  useSchliessenPerZurueck(planFrage, () => setPlanFrage(false))
 
   const einheitBeenden = () => {
     restTimer.stop()
@@ -234,12 +277,15 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
     for (const ex of geaenderteUebungen) {
       updateExercise.mutate({ id: ex.id, patch: { scheme: schemaMitSaetzen(ex.scheme, zeilenAnzahlFuer(ex)) } })
     }
+    for (const { id, sort_order } of neueSortierNummern(uebungen)) {
+      updateExercise.mutate({ id, patch: { sort_order } })
+    }
     setPlanFrage(false)
     setFertig(true)
   }
 
   const beendenAngefordert = () => {
-    if (geaenderteUebungen.length > 0) setPlanFrage(true)
+    if (geaenderteUebungen.length > 0 || reihenfolgeGeaendert) setPlanFrage(true)
     else setFertig(true)
   }
 
@@ -278,15 +324,24 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
       </div>
 
       {/* Übungsstreifen: nummerierte Kacheln, die Reihenfolge und der
-          aktive Zustand zählen. */}
-      <div className="ap-streifen">
+          aktive Zustand zählen. Gedrückt halten nimmt eine Kachel auf und
+          lässt sie zur Seite ziehen — für den Fall, dass eine Maschine
+          besetzt ist und man die Reihenfolge tauscht. */}
+      <div className="ap-streifen" ref={setStreifenKasten}>
         {uebungen.map((ex, i) => {
           const exSets = setsByExercise.get(ex.id) ?? []
           const fertigeUebung = exSets.filter(s => s.done).length >= zeilenAnzahlFuer(ex)
           return (
             <button
               key={ex.id}
-              className={'ap-kachel' + (i === uebIdx ? ' aktiv' : '') + (fertigeUebung ? ' fertig' : '')}
+              data-zieh={i}
+              style={ziehStil(streifen.zustand, i)}
+              className={
+                'ap-kachel' +
+                (i === uebIdx ? ' aktiv' : '') +
+                (fertigeUebung ? ' fertig' : '') +
+                (streifen.zustand?.von === i ? ' zieht' : '')
+              }
               onClick={() => {
                 setUebIdx(i)
                 setAktiv(null)
@@ -457,17 +512,19 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
         </button>
       </div>
 
-      {/* Satzanzahl im Training geändert: einmal fragen, ob das dauerhaft
-          in den Plan soll — sonst gilt es nur für heute. */}
+      {/* Satzanzahl oder Reihenfolge im Training geändert: einmal fragen,
+          ob das dauerhaft in den Plan soll — sonst gilt es nur für heute. */}
       {planFrage && (
         <div className="ap-frage-overlay" onClick={e => e.target === e.currentTarget && setPlanFrage(false)}>
           <div className="ap-frage" role="dialog" aria-modal="true">
             <h4>Änderungen in den Plan übernehmen?</h4>
             <p className="muted tiny">
-              {geaenderteUebungen.length === 1
-                ? `„${geaenderteUebungen[0].name}“ hat jetzt ${zeilenAnzahlFuer(geaenderteUebungen[0])} statt ${sollFuer(geaenderteUebungen[0])} Sätze.`
-                : `${geaenderteUebungen.length} Übungen haben eine andere Satzanzahl als im Plan.`}{' '}
-              Ohne Übernahme gilt die Änderung nur für diese Einheit.
+              {geaenderteUebungen.length === 1 &&
+                `„${geaenderteUebungen[0].name}“ hat jetzt ${zeilenAnzahlFuer(geaenderteUebungen[0])} statt ${sollFuer(geaenderteUebungen[0])} Sätze. `}
+              {geaenderteUebungen.length > 1 &&
+                `${geaenderteUebungen.length} Übungen haben eine andere Satzanzahl als im Plan. `}
+              {reihenfolgeGeaendert && 'Die Übungen stehen in einer anderen Reihenfolge als im Plan. '}
+              Ohne Übernahme gilt das nur für diese Einheit.
             </p>
             <div className="ap-frage-tasten">
               <button className="btn ghost sm" onClick={() => { setPlanFrage(false); setFertig(true) }}>

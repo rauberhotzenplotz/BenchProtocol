@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
@@ -12,8 +12,9 @@ import {
   useUpdateExercise,
   useUpsertSet,
 } from './queries'
-import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, anzeigeName, naechsteSortierung } from './calc'
+import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, anzeigeName, naechsteSortierung, umsortieren, neueSortierNummern } from './calc'
 import { useBenchProgression, benchRowsFor } from '../bench/queries'
+import { useZiehSortieren, ziehStil } from '../../lib/ziehSortieren'
 import { LetzteEinheitPanel } from './LetzteEinheitPanel'
 import { MuskelChips } from '../../components/MuskelChips'
 import { SessionMenu } from './SessionMenu'
@@ -66,6 +67,7 @@ export function SessionView({
   const startSession = useStartSession()
   const endSession = useEndSession()
   const createExercise = useCreateExercise()
+  const updateExerciseSort = useUpdateExercise()
   const updateDay = useUpdateDay()
   const { data: volumeRows } = useVolumeRows(plan.id)
   const muskelgruppen = (volumeRows ?? []).map(r => r.muscle_group)
@@ -152,6 +154,26 @@ export function SessionView({
     return () => restTimer.setReopenGym(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- restTimer.setReopenGym ist über den Context stabil, nur beim Mounten/Unmounten registrieren
   }, [])
+
+  // Umsortieren per Aufnehmen und Ziehen. Anders als im Gym-Modus geht
+  // das hier sofort in den Plan: Die Tagesansicht ist die Stelle, an der
+  // man den Plan bearbeitet, keine laufende Einheit.
+  const uebungenSortierenSofort = (von: number, nach: number) => {
+    for (const { id, sort_order } of neueSortierNummern(umsortieren(day.exercises, von, nach))) {
+      updateExerciseSort.mutate({ id, patch: { sort_order } })
+    }
+  }
+  const [uebungsKasten, setUebungsKasten] = useState<HTMLDivElement | null>(null)
+  const zieh = useZiehSortieren({
+    behaelter: uebungsKasten,
+    achse: 'y',
+    aus: day.exercises.length < 2,
+    // Nur der Kopf der Karte nimmt auf. Aufgeklappt steht darunter die
+    // ganze Satztabelle — ein langer Druck darauf soll dort bleiben und
+    // nicht die Karte als Ganzes anheben.
+    griff: '.ueb-leiste',
+    onSortieren: uebungenSortierenSofort,
+  })
 
   const gesamtTonnage = day.exercises.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
   const gesamtGeplant = day.exercises.reduce((a, ex) => a + setsOf(ex.scheme), 0)
@@ -275,10 +297,13 @@ export function SessionView({
 
       {/* Kein eigener Abstand: die Übungskarten bringen ihren Rand selbst
           mit (.ueb bzw. .ueb:not(.auf) in global.css). */}
-      <div style={{ ...cssVars({ '--i': 2 }), marginTop: 14 }}>
+      <div style={{ ...cssVars({ '--i': 2 }), marginTop: 14 }} ref={setUebungsKasten}>
         {day.exercises.map((ex, i) => (
           <ExerciseBlock
             key={ex.id}
+            ziehPlatz={i}
+            ziehStil={ziehStil(zieh.zustand, i)}
+            zieht={zieh.zustand?.von === i}
             planTyp={plan.typ}
             exercise={ex}
             nummer={i + 1}
@@ -354,6 +379,9 @@ function ExerciseBlock({
   planTyp,
   exercise,
   nummer,
+  ziehPlatz,
+  ziehStil,
+  zieht,
   sets,
   week,
   laeuft,
@@ -367,6 +395,10 @@ function ExerciseBlock({
   exercise: Exercise
   /** Platz in der Tagesreihenfolge, 1-basiert — steht im Nummernkreis. */
   nummer: number
+  /** Platz in der Liste, 0-basiert — daran erkennt das Umsortieren die Karte. */
+  ziehPlatz: number
+  ziehStil: CSSProperties
+  zieht: boolean
   sets: LoggedSet[]
   week: number
   muskelgruppen: string[]
@@ -414,7 +446,17 @@ function ExerciseBlock({
   const angezeigterName = anzeigeName(exercise, plan, week)
 
   return (
-    <div className={'ueb' + (auf ? ' auf' : '') + (fertig ? ' fertig' : '') + (bankdruecken ? ' bank' : '')}>
+    <div
+      data-zieh={ziehPlatz}
+      style={ziehStil}
+      className={
+        'ueb' +
+        (auf ? ' auf' : '') +
+        (fertig ? ' fertig' : '') +
+        (bankdruecken ? ' bank' : '') +
+        (zieht ? ' zieht' : '')
+      }
+    >
       {/* Zugeklappt ist jede Übung nur eine Zeile hoch — Nummer, Name, die
           wichtigsten Vorgaben als Marken und der Satzstand. Alles Weitere
           erscheint erst beim Aufklappen. */}

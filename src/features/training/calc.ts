@@ -54,6 +54,36 @@ export function naechsteSortierung(vorhandene: ReadonlyArray<{ sort_order: numbe
   return vorhandene.reduce((max, e) => Math.max(max, e.sort_order), -1) + 1
 }
 
+/** Verschiebt einen Eintrag von einem Platz auf einen anderen und gibt
+    die neue Reihenfolge zurück. Die ursprüngliche Liste bleibt unberührt. */
+export function umsortieren<T>(liste: readonly T[], von: number, nach: number): T[] {
+  const neu = [...liste]
+  if (von < 0 || von >= neu.length || nach < 0 || nach >= neu.length || von === nach) return neu
+  const [eintrag] = neu.splice(von, 1)
+  neu.splice(nach, 0, eintrag)
+  return neu
+}
+
+/** Welche Einträge nach einem Umsortieren eine neue sort_order brauchen.
+
+    Vergeben wird durchgehend 0, 1, 2 … nach der neuen Reihenfolge, und
+    zurückgegeben wird nur, was sich dabei wirklich ändert — jeder
+    Eintrag hier wird zu einem eigenen Schreibvorgang, der ohne Netz in
+    der Warteschlange landet.
+
+    Durchnummerieren statt nur zwei Werte zu tauschen: Beim Ziehen über
+    mehrere Plätze reicht ein Tausch nicht, und eine lückenlose
+    Nummerierung schließt nebenbei doppelte Werte aus (siehe
+    naechsteSortierung). */
+export function neueSortierNummern(
+  neueReihenfolge: ReadonlyArray<{ id: string; sort_order: number }>,
+): { id: string; sort_order: number }[] {
+  return neueReihenfolge
+    .map((e, i) => ({ id: e.id, sort_order: i, alt: e.sort_order }))
+    .filter(e => e.sort_order !== e.alt)
+    .map(({ id, sort_order }) => ({ id, sort_order }))
+}
+
 export function tonnageOf(sets: LoggedSet[]): number {
   return sets.reduce((sum, s) => sum + (s.kg && s.reps ? s.kg * s.reps : 0), 0)
 }

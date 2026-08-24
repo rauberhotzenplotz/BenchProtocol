@@ -3745,3 +3745,27 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
 }
 .planed-klein .inp { padding: 7px 9px; font-size: 13px; }
 .planed-tagfuss { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* ── Umsortieren per Aufnehmen und Ziehen ───────────────────────────
+   Gedrückt halten hebt einen Eintrag an, dann lässt er sich verschieben
+   (siehe lib/ziehSortieren.ts). Der Versatz selbst kommt als Inline-Stil
+   aus ziehStil() — hier steht nur, wie das Aufgenommene aussieht.
+
+   user-select verhindert, dass Android beim langen Druck stattdessen
+   die Textauswahl aufzieht. Die Kacheln und Kartenköpfe sind Buttons und
+   damit schon von der globalen Regel erfasst; die Zeilen im Plan-Editor
+   sind es nicht, deshalb hier ausdrücklich. */
+.planed-ueb { -webkit-user-select: none; user-select: none; }
+.planed-ueb .inp { -webkit-user-select: text; user-select: text; }
+
+.zieht {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .55);
+  cursor: grabbing;
+}
+.ap-kachel.zieht { box-shadow: 0 8px 20px rgba(0, 0, 0, .5); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Die Ausweichbewegung der übrigen Einträge ist reine Zutat — ohne sie
+     springt die Lücke einfach an ihren Platz. */
+  .planed-ueb, .ueb, .ap-kachel { transition: none !important; }
+}

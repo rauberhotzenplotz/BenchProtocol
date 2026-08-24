@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { Plan } from '../../types/db'
+import type { Exercise, Plan } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import {
   useCreateDay,
@@ -11,11 +11,13 @@ import {
   useDeleteExercise,
 } from '../training/queries'
 import { useUpdatePlan } from './queries'
-import { naechsteSortierung } from '../training/calc'
+import { naechsteSortierung, umsortieren, neueSortierNummern } from '../training/calc'
 import { useVolumeRows } from '../volume/queries'
 import { UebungAuswahl } from '../training/UebungAuswahl'
 import { neueId } from '../../lib/offline/keys'
 import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
+import { useZiehSortieren, ziehStil } from '../../lib/ziehSortieren'
+import { useSchliessenPerZurueck } from '../../lib/backClose'
 
 interface Props {
   plan: Plan
@@ -43,6 +45,10 @@ export function PlanEditor({ plan, days, onClose }: Props) {
   const updateExercise = useUpdateExercise()
   const deleteExercise = useDeleteExercise()
 
+  // Wie GymModeAP: bedingt gemountet statt über ein offen-Prop, das
+  // Mounten selbst ist hier das Öffnen.
+  useSchliessenPerZurueck(true, onClose)
+
   // Die Muskelgruppen des Volumen-Kontrollblatts sind das Vokabular, aus
   // dem der Übungs-Picker seine Zuordnung wählt (siehe UebungAuswahl).
   const { data: volumeRows } = useVolumeRows(plan.id)
@@ -65,24 +71,21 @@ export function PlanEditor({ plan, days, onClose }: Props) {
     setOffenerTag(id)
   }
 
-  /** Tauscht zwei Tage über ihre sort_order. Zwei getrennte Mutationen —
-      offline landen sie hintereinander in derselben Warteschlange und
-      kommen dadurch in der richtigen Reihenfolge beim Server an. */
-  const tagVerschieben = (index: number, richtung: -1 | 1) => {
-    const a = sortierteTage[index]
-    const b = sortierteTage[index + richtung]
-    if (!a || !b) return
-    updateDay.mutate({ id: a.id, patch: { sort_order: b.sort_order } })
-    updateDay.mutate({ id: b.id, patch: { sort_order: a.sort_order } })
+  /** Nummeriert die Tage nach dem Verschieben durch. Früher wurden nur
+      die sort_order zweier Nachbarn getauscht — das tut aber nichts,
+      wenn beide dieselbe Nummer tragen, und genau das kam in den echten
+      Daten vor. Geschrieben wird nur, was sich ändert; offline landen
+      die Schreibvorgänge der Reihe nach in der Warteschlange. */
+  const tageSortieren = (von: number, nach: number) => {
+    for (const { id, sort_order } of neueSortierNummern(umsortieren(sortierteTage, von, nach))) {
+      updateDay.mutate({ id, patch: { sort_order } })
+    }
   }
 
-  const uebungVerschieben = (tag: DayWithExercises, index: number, richtung: -1 | 1) => {
-    const liste = [...tag.exercises].sort((x, y) => x.sort_order - y.sort_order)
-    const a = liste[index]
-    const b = liste[index + richtung]
-    if (!a || !b) return
-    updateExercise.mutate({ id: a.id, patch: { sort_order: b.sort_order } })
-    updateExercise.mutate({ id: b.id, patch: { sort_order: a.sort_order } })
+  const uebungenSortieren = (liste: Exercise[], von: number, nach: number) => {
+    for (const { id, sort_order } of neueSortierNummern(umsortieren(liste, von, nach))) {
+      updateExercise.mutate({ id, patch: { sort_order } })
+    }
   }
 
   return createPortal(
@@ -139,7 +142,7 @@ export function PlanEditor({ plan, days, onClose }: Props) {
                   </svg>
                 </button>
                 <div className="planed-tagtasten">
-                  <button className="rowbtn" title="Nach oben" disabled={i === 0} onClick={() => tagVerschieben(i, -1)}>
+                  <button className="rowbtn" title="Nach oben" disabled={i === 0} onClick={() => tageSortieren(i, i - 1)}>
                     <svg viewBox="0 0 24 24">
                       <path d="m18 15-6-6-6 6" />
                     </svg>
@@ -148,7 +151,7 @@ export function PlanEditor({ plan, days, onClose }: Props) {
                     className="rowbtn"
                     title="Nach unten"
                     disabled={i === sortierteTage.length - 1}
-                    onClick={() => tagVerschieben(i, 1)}
+                    onClick={() => tageSortieren(i, i + 1)}
                   >
                     <svg viewBox="0 0 24 24">
                       <path d="m6 9 6 6 6-6" />
@@ -180,62 +183,12 @@ export function PlanEditor({ plan, days, onClose }: Props) {
                     </p>
                   )}
 
-                  {uebungen.map((ex, j) => (
-                    <div key={ex.id} className="planed-ueb">
-                      <div className="planed-ueb-kopf">
-                        <span className="planed-ueb-name">{ex.name}</span>
-                        <div className="planed-tagtasten">
-                          <button
-                            className="rowbtn"
-                            title="Nach oben"
-                            disabled={j === 0}
-                            onClick={() => uebungVerschieben(tag, j, -1)}
-                          >
-                            <svg viewBox="0 0 24 24">
-                              <path d="m18 15-6-6-6 6" />
-                            </svg>
-                          </button>
-                          <button
-                            className="rowbtn"
-                            title="Nach unten"
-                            disabled={j === uebungen.length - 1}
-                            onClick={() => uebungVerschieben(tag, j, 1)}
-                          >
-                            <svg viewBox="0 0 24 24">
-                              <path d="m6 9 6 6 6-6" />
-                            </svg>
-                          </button>
-                          <button className="rowbtn del" title="Übung entfernen" onClick={() => deleteExercise.mutate(ex.id)}>
-                            <svg viewBox="0 0 24 24">
-                              <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      <div className="planed-ueb-felder">
-                        <label className="planed-klein">
-                          <span>Schema</span>
-                          <input
-                            className="inp mono"
-                            defaultValue={ex.scheme ?? ''}
-                            placeholder="z. B. 4 × 8"
-                            onKeyDown={onKeyDownAndroidBackspaceFix}
-                            onBlur={e => updateExercise.mutate({ id: ex.id, patch: { scheme: e.target.value.trim() || null } })}
-                          />
-                        </label>
-                        <label className="planed-klein">
-                          <span>Pause</span>
-                          <input
-                            className="inp mono"
-                            defaultValue={ex.rest ?? ''}
-                            placeholder="z. B. 2 min"
-                            onKeyDown={onKeyDownAndroidBackspaceFix}
-                            onBlur={e => updateExercise.mutate({ id: ex.id, patch: { rest: e.target.value.trim() || null } })}
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  ))}
+                  <TagUebungen
+                    uebungen={uebungen}
+                    onSortieren={(vonPlatz, nachPlatz) => uebungenSortieren(uebungen, vonPlatz, nachPlatz)}
+                    onEntfernen={id => deleteExercise.mutate(id)}
+                    onFeld={(id, patch) => updateExercise.mutate({ id, patch })}
+                  />
 
                   <div className="planed-tagfuss">
                     <button className="btn sm" onClick={() => setNeueUebungFuer(tag.id)}>
@@ -296,5 +249,91 @@ export function PlanEditor({ plan, days, onClose }: Props) {
       </div>
     </div>,
     document.body,
+  )
+}
+
+/** Übungsliste eines Tages.
+
+    Eigene Komponente, weil useZiehSortieren nicht innerhalb der
+    Tages-Schleife aufgerufen werden darf — Hooks müssen bei jedem Render
+    in derselben Zahl und Reihenfolge laufen.
+
+    Umsortiert wird per Aufnehmen und Ziehen: gedrückt halten, dann
+    verschieben. Die Pfeiltasten bleiben daneben stehen, weil sie mit
+    einer Hand und ohne Zielen funktionieren — beim Aufbauen eines Plans
+    am Schreibtisch oft der schnellere Weg. */
+function TagUebungen({
+  uebungen,
+  onSortieren,
+  onEntfernen,
+  onFeld,
+}: {
+  uebungen: Exercise[]
+  onSortieren: (von: number, nach: number) => void
+  onEntfernen: (id: string) => void
+  onFeld: (id: string, patch: Partial<Exercise>) => void
+}) {
+  const [kasten, setKasten] = useState<HTMLDivElement | null>(null)
+  const zieh = useZiehSortieren({ behaelter: kasten, achse: 'y', aus: uebungen.length < 2, onSortieren })
+
+  return (
+    <div ref={setKasten}>
+      {uebungen.map((ex, j) => (
+        <div
+          key={ex.id}
+          data-zieh={j}
+          style={ziehStil(zieh.zustand, j)}
+          className={'planed-ueb' + (zieh.zustand?.von === j ? ' zieht' : '')}
+        >
+          <div className="planed-ueb-kopf">
+            <span className="planed-ueb-name">{ex.name}</span>
+            <div className="planed-tagtasten">
+              <button className="rowbtn" title="Nach oben" disabled={j === 0} onClick={() => onSortieren(j, j - 1)}>
+                <svg viewBox="0 0 24 24">
+                  <path d="m18 15-6-6-6 6" />
+                </svg>
+              </button>
+              <button
+                className="rowbtn"
+                title="Nach unten"
+                disabled={j === uebungen.length - 1}
+                onClick={() => onSortieren(j, j + 1)}
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              <button className="rowbtn del" title="Übung entfernen" onClick={() => onEntfernen(ex.id)}>
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className="planed-ueb-felder">
+            <label className="planed-klein">
+              <span>Schema</span>
+              <input
+                className="inp mono"
+                defaultValue={ex.scheme ?? ''}
+                placeholder="z. B. 4 × 8"
+                onKeyDown={onKeyDownAndroidBackspaceFix}
+                onBlur={e => onFeld(ex.id, { scheme: e.target.value.trim() || null })}
+              />
+            </label>
+            <label className="planed-klein">
+              <span>Pause</span>
+              <input
+                className="inp mono"
+                defaultValue={ex.rest ?? ''}
+                placeholder="z. B. 2 min"
+                onKeyDown={onKeyDownAndroidBackspaceFix}
+                onBlur={e => onFeld(ex.id, { rest: e.target.value.trim() || null })}
+              />
+            </label>
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }

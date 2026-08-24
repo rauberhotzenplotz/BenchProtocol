@@ -28,6 +28,11 @@ export function vibrieren(muster: number | number[]) {
 /** Ein Satz sitzt: ein kurzer, trockener Stups. */
 export const SATZ_ERLEDIGT = 22
 
+/** Eine Übung klebt jetzt an der Hand: ein einzelner, leichter Tupfer.
+    Bewusst schwächer als SATZ_ERLEDIGT — das Aufnehmen ist ein Zwischen-
+    schritt, kein Ergebnis. */
+export const AUFGENOMMEN = 14
+
 /** Einheit geschafft: kurz-kurz-lang, deutlich als Abschluss erkennbar. */
 export const TRAINING_FERTIG = [26, 70, 26, 70, 120]
 

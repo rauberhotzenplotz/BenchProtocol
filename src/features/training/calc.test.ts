@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen, naechsteSortierung } from './calc'
+import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen, naechsteSortierung, umsortieren, neueSortierNummern } from './calc'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 
 function einheit(patch: Partial<TrainingSession>): TrainingSession {
@@ -209,5 +209,68 @@ describe('naechsteSortierung', () => {
 
   it('beginnt bei 0, wenn noch nichts da ist', () => {
     expect(naechsteSortierung([])).toBe(0)
+  })
+})
+
+describe('umsortieren', () => {
+  it('schiebt einen Eintrag nach hinten', () => {
+    expect(umsortieren(['a', 'b', 'c', 'd'], 0, 2)).toEqual(['b', 'c', 'a', 'd'])
+  })
+
+  it('schiebt einen Eintrag nach vorn', () => {
+    expect(umsortieren(['a', 'b', 'c', 'd'], 3, 1)).toEqual(['a', 'd', 'b', 'c'])
+  })
+
+  it('laesst die Liste in Ruhe, wenn sich der Platz nicht aendert', () => {
+    expect(umsortieren(['a', 'b', 'c'], 1, 1)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('greift nicht daneben, wenn der Platz ausserhalb liegt', () => {
+    expect(umsortieren(['a', 'b'], 0, 5)).toEqual(['a', 'b'])
+    expect(umsortieren(['a', 'b'], -1, 1)).toEqual(['a', 'b'])
+  })
+
+  it('aendert die uebergebene Liste nicht', () => {
+    const liste = ['a', 'b', 'c']
+    umsortieren(liste, 0, 2)
+    expect(liste).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('neueSortierNummern', () => {
+  it('nummeriert durch und meldet nur die Aenderungen', () => {
+    expect(
+      neueSortierNummern([
+        { id: 'b', sort_order: 1 },
+        { id: 'a', sort_order: 0 },
+        { id: 'c', sort_order: 2 },
+      ]),
+    ).toEqual([
+      { id: 'b', sort_order: 0 },
+      { id: 'a', sort_order: 1 },
+    ])
+  })
+
+  it('meldet nichts, wenn die Reihenfolge schon stimmt', () => {
+    expect(
+      neueSortierNummern([
+        { id: 'a', sort_order: 0 },
+        { id: 'b', sort_order: 1 },
+      ]),
+    ).toEqual([])
+  })
+
+  // Der Fall aus den echten Daten: zwei Eintraege auf derselben Nummer.
+  // Das Durchnummerieren raeumt die Kollision nebenbei mit auf.
+  it('raeumt doppelte Nummern auf', () => {
+    expect(
+      neueSortierNummern([
+        { id: 'a', sort_order: 6 },
+        { id: 'b', sort_order: 6 },
+      ]),
+    ).toEqual([
+      { id: 'a', sort_order: 0 },
+      { id: 'b', sort_order: 1 },
+    ])
   })
 })
