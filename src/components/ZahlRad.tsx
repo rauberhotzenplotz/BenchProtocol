@@ -50,7 +50,12 @@ export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einh
   const [warOffen, setWarOffen] = useState(offen)
   if (offen !== warOffen) {
     setWarOffen(offen)
-    if (offen) setEingabe(aktuell != null ? String(aktuell).replace('.', ',') : '')
+    // Bewusst leer statt mit dem bisherigen Wert vorbelegt: Wer eine Zahl
+    // ändern will, musste sonst erst die alte Ziffer für Ziffer
+    // wegräumen. Der bisherige Wert steht stattdessen grau als
+    // Platzhalter da (siehe zahltast-anzeige unten) und bleibt erhalten,
+    // solange nichts Neues getippt wird.
+    if (offen) setEingabe('')
   }
 
   useEffect(() => {
@@ -125,7 +130,11 @@ export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einh
 
         <div className={'zahltast' + (nurNumpad ? ' voll' : '')}>
           <div className="zahltast-anzeige">
-            {eingabe === '' ? <span className="zahltast-platzhalter">0</span> : eingabe}
+            {eingabe === '' ? (
+              <span className="zahltast-platzhalter">{aktuell != null ? format(aktuell) : '0'}</span>
+            ) : (
+              eingabe
+            )}
             {einheit && <em>{einheit}</em>}
           </div>
           <div className="zahltast-grid">

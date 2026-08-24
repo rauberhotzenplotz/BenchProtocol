@@ -2031,7 +2031,16 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 }
 .zahlrad {
   position: relative;
-  width: min(420px, 100%); max-height: min(90vh, 640px);
+  width: min(420px, 100%);
+  /* Darf bis fast an den oberen Rand reichen: Die Werteliste darunter
+     nimmt sich den gewonnenen Platz (flex), und dadurch lässt sich in
+     einem Zug durch deutlich mehr Zahlen rollen, statt durch ein 150 px
+     hohes Guckloch. Die kleine Lücke oben hält es als Blatt über der
+     Seite erkennbar, statt es wie eine eigene Seite wirken zu lassen.
+     dvh statt vh, damit die eingeblendete Adressleiste mobiler Browser
+     nicht unten abschneidet; die vh-Zeile davor bleibt als Rückfall. */
+  max-height: calc(100vh - 20px);
+  max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px));
   /* Zwei Nebelschwaden über dem Grundton — dieselben Farben wie die
      Wolken im Hintergrund (siehe .nb-w1/.nb-w2), nur enger gefasst. */
   background:
@@ -2088,11 +2097,14 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
    scroll-snap auf "proximity" statt "mandatory": es rastet spürbar ein,
    blockiert aber kein freies Durchziehen über viele Werte.
 
-   Feste Höhe statt flex:1 — das Numpad darunter braucht ebenfalls
-   garantierten Platz, beide teilen sich jetzt dieselbe Fläche statt sich
-   per Tab abzuwechseln (siehe ZahlRad.tsx). */
+   Die Liste nimmt allen Platz, den das Numpad darunter übrig lässt
+   (flex), hört aber nie unter 150 px auf. Früher stand hier eine feste
+   Höhe von 150 px, damit das Numpad garantiert Platz hat — das gibt
+   ihm jetzt sein eigenes flex:none, während die Liste auf großen
+   Schirmen mitwächst und man in einem Zug durch viel mehr Werte rollt.
+   Siehe ZahlRad.tsx. */
 .zahlrad-liste {
-  flex: none; height: 150px;
+  flex: 1 1 auto; min-height: 150px;
   /* Der großzügige Rand oben und unten ist Rollweg, keine Luft: ohne ihn
      kann der erste bzw. letzte Wert nie aus der Ausblendzone heraus in die
      Mitte gerollt werden und bliebe halb durchsichtig, obwohl er der
