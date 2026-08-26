@@ -1,13 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { ketteFuer, druckZugBilanz } from './druckZug'
 
-/** Baut die Tabelle nach, die volume/calc.ts liefert: Gruppe → Tag → Sätze. */
-function tabelle(eintraege: Record<string, number>): Map<string, Map<string, number>> {
-  const m = new Map<string, Map<string, number>>()
-  for (const [gruppe, saetze] of Object.entries(eintraege)) {
-    m.set(gruppe, new Map([['tag', saetze]]))
-  }
-  return m
+/** Baut die Liste nach, die muskelHitze() liefert: Gruppe mit Satzzahl
+    über das rollende Sieben-Tage-Fenster. */
+function tabelle(eintraege: Record<string, number>): { name: string; saetze: number }[] {
+  return Object.entries(eintraege).map(([name, saetze]) => ({ name, saetze }))
 }
 
 describe('ketteFuer', () => {
@@ -84,7 +81,7 @@ describe('druckZugBilanz', () => {
   })
 
   it('kommt mit einer leeren Woche klar', () => {
-    const b = druckZugBilanz(new Map())
+    const b = druckZugBilanz([])
     expect(b).toEqual({ druecken: 0, ziehen: 0, gruppen: [], punktzahl: null, lage: null })
   })
 

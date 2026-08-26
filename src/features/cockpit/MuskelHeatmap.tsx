@@ -75,6 +75,7 @@ export function MuskelHeatmap({
         <h3>
           <span className="tick" />
           Belastung &amp; Regeneration
+          <span className="dz-fenster">Letzte 7 Tage</span>
         </h3>
         <p className="muted tiny" style={{ margin: 0 }}>
           Noch keine abgehakten Sätze mit Muskelgruppe. Sobald du Sätze abhakst, färbt sich das Modell
@@ -89,6 +90,7 @@ export function MuskelHeatmap({
       <h3>
         <span className="tick" />
         Belastung &amp; Regeneration
+        <span className="dz-fenster">Letzte 7 Tage</span>
         <span className="mh-zahl">
           {hitze.frischeGruppen} {hitze.frischeGruppen === 1 ? 'Gruppe' : 'Gruppen'} frisch
         </span>

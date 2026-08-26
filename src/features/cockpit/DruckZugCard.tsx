@@ -1,8 +1,7 @@
 import { useMemo } from 'react'
 import type { LoggedSet } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { gruppeSetsByExercise } from '../training/calc'
-import { istSaetzeJeGruppeUndTag } from '../volume/calc'
+import { muskelHitze } from './muskelHitze'
 import { druckZugBilanz } from './druckZug'
 import { CountUp } from '../../components/CountUp'
 
@@ -28,36 +27,12 @@ const WARNTEXT: Record<'zu-wenig-zug' | 'zu-wenig-druck', string> = {
     dieselbe Tabelle, aus der auch das Volumen-Kontrollblatt lebt. Übungen
     ohne Muskelgruppe zählen nirgends mit — steht die Karte also niedriger
     als erwartet, fehlt vermutlich eine Zuordnung. */
-export function DruckZugCard({
-  days,
-  setsByExercise,
-  allSets,
-  week,
-}: {
-  days: DayWithExercises[]
-  setsByExercise: Map<string, LoggedSet[]>
-  /** Alle je geloggten Sätze — gebraucht für den Rückfall auf die Vorwoche. */
-  allSets: LoggedSet[]
-  week: number
-}) {
-  const jetzt = druckZugBilanz(istSaetzeJeGruppeUndTag(days, setsByExercise))
-
-  // Am Wochenanfang ist noch nichts abgehakt, und eine leere Karte so weit
-  // oben im Cockpit wäre jeden Montag ein blinder Fleck. Dann steht hier
-  // die Vorwoche — deutlich als solche gekennzeichnet, denn eine fremde
-  // Woche als laufende auszugeben wäre schlimmer als gar keine Zahl.
-  //
-  // Gemerkt, weil dafür alle je geloggten Sätze durchlaufen werden. Der
-  // Zweig greift ohnehin nur, solange die laufende Woche leer ist.
-  const vorwoche = useMemo(() => {
-    if (jetzt.punktzahl != null || week <= 1) return null
-    const saetze = gruppeSetsByExercise(allSets.filter(s => s.week === week - 1))
-    const b = druckZugBilanz(istSaetzeJeGruppeUndTag(days, saetze))
-    return b.punktzahl == null ? null : b
-  }, [jetzt.punktzahl, week, allSets, days])
-
-  const bilanz = vorwoche ?? jetzt
-  const ausVorwoche = vorwoche != null
+export function DruckZugCard({ days, allSets }: { days: DayWithExercises[]; allSets: LoggedSet[] }) {
+  // Dasselbe Fenster wie die Muskel-Heatmap darüber, über dieselbe
+  // Funktion: Sonst stehen dieselben Muskelgruppen in zwei Karten
+  // übereinander mit verschiedenen Zahlen. Beide rechnen unabhängig, aber
+  // aus derselben Quelle — auseinanderlaufen können sie damit nicht.
+  const bilanz = useMemo(() => druckZugBilanz(muskelHitze(days, allSets).gruppen), [days, allSets])
 
   if (bilanz.punktzahl == null) {
     return (
@@ -65,10 +40,11 @@ export function DruckZugCard({
         <h3>
           <span className="tick" />
           Druck-Zug-Bilanz
+          <span className="dz-fenster">Letzte 7 Tage</span>
         </h3>
         <p className="muted tiny" style={{ margin: 0 }}>
-          Noch keine abgehakten Sätze — weder in dieser Woche noch in der Vorwoche. Sobald Brust-,
-          Schulter- oder Rückenarbeit im Protokoll steht, steht hier das Verhältnis.
+          In den letzten sieben Tagen keine abgehakten Sätze für Brust, Schulter oder Rücken. Sobald
+          welche im Protokoll stehen, steht hier das Verhältnis.
         </p>
       </div>
     )
@@ -83,7 +59,7 @@ export function DruckZugCard({
       <h3>
         <span className="tick" />
         Druck-Zug-Bilanz
-        {ausVorwoche && <span className="dz-vorwoche">Vorwoche</span>}
+        <span className="dz-fenster">Letzte 7 Tage</span>
         <span className="dz-punkte">
           <CountUp value={bilanz.punktzahl} decimals={1} />
           <u> / 10</u>

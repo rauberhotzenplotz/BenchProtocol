@@ -83,7 +83,7 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
       </div>
 
       <div style={{ ...cssVars({ '--i': 4 }), marginBottom: 14 }}>
-        <DruckZugCard days={days} setsByExercise={setsByExercise} allSets={allSets} week={week} />
+        <DruckZugCard days={days} allSets={allSets} />
       </div>
 
       <div style={cssVars({ '--i': 5 })}>

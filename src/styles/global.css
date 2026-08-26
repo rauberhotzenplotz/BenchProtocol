@@ -3910,16 +3910,6 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   .dz-schale { transition: none; }
 }
 
-/* Kennzeichnet, dass die Zahlen aus der Vorwoche stammen — eine fremde
-   Woche stillschweigend als laufende auszugeben wäre schlimmer als gar
-   keine Zahl. */
-.dz-vorwoche {
-  font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .16em;
-  text-transform: uppercase; color: var(--ink-3);
-  border: 1px solid var(--line); border-radius: 999px; padding: 2px 7px;
-  background: rgba(8,11,16,.6);
-}
-
 /* ── Muskel-Heatmap im Cockpit ──────────────────────────────────────
    Das Körpermodell stammt aus react-body-highlighter (MIT, © 2020 GV79),
    siehe cockpit/koerperModell.ts. Hier steht nur, wie es leuchtet.
@@ -3990,4 +3980,15 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   .mh-halo.frisch { animation: mhAtmen 2.6s ease-in-out infinite; }
   .mh-halo.mittel { animation: mhAtmen 4s ease-in-out infinite; animation-delay: -1.3s; }
   @keyframes mhAtmen { 0%, 100% { filter: blur(2.4px); } 50% { filter: blur(4px); } }
+}
+
+/* Beide Cockpit-Karten weisen ihr Zeitfenster aus. Ohne das standen
+   dieselben Muskelgruppen zweimal untereinander mit verschiedenen
+   Zahlen — die eine zaehlte rollend, die andere die Kalenderwoche. Jetzt
+   zaehlen beide gleich, und das Etikett sagt es auch. */
+.dz-fenster {
+  font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-4);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 7px;
+  background: rgba(8,11,16,.6); white-space: nowrap;
 }

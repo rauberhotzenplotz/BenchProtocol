@@ -54,24 +54,25 @@ export interface DruckZug {
     soll keine Warnung auslösen. */
 const AUSGEGLICHEN_AB = 7
 
-/** Verhältnis von Drück- zu Zugsätzen einer Woche.
+/** Verhältnis von Drück- zu Zugsätzen.
 
-    Eingabe ist dieselbe Tabelle, aus der auch das Volumen-Kontrollblatt
-    lebt (siehe volume/calc.ts) — also tatsächlich abgehakte Sätze, keine
-    geplanten.
+    Eingabe sind die Sätze je Muskelgruppe aus muskelHitze() — also
+    dasselbe rollende Sieben-Tage-Fenster, das auch die Muskel-Heatmap
+    zeigt. Vorher zählte diese Karte die Kalenderwoche: Dieselben Gruppen
+    standen dann in zwei Karten übereinander mit verschiedenen Zahlen,
+    und montags war hier gar nichts zu sehen.
 
     Die Punktzahl ist bewusst simpel und dadurch erklärbar: der Anteil der
     kleineren Waagschale an der größeren, mal zehn. Gleich viele Sätze in
     beide Richtungen ergeben 10, doppelt so viel Drücken wie Ziehen ergibt
     5. Eine Formel, die man in einem Satz erklären kann, ist hier mehr wert
     als eine genauere, die niemand nachrechnen kann. */
-export function druckZugBilanz(tabelle: Map<string, Map<string, number>>): DruckZug {
+export function druckZugBilanz(gruppenSaetze: ReadonlyArray<{ name: string; saetze: number }>): DruckZug {
   const gruppen: GruppenAnteil[] = []
   let druecken = 0
   let ziehen = 0
 
-  for (const [name, proTag] of tabelle) {
-    const saetze = [...proTag.values()].reduce((a, n) => a + n, 0)
+  for (const { name, saetze } of gruppenSaetze) {
     if (saetze === 0) continue
     const kette = ketteFuer(name)
     if (kette === null) continue
