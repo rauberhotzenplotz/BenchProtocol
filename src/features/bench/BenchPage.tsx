@@ -5,6 +5,7 @@ import { ProgressionTable } from './ProgressionTable'
 import { AusgangsdatenCard } from './AusgangsdatenCard'
 import { GoalCard } from './GoalCard'
 import { RechnerCard } from './RechnerCard'
+import { LastVerteilung } from './LastVerteilung'
 import { CountUp } from '../../components/CountUp'
 import { wochenLabel } from '../training/calc'
 import { cssVars } from '../../lib/style'
@@ -126,6 +127,15 @@ function BenchTab({ plan }: { plan: Plan }) {
           </div>
         </div>
       </div>
+
+      {progression && (
+        <div style={{ marginBottom: 14 }}>
+          <LastVerteilung
+            plan={plan}
+            zeilen={{ d1: benchRowsFor(progression, 'd1'), d3: benchRowsFor(progression, 'd3') }}
+          />
+        </div>
+      )}
 
       <RechnerCard planId={plan.id} plate={plan.plate ?? 2.5} />
     </section>
