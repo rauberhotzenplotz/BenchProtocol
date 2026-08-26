@@ -11,6 +11,7 @@ import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { SternbildCard } from './SternbildCard'
 import { DruckZugCard } from './DruckZugCard'
+import { MuskelHeatmap } from './MuskelHeatmap'
 import { CountUp } from '../../components/CountUp'
 import { baseE1RM } from '../bench/calc'
 import { gesamtWochenVolumen } from '../volume/calc'
@@ -75,14 +76,18 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
           unten — eine Schieflage soll auffallen, ohne dass man dafür
           etwas aufklappt. */}
       <div style={{ ...cssVars({ '--i': 3 }), marginBottom: 14 }}>
+        <MuskelHeatmap days={days} allSets={allSets} />
+      </div>
+
+      <div style={{ ...cssVars({ '--i': 4 }), marginBottom: 14 }}>
         <DruckZugCard days={days} setsByExercise={setsByExercise} allSets={allSets} week={week} />
       </div>
 
-      <div style={cssVars({ '--i': 4 })}>
+      <div style={cssVars({ '--i': 5 })}>
         <SternbildCard punkte={einheiten} gross />
       </div>
 
-      <div style={{ ...cssVars({ '--i': 5 }), marginTop: 12 }}>
+      <div style={{ ...cssVars({ '--i': 6 }), marginTop: 12 }}>
         <Auswertungen>
           <LetzteEinheitenCard sessions={sessions} days={days} />
           <TonnageEinheitenCard punkte={einheiten} />

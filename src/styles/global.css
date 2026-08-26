@@ -3920,3 +3920,74 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   background: rgba(8,11,16,.6);
 }
 
+/* ── Muskel-Heatmap im Cockpit ──────────────────────────────────────
+   Das Körpermodell stammt aus react-body-highlighter (MIT, © 2020 GV79),
+   siehe cockpit/koerperModell.ts. Hier steht nur, wie es leuchtet.
+
+   Die Farbe je Fläche setzt die Komponente als `color` — so kann eine
+   Regel für alle Flächen gelten und trotzdem jede ihren eigenen Ton
+   tragen (fill: currentColor). */
+.mh-zahl {
+  margin-left: auto; font-family: var(--f-mono); font-size: 9.5px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap;
+}
+
+.mh-buehne {
+  position: relative; border: 1px solid var(--line-soft); border-radius: var(--r-m);
+  background:
+    radial-gradient(58% 46% at 50% 44%, rgba(139,124,255,.10), transparent 70%),
+    var(--ground-2);
+  padding: 12px 0 38px; overflow: hidden;
+}
+.mh-koerper { display: block; height: 268px; width: auto; margin: 0 auto; }
+
+/* Weiche Korona unter der Fläche, scharfe Fläche darüber. */
+.mh-halo polygon { fill: currentColor; filter: blur(2.4px); }
+.mh-flaeche polygon { fill: currentColor; stroke: currentColor; stroke-width: .35; stroke-opacity: .85; }
+.mh-still polygon { fill: var(--surface-2); fill-opacity: .5; stroke: var(--neon); stroke-opacity: .14; stroke-width: .3; }
+
+.mh-seite {
+  position: absolute; top: 9px; left: 11px;
+  font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px;
+  padding: 2px 8px; background: rgba(8,11,16,.75);
+}
+.mh-drehen {
+  position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%);
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+  background: rgba(8,11,16,.85); color: var(--ink-3);
+  font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase;
+  transition: border-color .2s, color .2s;
+}
+.mh-drehen svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+.mh-drehen:hover, .mh-drehen:active { border-color: var(--neon); color: var(--neon); }
+.mh-drehen:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
+
+.mh-legende { margin-top: 12px; }
+.mh-balken {
+  height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg, #FF4D9D 0%, #8B7CFF 43%, rgb(96,182,232) 100%);
+  box-shadow: 0 0 14px rgba(255,77,157,.22), 0 0 14px rgba(96,182,232,.18);
+}
+.mh-enden { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.mh-ende { font-family: var(--f-mono); font-size: 8.5px; line-height: 1.45; letter-spacing: .07em; }
+.mh-ende b { display: block; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; }
+.mh-ende.frisch { color: var(--magenta); }
+.mh-ende.erholt { color: rgb(96,182,232); text-align: right; }
+
+.mh-gruppen { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+.mh-chip {
+  font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .05em;
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
+  color: var(--ink-3); background: rgba(8,11,16,.5); white-space: nowrap;
+}
+.mh-chip b { font-weight: 600; }
+
+/* Nur das Frischeste atmet — ein Puls auf allem wäre Unruhe, kein Signal. */
+@media (prefers-reduced-motion: no-preference) {
+  .mh-halo.frisch { animation: mhAtmen 2.6s ease-in-out infinite; }
+  .mh-halo.mittel { animation: mhAtmen 4s ease-in-out infinite; animation-delay: -1.3s; }
+  @keyframes mhAtmen { 0%, 100% { filter: blur(2.4px); } 50% { filter: blur(4px); } }
+}
