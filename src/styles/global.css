@@ -3845,3 +3845,78 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   .bk-flaeche, .bk-stufe, .bk-zelle-balken i, .bk-leitlinie path, .bk-leitlinie circle { transition: none; }
 }
 
+/* ── Druck-Zug-Bilanz im Cockpit ────────────────────────────────────
+   Magenta steht fürs Drücken, Türkis fürs Ziehen — dieselbe Zuordnung
+   wie im Entwurf, aus dem die Karte stammt. Die Waage ist bewusst eine
+   einzige Leiste statt zweier Balken: Wo der Übergang gegenüber der
+   Mittelmarke steht, ist die Schieflage ohne Zahlenlesen sichtbar. */
+.dz-punkte {
+  margin-left: auto; font-family: var(--f-display); font-size: 17px; font-weight: 600;
+  color: var(--ink); letter-spacing: .02em; line-height: 1;
+}
+.dz-punkte u { text-decoration: none; font-family: var(--f-mono); font-size: 10px; color: var(--ink-4); }
+.dz-karte.schief .dz-punkte { color: var(--warn); }
+
+.dz-koepfe { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 7px; }
+.dz-kopf {
+  font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.dz-kopf b { font-family: var(--f-display); font-size: 17px; font-weight: 600; letter-spacing: 0; }
+.dz-kopf.druck b { color: var(--magenta); }
+.dz-kopf.zug b { color: var(--neon); }
+
+.dz-waage {
+  position: relative; display: flex; height: 12px; border-radius: 999px;
+  overflow: hidden; background: var(--surface-2); border: 1px solid var(--line-soft);
+}
+.dz-schale { display: block; transition: width .5s cubic-bezier(.16,1,.3,1); }
+.dz-schale.druck { background: linear-gradient(90deg, rgba(255,77,157,.45), var(--magenta)); }
+.dz-schale.zug { background: linear-gradient(90deg, var(--neon), rgba(53,240,208,.45)); }
+/* Mittelmarke: hier läge ein ausgeglichenes Verhältnis. */
+.dz-mitte {
+  position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px;
+  background: var(--ink-2); opacity: .55; transform: translateX(-.5px);
+}
+
+.dz-gruppen { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 11px; }
+.dz-chip {
+  font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .06em;
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
+  color: var(--ink-3); background: rgba(8,11,16,.5); white-space: nowrap;
+}
+.dz-chip b { font-weight: 600; }
+.dz-chip.druck { border-color: rgba(255,77,157,.3); }
+.dz-chip.druck b { color: var(--magenta); }
+.dz-chip.zug { border-color: rgba(53,240,208,.3); }
+.dz-chip.zug b { color: var(--neon); }
+
+.dz-warnung {
+  display: flex; gap: 10px; align-items: flex-start; margin-top: 13px; padding: 10px 12px;
+  border: 1px solid rgba(255,196,77,.34); border-left: 3px solid var(--warn);
+  border-radius: var(--r-s); background: rgba(255,196,77,.07);
+}
+.dz-warnung svg {
+  width: 15px; height: 15px; flex: none; margin-top: 1px;
+  stroke: var(--warn); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+.dz-warnung p { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--warn); }
+.dz-warnung b {
+  display: block; margin-bottom: 2px; font-family: var(--f-mono);
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dz-schale { transition: none; }
+}
+
+/* Kennzeichnet, dass die Zahlen aus der Vorwoche stammen — eine fremde
+   Woche stillschweigend als laufende auszugeben wäre schlimmer als gar
+   keine Zahl. */
+.dz-vorwoche {
+  font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-3);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 7px;
+  background: rgba(8,11,16,.6);
+}
+

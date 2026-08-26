@@ -10,6 +10,7 @@ import { tagFarbe } from '../training/dayColor'
 import { DauerEinheitenCard } from './DauerEinheitenCard'
 import { TonnageEinheitenCard } from './TonnageEinheitenCard'
 import { SternbildCard } from './SternbildCard'
+import { DruckZugCard } from './DruckZugCard'
 import { CountUp } from '../../components/CountUp'
 import { baseE1RM } from '../bench/calc'
 import { gesamtWochenVolumen } from '../volume/calc'
@@ -69,11 +70,19 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
         />
       </div>
 
-      <div style={cssVars({ '--i': 3 })}>
+      {/* Direkt unter den Kennzahlen: Das Verhaeltnis von Druecken zu
+          Ziehen gehoert zu den Zahlen, nicht zu den Auswertungen weiter
+          unten — eine Schieflage soll auffallen, ohne dass man dafür
+          etwas aufklappt. */}
+      <div style={{ ...cssVars({ '--i': 3 }), marginBottom: 14 }}>
+        <DruckZugCard days={days} setsByExercise={setsByExercise} allSets={allSets} week={week} />
+      </div>
+
+      <div style={cssVars({ '--i': 4 })}>
         <SternbildCard punkte={einheiten} gross />
       </div>
 
-      <div style={{ ...cssVars({ '--i': 4 }), marginTop: 12 }}>
+      <div style={{ ...cssVars({ '--i': 5 }), marginTop: 12 }}>
         <Auswertungen>
           <LetzteEinheitenCard sessions={sessions} days={days} />
           <TonnageEinheitenCard punkte={einheiten} />
