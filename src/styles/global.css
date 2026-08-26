@@ -1224,21 +1224,10 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .dtag .punkte { display: flex; justify-content: center; gap: 3px; height: 6px; margin-top: 5px; }
 .dtag .punkte i { width: 5px; height: 5px; border-radius: 50%; flex: none; }
 
-.kal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.kal .kwt { font-family: var(--f-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-4); text-align: center; padding-bottom: 3px; }
-.kal .ktag {
-  aspect-ratio: 1; border-radius: var(--r-s); border: 1px solid transparent;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  font-family: var(--f-mono); font-size: 11.5px; color: var(--ink-4);
-  background: rgba(255,255,255,.02); font-variant-numeric: tabular-nums;
-}
-.kal .ktag.aus { opacity: .25; }
-.kal .ktag.trainiert { background: rgba(255,255,255,.06); color: var(--ink); border-color: var(--line); }
-.kal .ktag.heute { border-color: var(--neon); color: var(--neon); }
-.kal .punkte { display: flex; gap: 2px; height: 5px; }
-.kal .punkte i { width: 5px; height: 5px; border-radius: 50%; display: block; }
-
+/* Nur die Liste, nicht das Kalenderraster: Dessen Zellen in
+   TrainingCalendar.tsx tragen keine Klassen, sondern ihren Stil inline
+   (Farbe und Rahmen haengen dort an den Daten des jeweiligen Tages).
+   Die frueheren .kal-/.ktag-Regeln liefen deshalb ins Leere. */
 .kalliste { max-height: 190px; overflow-y: auto; margin-top: 14px; padding-top: 12px;
   border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 5px; }
 .kalliste div { display: flex; align-items: center; gap: 9px; font-family: var(--f-mono); font-size: 11.5px; }
@@ -1249,12 +1238,6 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
 .modal.breit { width: min(560px, 100%); }
 
 /* ── Einheit im Rückblick ───────────────────────────────────── */
-.kal .ktag.trainiert { cursor: pointer; }
-.kal .ktag.trainiert:hover { border-color: var(--neon); background: rgba(53,240,208,.1); }
-.kalliste div.klick { cursor: pointer; border-radius: var(--r-s); padding: 3px 6px; margin: 0 -6px;
-  transition: background .18s; }
-.kalliste div.klick:hover { background: rgba(53,240,208,.08); }
-
 .rueckkopf { display: flex; align-items: center; gap: 11px; margin-bottom: 4px; }
 .rueckkopf h4 { margin: 0; flex: 1; }
 .rueckmeta { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
@@ -3796,3 +3779,4 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
      springt die Lücke einfach an ihren Platz. */
   .planed-ueb, .ueb, .ap-kachel { transition: none !important; }
 }
+
