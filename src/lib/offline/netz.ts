@@ -34,7 +34,11 @@ const PRUEF_TIMEOUT = 5000
 const INTERVALL_OFFLINE = 10_000
 const INTERVALL_ONLINE = 60_000
 
-async function serverErreichbar(): Promise<boolean> {
+/** Eine einzelne, echte Messung. Exportiert, weil der AuthProvider vor dem
+    ersten Rendern entscheiden muss, ob eine fehlende Sitzung "abgemeldet"
+    oder nur "kein Netz" heißt — zu diesem Zeitpunkt hat der onlineManager
+    noch keinen gemessenen Stand und meldet optimistisch "online". */
+export async function serverErreichbar(): Promise<boolean> {
   if (!navigator.onLine) return false
   try {
     const abbruch = new AbortController()

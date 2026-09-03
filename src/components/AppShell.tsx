@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { useIsMutating, useQueryClient } from '@tanstack/react-query'
+import { onlineManager, useIsMutating, useQueryClient } from '@tanstack/react-query'
 import { Nav } from './Nav'
 import { UpdateBanner } from './UpdateBanner'
 import { OfflineBanner } from './OfflineBanner'
@@ -65,7 +65,10 @@ function useWochenAbschluss(plan: ReturnType<typeof useActivePlan>['activePlan']
   const qc = useQueryClient()
   const laeuft = useRef(false)
   useEffect(() => {
-    if (!plan || laeuft.current || !navigator.onLine) return
+    // onlineManager statt navigator.onLine: Letzteres meldet in der
+    // Android-WebView auch ohne Verbindung true (siehe offline/netz.ts),
+    // die Prüfung lief dann offline jedes Mal ins Leere.
+    if (!plan || laeuft.current || !onlineManager.isOnline()) return
     laeuft.current = true
     pruefeWochenabschluss(qc, plan.id)
       .catch(() => {
