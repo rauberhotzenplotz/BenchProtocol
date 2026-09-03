@@ -14,10 +14,10 @@ function normalisieren(text: string): string {
 /** Die hintere Schulter zieht, die vordere und seitliche drücken. Muss vor
     der allgemeinen Schulter-Erkennung greifen, sonst landet das
     Reverse Fly beim Drücken. */
-const HINTERE_SCHULTER = /hinte[nr]|rear|revers/
+const HINTERE_SCHULTER = /hinte[nr]|rear|revers|posterior|infraspinatus|teres/
 
-const ZIEHT = /ruecken|\blat\b|latissimus|bizeps|trapez|rhombo|klimmzug|rudern|face pull/
-const DRUECKT = /brust|trizeps|schulter|delt|pec/
+const ZIEHT = /ruecken|\blat\b|latissimus|bizeps|trapez|rhombo|klimmzug|rudern|face pull|biceps brachii|brachialis|levator|erector/
+const DRUECKT = /brust|trizeps|schulter|delt|pec|triceps/
 
 /** Ordnet eine Muskelgruppe der Drück- oder Zugkette zu.
 
@@ -67,14 +67,20 @@ const AUSGEGLICHEN_AB = 7
     beide Richtungen ergeben 10, doppelt so viel Drücken wie Ziehen ergibt
     5. Eine Formel, die man in einem Satz erklären kann, ist hier mehr wert
     als eine genauere, die niemand nachrechnen kann. */
-export function druckZugBilanz(gruppenSaetze: ReadonlyArray<{ name: string; saetze: number }>): DruckZug {
+export function druckZugBilanz(
+  gruppenSaetze: ReadonlyArray<{ name: string; saetze: number; hauptmuskel?: string | null }>,
+): DruckZug {
   const gruppen: GruppenAnteil[] = []
   let druecken = 0
   let ziehen = 0
 
-  for (const { name, saetze } of gruppenSaetze) {
+  for (const { name, saetze, hauptmuskel } of gruppenSaetze) {
     if (saetze === 0) continue
-    const kette = ketteFuer(name)
+    // Der Hauptmuskel aus dem Katalog geht vor: Seit die Gruppen von dort
+    // kommen, heißt alles Schulterhafte schlicht "Schultern" — ob vorne
+    // (drückt) oder hinten (zieht), steht nur im Muskelnamen. Ohne
+    // Katalogeintrag entscheidet weiter der Gruppenname.
+    const kette = (hauptmuskel ? ketteFuer(hauptmuskel) : null) ?? ketteFuer(name)
     if (kette === null) continue
     gruppen.push({ name, kette, saetze })
     if (kette === 'druecken') druecken += saetze

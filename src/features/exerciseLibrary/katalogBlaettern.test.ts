@@ -14,6 +14,9 @@ function e(id: string, name: string, gruppe: string, pop: number): KatalogEintra
     equipment: null,
     difficulty: null,
     popularity: pop,
+    primary_muscle: null,
+    secondary_muscle: null,
+    tertiary_muscle: null,
   }
 }
 

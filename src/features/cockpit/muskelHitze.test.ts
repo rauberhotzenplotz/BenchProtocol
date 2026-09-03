@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modellFlaechenFuer, muskelHitze, frischeVon, hitzeFarbe, hitzeFarbeBlass, ERHOLUNG_TAGE } from './muskelHitze'
+import { modellFlaechenFuer, muskelHitze, frischeVon, hitzeFarbe, hitzeFarbeBlass, flaechenFuerMuskel, ERHOLUNG_TAGE, type KatalogMuskeln } from './muskelHitze'
 import type { LoggedSet } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 
@@ -65,34 +65,34 @@ describe('modellFlaechenFuer', () => {
 describe('muskelHitze', () => {
   it('zaehlt Saetze und misst die Zeit seit dem letzten Haken', () => {
     const { days, alleSaetze } = aufbau([['Brust', 12, 0.5], ['Quadrizeps', 9, 6]])
-    const h = muskelHitze(days, alleSaetze, JETZT)
+    const h = muskelHitze(days, alleSaetze, undefined, JETZT)
     expect(h.flaechen.get('chest')).toEqual({ tage: 0.5, saetze: 12 })
     expect(h.flaechen.get('quadriceps')).toEqual({ tage: 6, saetze: 9 })
   })
 
   it('sortiert die Gruppen nach Frische', () => {
     const { days, alleSaetze } = aufbau([['Quadrizeps', 9, 6], ['Brust', 12, 0.5], ['Bizeps', 3, 4]])
-    const h = muskelHitze(days, alleSaetze, JETZT)
+    const h = muskelHitze(days, alleSaetze, undefined, JETZT)
     expect(h.gruppen.map(g => g.name)).toEqual(['Brust', 'Bizeps', 'Quadrizeps'])
   })
 
   it('zaehlt die frisch gereizten Gruppen der letzten zwei Tage', () => {
     const { days, alleSaetze } = aufbau([['Brust', 8, 0.5], ['Trizeps', 5, 1.5], ['Rücken', 6, 4]])
-    expect(muskelHitze(days, alleSaetze, JETZT).frischeGruppen).toBe(2)
+    expect(muskelHitze(days, alleSaetze, undefined, JETZT).frischeGruppen).toBe(2)
   })
 
   // Zwei Gruppen koennen dieselbe Flaeche treffen. Der frischere Reiz
   // gewinnt, weil er der ist, der noch nachwirkt.
   it('nimmt bei zwei Gruppen auf einer Flaeche den frischeren Reiz', () => {
     const { days, alleSaetze } = aufbau([['Rücken', 6, 5], ['Lat', 4, 1]])
-    const h = muskelHitze(days, alleSaetze, JETZT)
+    const h = muskelHitze(days, alleSaetze, undefined, JETZT)
     expect(h.flaechen.get('upper-back')?.tage).toBe(1)
   })
 
   it('laesst Saetze ohne Zeitstempel aus der Erholung heraus', () => {
     const { days, alleSaetze } = aufbau([['Brust', 3, 2]])
     alleSaetze.push({ id: 'alt', exercise_id: 'ex0', week: 1, position: 9, done: true, done_at: null } as unknown as LoggedSet)
-    const h = muskelHitze(days, alleSaetze, JETZT)
+    const h = muskelHitze(days, alleSaetze, undefined, JETZT)
     expect(h.flaechen.get('chest')?.tage).toBe(2)
   })
 
@@ -105,17 +105,17 @@ describe('muskelHitze', () => {
         done_at: new Date(JETZT - 20 * TAG).toISOString(),
       } as unknown as LoggedSet)
     }
-    expect(muskelHitze(days, alleSaetze, JETZT).flaechen.get('chest')?.saetze).toBe(4)
+    expect(muskelHitze(days, alleSaetze, undefined, JETZT).flaechen.get('chest')?.saetze).toBe(4)
   })
 
   it('uebergeht nicht abgehakte Saetze', () => {
     const { days, alleSaetze } = aufbau([['Brust', 2, 1]])
     alleSaetze.push({ id: 'offen', exercise_id: 'ex0', week: 1, position: 8, done: false, done_at: null } as unknown as LoggedSet)
-    expect(muskelHitze(days, alleSaetze, JETZT).flaechen.get('chest')?.saetze).toBe(2)
+    expect(muskelHitze(days, alleSaetze, undefined, JETZT).flaechen.get('chest')?.saetze).toBe(2)
   })
 
   it('kommt mit einer leeren Historie klar', () => {
-    const h = muskelHitze([], [], JETZT)
+    const h = muskelHitze([], [], undefined, JETZT)
     expect(h.flaechen.size).toBe(0)
     expect(h.gruppen).toEqual([])
     expect(h.frischeGruppen).toBe(0)
@@ -170,5 +170,94 @@ describe('hitzeFarbe', () => {
 describe('hitzeFarbeBlass', () => {
   it('macht aus rgb ein gueltiges rgba', () => {
     expect(hitzeFarbeBlass(0, 0.4)).toBe('rgba(255,77,157, 0.4)')
+  })
+})
+
+describe('flaechenFuerMuskel', () => {
+  it('trifft die Muskelnamen des Katalogs', () => {
+    expect(flaechenFuerMuskel('Pectoralis Major')).toEqual(['chest'])
+    expect(flaechenFuerMuskel('Latissimus Dorsi')).toEqual(['upper-back'])
+    expect(flaechenFuerMuskel('Triceps Brachii')).toEqual(['triceps'])
+    expect(flaechenFuerMuskel('Quadriceps Femoris')).toEqual(['quadriceps'])
+    expect(flaechenFuerMuskel('Soleus')).toEqual(['left-soleus', 'right-soleus'])
+  })
+
+  it('trennt die Schulter nach Lage', () => {
+    expect(flaechenFuerMuskel('Anterior Deltoids')).toEqual(['front-deltoids'])
+    expect(flaechenFuerMuskel('Lateral Deltoids')).toEqual(['front-deltoids'])
+    expect(flaechenFuerMuskel('Posterior Deltoids')).toEqual(['back-deltoids'])
+  })
+
+  // Gluteus Medius ist der Abduktor und muss vor der allgemeinen
+  // Gesaess-Zeile greifen.
+  it('unterscheidet grossen und mittleren Gesaessmuskel', () => {
+    expect(flaechenFuerMuskel('Gluteus Maximus')).toEqual(['gluteal'])
+    expect(flaechenFuerMuskel('Gluteus Medius')).toEqual(['abductors'])
+  })
+
+  it('laesst Muskeln ohne Flaeche im Modell aus', () => {
+    expect(flaechenFuerMuskel('Iliopsoas')).toEqual([])
+    expect(flaechenFuerMuskel('Tibialis Anterior')).toEqual([])
+  })
+})
+
+describe('muskelHitze mit Katalogmuskeln', () => {
+  /** Eine Uebung mit Katalogverweis, vier abgehakte Saetze. */
+  function mitKatalog(kat: Partial<KatalogMuskeln>) {
+    const days: DayWithExercises[] = [
+      { id: 't1', plan_id: 'p', user_id: 'u', name: 'Tag 1', sort_order: 0, created_at: '', exercises: [] } as unknown as DayWithExercises,
+    ]
+    ;(days[0].exercises as unknown[]).push({ id: 'ex0', name: 'Bankdrücken', muscle_group: null, library_id: 'lib1', sort_order: 0 })
+    const alleSaetze: LoggedSet[] = []
+    for (let n = 0; n < 4; n++) {
+      alleSaetze.push({
+        id: 's' + n, exercise_id: 'ex0', week: 1, position: n, done: true,
+        done_at: new Date(JETZT - 0.5 * TAG).toISOString(),
+      } as unknown as LoggedSet)
+    }
+    const katalog = new Map<string, KatalogMuskeln>([
+      ['lib1', { muscle_group: 'Brust', primary_muscle: null, secondary_muscle: null, tertiary_muscle: null, ...kat }],
+    ])
+    return { days, alleSaetze, katalog }
+  }
+
+  // Der Kern von Punkt 3: Die Belastung kommt aus den hinterlegten
+  // Muskeln, nicht aus einer von Hand gesetzten Gruppe.
+  it('verteilt die Last gewichtet auf Haupt-, Sekundaer- und Tertiaermuskel', () => {
+    const { days, alleSaetze, katalog } = mitKatalog({
+      primary_muscle: 'Pectoralis Major',
+      secondary_muscle: 'Triceps Brachii',
+      tertiary_muscle: 'Anterior Deltoids',
+    })
+    const h = muskelHitze(days, alleSaetze, katalog, JETZT)
+    expect(h.flaechen.get('chest')?.saetze).toBe(4)
+    expect(h.flaechen.get('triceps')?.saetze).toBe(2)
+    expect(h.flaechen.get('front-deltoids')?.saetze).toBe(1)
+  })
+
+  it('gibt allen beteiligten Flaechen dieselbe Erholungszeit', () => {
+    const { days, alleSaetze, katalog } = mitKatalog({
+      primary_muscle: 'Pectoralis Major',
+      secondary_muscle: 'Triceps Brachii',
+    })
+    const h = muskelHitze(days, alleSaetze, katalog, JETZT)
+    expect(h.flaechen.get('chest')?.tage).toBe(0.5)
+    expect(h.flaechen.get('triceps')?.tage).toBe(0.5)
+  })
+
+  it('benennt die Gruppe nach dem Katalog und merkt sich den Hauptmuskel', () => {
+    const { days, alleSaetze, katalog } = mitKatalog({ primary_muscle: 'Posterior Deltoids', muscle_group: 'Schultern' })
+    const h = muskelHitze(days, alleSaetze, katalog, JETZT)
+    expect(h.gruppen[0].name).toBe('Schultern')
+    expect(h.gruppen[0].hauptmuskel).toBe('Posterior Deltoids')
+  })
+
+  // Uebungen aus der Zeit vor dem neuen Katalog haben keine library_id
+  // mehr. Ohne Rueckfall stuende ihre Belastung nirgends.
+  it('faellt ohne Katalogeintrag auf die Muskelgruppe zurueck', () => {
+    const { days, alleSaetze } = aufbau([['Brust', 4, 0.5]])
+    const h = muskelHitze(days, alleSaetze, new Map(), JETZT)
+    expect(h.flaechen.get('chest')?.saetze).toBe(4)
+    expect(h.gruppen[0].name).toBe('Brust')
   })
 })

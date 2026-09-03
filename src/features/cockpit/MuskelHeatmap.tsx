@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { LoggedSet } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { MODELL_VIEWBOX, VORDERSEITE, RUECKSEITE } from './koerperModell'
+import { useKatalogMuskeln } from '../exerciseLibrary/queries'
 import { muskelHitze, frischeVon, hitzeFarbe, hitzeFarbeBlass, type FlaechenHitze } from './muskelHitze'
 
 /** Flächen ohne eigene Daten — Kopf, Hals, Knie. Sie bleiben als blasse
@@ -67,7 +68,8 @@ export function MuskelHeatmap({
 }) {
   const [seite, setSeite] = useState<'vorn' | 'hinten'>('vorn')
   // Gemerkt, weil dafür alle je geloggten Sätze durchlaufen werden.
-  const hitze = useMemo(() => muskelHitze(days, allSets), [days, allSets])
+  const katalog = useKatalogMuskeln()
+  const hitze = useMemo(() => muskelHitze(days, allSets, katalog), [days, allSets, katalog])
 
   if (hitze.gruppen.length === 0) {
     return (

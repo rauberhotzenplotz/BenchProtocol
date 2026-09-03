@@ -93,3 +93,29 @@ describe('druckZugBilanz', () => {
     expect(b.lage).toBe('zu-wenig-zug')
   })
 })
+
+describe('druckZugBilanz mit Katalogmuskeln', () => {
+  // Seit die Gruppen aus dem Katalog kommen, heisst alles Schulterhafte
+  // "Schultern". Ohne den Hauptmuskel landete die hintere Schulter damit
+  // beim Druecken — genau verkehrt.
+  it('ordnet die hintere Schulter ueber den Hauptmuskel dem Ziehen zu', () => {
+    const b = druckZugBilanz([
+      { name: 'Schultern', saetze: 6, hauptmuskel: 'Posterior Deltoids' },
+      { name: 'Schultern', saetze: 6, hauptmuskel: 'Anterior Deltoids' },
+    ])
+    expect(b.ziehen).toBe(6)
+    expect(b.druecken).toBe(6)
+  })
+
+  it('faellt ohne Hauptmuskel auf den Gruppennamen zurueck', () => {
+    const b = druckZugBilanz([{ name: 'Schulter hinten', saetze: 4 }])
+    expect(b.ziehen).toBe(4)
+  })
+
+  it('erkennt die lateinischen Namen der Ketten', () => {
+    expect(ketteFuer('Latissimus Dorsi')).toBe('ziehen')
+    expect(ketteFuer('Biceps Brachii')).toBe('ziehen')
+    expect(ketteFuer('Pectoralis Major')).toBe('druecken')
+    expect(ketteFuer('Triceps Brachii')).toBe('druecken')
+  })
+})

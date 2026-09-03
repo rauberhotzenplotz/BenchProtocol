@@ -53,6 +53,64 @@ export function modellFlaechenFuer(muskelgruppe: string): string[] {
   return []
 }
 
+/** Die Muskelangaben eines Katalogeintrags. Namen sind anatomisch und
+    lateinisch ("Pectoralis Major"), so wie sie in exercise_library
+    stehen. */
+export interface KatalogMuskeln {
+  muscle_group: string | null
+  primary_muscle: string | null
+  secondary_muscle: string | null
+  tertiary_muscle: string | null
+}
+
+/** Wie stark ein Muskel an einer Übung beteiligt ist.
+
+    Der Hauptmuskel zählt voll, der sekundäre halb, der tertiäre ein
+    Viertel. Bewusst grob: Der Katalog nennt nur die Reihenfolge, keine
+    Anteile — jede feinere Zahl wäre erfunden. Die Abstufung reicht, damit
+    die Brust beim Bankdrücken deutlich heller leuchtet als der Trizeps,
+    statt wie bisher gleich hell oder (ohne Muskelgruppe) gar nicht. */
+export const ANTEIL_PRIMAER = 1
+export const ANTEIL_SEKUNDAER = 0.5
+export const ANTEIL_TERTIAER = 0.25
+
+/** Anatomischer Muskelname → Flächen im Körpermodell.
+
+    Gegenstück zu modellFlaechenFuer(), das den Freitext des Nutzers
+    übersetzt. Diese Liste ist dagegen geschlossen: Sie deckt genau die
+    Namen ab, die im Katalog vorkommen. Was das Modell nicht kennt
+    (Iliopsoas, Tibialis Anterior), bleibt außen vor, statt hilfsweise
+    irgendwo mitzuleuchten. */
+export function flaechenFuerMuskel(muskel: string): string[] {
+  const t = muskel.trim().toLowerCase()
+  if (t.startsWith('pectoralis')) return ['chest']
+  if (t.startsWith('latissimus')) return ['upper-back']
+  if (t.startsWith('rhomboid') || t.startsWith('levator')) return ['upper-back']
+  if (t.includes('trapezius')) return ['trapezius']
+  if (t.startsWith('erector')) return ['lower-back']
+  if (t.startsWith('posterior delt') || t.startsWith('infraspinatus') || t.startsWith('teres') || t.startsWith('subscapularis'))
+    return ['back-deltoids']
+  if (t.includes('delt')) return ['front-deltoids']
+  if (t.startsWith('biceps brachii') || t.startsWith('brachialis')) return ['biceps']
+  if (t.startsWith('triceps')) return ['triceps']
+  if (t.startsWith('brachioradialis') || t.includes('carpi') || t.includes('forearm')) return ['forearm']
+  if (t.startsWith('rectus abdominis')) return ['abs']
+  if (t.startsWith('obliques') || t.includes('oblique')) return ['obliques']
+  // Der mittlere Gesäßmuskel ist der Abduktor — muss vor der allgemeinen
+  // Gesäß-Zeile stehen, sonst landet er in der großen Fläche.
+  if (t.startsWith('gluteus medius') || t.startsWith('gluteus minimus')) return ['abductors']
+  if (t.startsWith('gluteus')) return ['gluteal']
+  // "Vastus Mediais" ist ein Tippfehler der Quelle und bleibt so stehen,
+  // damit die Zeile trotzdem trifft.
+  if (t.startsWith('quadriceps') || t.startsWith('vastus') || t.startsWith('rectus femoris')) return ['quadriceps']
+  if (t.startsWith('biceps femoris') || t.includes('semitendinosus') || t.includes('semimembranosus')) return ['hamstring']
+  if (t.startsWith('gastrocnemius')) return ['calves']
+  if (t.startsWith('soleus')) return ['left-soleus', 'right-soleus']
+  if (t.startsWith('adductor')) return ['adductor']
+  if (t.startsWith('tensor')) return ['abductors']
+  return []
+}
+
 export interface FlaechenHitze {
   /** Tage seit dem letzten abgehakten Satz dieser Fläche. */
   tage: number
@@ -63,10 +121,47 @@ export interface FlaechenHitze {
 export interface MuskelHitze {
   /** Je Modellfläche der Zustand; Flächen ohne Daten fehlen hier. */
   flaechen: Map<string, FlaechenHitze>
-  /** Je Muskelgruppe des Nutzers, für die Aufstellung darunter. */
-  gruppen: { name: string; tage: number; saetze: number }[]
+  /** Je Muskelgruppe, für die Aufstellung darunter. */
+  gruppen: {
+    name: string
+    tage: number
+    saetze: number
+    /** Der Hauptmuskel aus dem Katalog, sofern die Übungen der Gruppe
+        einen tragen — die Druck-Zug-Bilanz ordnet damit genauer zu, als
+        es der Gruppenname erlaubt ("Schultern" sagt nicht, ob vorne oder
+        hinten). */
+    hauptmuskel?: string | null
+  }[]
   /** Wie viele Gruppen in den letzten 48 Stunden gereizt wurden. */
   frischeGruppen: number
+}
+
+/** Beteiligte Flächen einer Übung samt Anteil.
+
+    Liegt ein Katalogeintrag vor, kommen Haupt-, Sekundär- und
+    Tertiärmuskel zum Zug — die stehen für jede Katalogübung fest und
+    müssen von niemandem gepflegt werden. Ohne Katalogeintrag bleibt die
+    von Hand gesetzte Muskelgruppe als Rückfall: Übungen aus der Zeit vor
+    dem neuen Katalog haben keine library_id mehr, und ohne diesen
+    Rückfall stünde ihre Belastung nirgends. */
+function flaechenAnteile(muskelgruppe: string | null, kat: KatalogMuskeln | undefined): Map<string, number> {
+  const anteile = new Map<string, number>()
+  const eintragen = (muskel: string | null, anteil: number) => {
+    if (!muskel) return
+    for (const f of flaechenFuerMuskel(muskel)) {
+      anteile.set(f, Math.max(anteile.get(f) ?? 0, anteil))
+    }
+  }
+
+  if (kat?.primary_muscle) {
+    eintragen(kat.primary_muscle, ANTEIL_PRIMAER)
+    eintragen(kat.secondary_muscle, ANTEIL_SEKUNDAER)
+    eintragen(kat.tertiary_muscle, ANTEIL_TERTIAER)
+    if (anteile.size) return anteile
+  }
+
+  for (const f of modellFlaechenFuer(muskelgruppe ?? '')) anteile.set(f, ANTEIL_PRIMAER)
+  return anteile
 }
 
 /** Belastung und Erholung je Muskelgruppe aus den Satzprotokollen.
@@ -81,44 +176,69 @@ export interface MuskelHitze {
 export function muskelHitze(
   days: DayWithExercises[],
   alleSaetze: LoggedSet[],
+  /** Katalogeinträge nach exercises.library_id. Fehlt die Angabe, rechnet
+      alles wie früher über die von Hand gesetzte Muskelgruppe. */
+  katalog?: ReadonlyMap<string, KatalogMuskeln>,
   jetzt: number = Date.now(),
 ): MuskelHitze {
-  const gruppeJeUebung = new Map<string, string>()
+  /** Was je Übung gilt — Gruppenname für die Aufstellung, Flächenanteile
+      fürs Modell. */
+  const jeUebung = new Map<string, { gruppe: string; hauptmuskel: string | null; anteile: Map<string, number> }>()
   for (const tag of days) {
     for (const ex of tag.exercises) {
-      if (ex.muscle_group) gruppeJeUebung.set(ex.id, ex.muscle_group)
+      const kat = ex.library_id ? katalog?.get(ex.library_id) : undefined
+      const gruppe = kat?.muscle_group ?? ex.muscle_group
+      const anteile = flaechenAnteile(ex.muscle_group, kat)
+      // Ohne Gruppenname und ohne Fläche gibt es nichts zu zeigen.
+      if (!gruppe && anteile.size === 0) continue
+      jeUebung.set(ex.id, { gruppe: gruppe ?? '—', hauptmuskel: kat?.primary_muscle ?? null, anteile })
     }
   }
 
-  const jeGruppe = new Map<string, { saetze: number; zuletzt: number | null }>()
+  const jeGruppe = new Map<string, { saetze: number; zuletzt: number | null; hauptmuskel: string | null }>()
+  const jeFlaeche = new Map<string, { saetze: number; zuletzt: number | null }>()
+
   for (const s of alleSaetze) {
     if (!s.done) continue
-    const gruppe = gruppeJeUebung.get(s.exercise_id)
-    if (!gruppe) continue
-    const stand = jeGruppe.get(gruppe) ?? { saetze: 0, zuletzt: null }
+    const ueb = jeUebung.get(s.exercise_id)
+    if (!ueb) continue
     const zeit = s.done_at ? Date.parse(s.done_at) : NaN
-    if (!Number.isNaN(zeit)) {
-      if (jetzt - zeit <= LAST_TAGE * TAG_MS) stand.saetze += 1
-      if (stand.zuletzt == null || zeit > stand.zuletzt) stand.zuletzt = zeit
+    if (Number.isNaN(zeit)) continue
+    const imFenster = jetzt - zeit <= LAST_TAGE * TAG_MS
+
+    const stand = jeGruppe.get(ueb.gruppe) ?? { saetze: 0, zuletzt: null, hauptmuskel: ueb.hauptmuskel }
+    if (imFenster) stand.saetze += 1
+    if (stand.zuletzt == null || zeit > stand.zuletzt) stand.zuletzt = zeit
+    jeGruppe.set(ueb.gruppe, stand)
+
+    for (const [flaeche, anteil] of ueb.anteile) {
+      const f = jeFlaeche.get(flaeche) ?? { saetze: 0, zuletzt: null }
+      // Der Anteil geht in die Last ein: Beim Bankdrücken zählt die Brust
+      // voll, der Trizeps halb, die vordere Schulter ein Viertel.
+      if (imFenster) f.saetze += anteil
+      // Für die Erholung zählt der Reiz selbst, nicht seine Stärke — ein
+      // halber Satz Trizeps liegt genauso lange zurück wie der ganze.
+      if (f.zuletzt == null || zeit > f.zuletzt) f.zuletzt = zeit
+      jeFlaeche.set(flaeche, f)
     }
-    jeGruppe.set(gruppe, stand)
   }
 
   const flaechen = new Map<string, FlaechenHitze>()
+  for (const [name, f] of jeFlaeche) {
+    if (f.zuletzt == null) continue
+    flaechen.set(name, {
+      tage: Math.max(0, (jetzt - f.zuletzt) / TAG_MS),
+      saetze: Math.round(f.saetze * 10) / 10,
+    })
+  }
+
   const gruppen: MuskelHitze['gruppen'] = []
   let frischeGruppen = 0
-
   for (const [name, stand] of jeGruppe) {
     if (stand.zuletzt == null) continue
     const tage = Math.max(0, (jetzt - stand.zuletzt) / TAG_MS)
-    gruppen.push({ name, tage, saetze: stand.saetze })
+    gruppen.push({ name, tage, saetze: stand.saetze, hauptmuskel: stand.hauptmuskel })
     if (tage <= 2) frischeGruppen += 1
-    for (const flaeche of modellFlaechenFuer(name)) {
-      // Färben zwei Gruppen dieselbe Fläche (etwa "Rücken" und "Lat"),
-      // gewinnt der frischere Reiz — er ist der, der noch nachwirkt.
-      const bisher = flaechen.get(flaeche)
-      if (!bisher || tage < bisher.tage) flaechen.set(flaeche, { tage, saetze: stand.saetze })
-    }
   }
 
   gruppen.sort((a, b) => a.tage - b.tage || b.saetze - a.saetze)

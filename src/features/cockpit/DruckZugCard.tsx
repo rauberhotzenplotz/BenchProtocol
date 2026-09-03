@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { LoggedSet } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
+import { useKatalogMuskeln } from '../exerciseLibrary/queries'
 import { muskelHitze } from './muskelHitze'
 import { druckZugBilanz } from './druckZug'
 import { CountUp } from '../../components/CountUp'
@@ -32,7 +33,11 @@ export function DruckZugCard({ days, allSets }: { days: DayWithExercises[]; allS
   // Funktion: Sonst stehen dieselben Muskelgruppen in zwei Karten
   // übereinander mit verschiedenen Zahlen. Beide rechnen unabhängig, aber
   // aus derselben Quelle — auseinanderlaufen können sie damit nicht.
-  const bilanz = useMemo(() => druckZugBilanz(muskelHitze(days, allSets).gruppen), [days, allSets])
+  const katalog = useKatalogMuskeln()
+  const bilanz = useMemo(
+    () => druckZugBilanz(muskelHitze(days, allSets, katalog).gruppen),
+    [days, allSets, katalog],
+  )
 
   if (bilanz.punktzahl == null) {
     return (
