@@ -6,6 +6,10 @@ mit echtem Login und Datentrennung pro Konto über Row Level Security.
 
 ## Einrichten
 
+Auf einem neuen Rechner: `UEBERGABE.md` lesen. Dort steht, welche vier Dateien
+nicht im Repo liegen, wie die Android-Kette gebaut wird und welche Fallstricke
+bereits Zeit gekostet haben.
+
 ```bash
 npm install
 cp .env.example .env.local   # dann Werte eintragen, siehe unten
