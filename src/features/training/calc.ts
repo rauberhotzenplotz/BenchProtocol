@@ -9,10 +9,38 @@ export function mround(n: number, step: number): number {
 
 const WEEK_LABELS = ['Woche 1', 'Woche 2', 'Woche 3', 'Woche 4 · Deload']
 
+/** Länge eines Bankfokus-Blocks in Wochen. */
+export const BLOCK_WOCHEN = 4
+
+/** Welche der vier Blockwochen läuft — 1 bis 4.
+
+    plans.week zählt seit dem Blockwechsel-Umbau durchgehend weiter (5, 6,
+    7 …), statt bei jedem neuen Block wieder bei 1 anzufangen. Der Grund
+    ist die Historie: logged_sets und sessions sind allein über die
+    Wochenzahl eindeutig (unique (exercise_id, week, position) bzw.
+    (day_id, week)). Solange die Zahl zurücksprang, kollidierte jeder neue
+    Block mit dem alten — und der bisherige Ausweg war, die Daten des
+    alten Blocks zu löschen. Mit durchlaufenden Wochen kann sich nichts
+    mehr überschneiden, und nichts muss mehr weichen.
+
+    Die Bank-Progression steht dagegen weiterhin als vier Zeilen je Slot in
+    der Datenbank und braucht die Position im Block. Genau die liefert
+    diese Funktion — sie ist die einzige Stelle, an der aus einer laufenden
+    Wochenzahl wieder eine 1–4 wird.
+
+    Voraussetzung ist, dass ein Block genau vier Wochen dauert und die
+    Zählung bei 1 begann; beides gilt seit jeher. Die fortlaufende
+    Blocknummer bleibt in plans.block stehen und wird nicht hieraus
+    abgeleitet — sonst verlören Pläne, die vor dem Umbau schon in Block 3
+    standen, ihre Nummer. */
+export function blockWoche(week: number): number {
+  return ((week - 1) % BLOCK_WOCHEN) + 1
+}
+
 /** Bankfokus-Pläne laufen in festen 4-Wochen-Blöcken mit Deload,
     Standardpläne zählen unbegrenzt weiter. */
 export function wochenLabel(week: number, plan: Plan): string {
-  return plan.typ === 'bench' ? (WEEK_LABELS[week - 1] ?? `Woche ${week}`) : `Woche ${week}`
+  return plan.typ === 'bench' ? (WEEK_LABELS[blockWoche(week) - 1] ?? `Woche ${week}`) : `Woche ${week}`
 }
 
 /** Anzahl geplanter Sätze aus einem Schema wie "4 × 6" oder "4x6" lesen. */
@@ -82,6 +110,33 @@ export function neueSortierNummern(
     .map((e, i) => ({ id: e.id, sort_order: i, alt: e.sort_order }))
     .filter(e => e.sort_order !== e.alt)
     .map(({ id, sort_order }) => ({ id, sort_order }))
+}
+
+/** Dauer einer Einheit in Minuten, mindestens 1.
+
+    Beide Zeitpunkte kommen von außen und werden nicht mehr im Moment des
+    Speicherns gebildet. Das ist der Kern einer offline-fähigen App: Wer
+    im Studio ohne Empfang trainiert, dessen "Beenden" liegt bis zu Hause
+    in der Warteschlange. Bis dahin hatte die Mutation ihre Endzeit selbst
+    gestempelt — die Einheit bekam dann die Dauer bis zum Synchronisieren
+    statt bis zum Beenden, aus einer Stunde wurden drei.
+
+    Ungültige oder verdrehte Angaben ergeben 1 statt NaN: Eine unsinnige
+    Zahl in der Statistik ist schlimmer als eine offensichtlich zu kurze. */
+export function einheitMinuten(startedAt: string, endedAt: string): number {
+  const von = Date.parse(startedAt)
+  const bis = Date.parse(endedAt)
+  if (!Number.isFinite(von) || !Number.isFinite(bis)) return 1
+  return Math.max(1, Math.round((bis - von) / 60000))
+}
+
+/** Neuer Startzeitpunkt nach einer Pause: Die Pausendauer wird auf den
+    Start aufgeschlagen, damit einheitMinuten() sie nicht mitzählt —
+    rechnerisch dasselbe wie eine angehaltene Stoppuhr. */
+export function startNachPause(startedAt: string, pausedAt: string, jetzt: string): string {
+  const pause = Date.parse(jetzt) - Date.parse(pausedAt)
+  if (!Number.isFinite(pause) || pause <= 0) return startedAt
+  return new Date(Date.parse(startedAt) + pause).toISOString()
 }
 
 export function tonnageOf(sets: LoggedSet[]): number {
@@ -241,20 +296,42 @@ export function istBankdruecken(exercise: Pick<Exercise, 'bench_slot' | 'name'>)
   return exercise.bench_slot != null || /bankdr[üu]ck|bench\s*press/i.test(exercise.name)
 }
 
-/** Aufwärmleiter vor dem Arbeitssatz — ausschließlich fürs Bankdrücken, die
-    volle Leiter aus der Anleitung (leere Stange, 50/65/75 %). Alle anderen
-    Übungen bekommen keine Aufwärmsätze. */
+/** Ab welchem Arbeitsgewicht andere Übungen eine Leiter bekommen — als
+    Vielfaches der kleinsten Scheibe. Darunter liegen die Prozentstufen so
+    dicht am Arbeitsgewicht (und aneinander), dass sie nur Zeilen kosten. */
+const LEITER_AB_SCHEIBEN = 4
+
+/** Aufwärmleiter vor dem Arbeitssatz: 50/65/75 % des Arbeitsgewichts,
+    beim Bankdrücken davor die leere Stange.
+
+    `mitStange` steht fürs Bankdrücken — dort gehört die leere Langhantel
+    dazu, und die Leiter erscheint auch bei leichten Gewichten. Andere
+    Übungen bekommen dieselben Prozentstufen ohne Stange, aber erst ab
+    einem Arbeitsgewicht, bei dem sich das lohnt. Vorher gingen sie ganz
+    leer aus; gefehlt hat das Aufwärmen im Studio bei allem, was schwer
+    ist, nicht nur an der Bank.
+
+    Stufen oberhalb des Arbeitsgewichts fallen weg, ebenso Stufen, die auf
+    dasselbe Gewicht wie ihre Vorgängerin runden — sonst stünden bei
+    kleiner Scheibenstufe zweimal dieselben Kilos untereinander. */
 export function aufwaermPlan(mitStange: boolean, kgRoh: number, plate: number): AufwaermSatz[] {
-  if (!mitStange || !(kgRoh > 0)) return []
+  if (!(kgRoh > 0)) return []
+  if (!mitStange && kgRoh <= LEITER_AB_SCHEIBEN * plate) return []
+
   const auf = (pct: number, wdh: number, label: string): AufwaermSatz => ({
     label,
     wdh,
     kg: Math.max(plate, mround(kgRoh * pct, plate)),
   })
 
-  return [{ label: 'Leere Stange', kg: AUFWAERM_STANGE, wdh: 10 }].concat(
-    [auf(0.5, 5, '50 %'), auf(0.65, 3, '65 %'), auf(0.75, 1, '75 %')].filter(s => s.kg > AUFWAERM_STANGE),
-  )
+  const stufen = [auf(0.5, 5, '50 %'), auf(0.65, 3, '65 %'), auf(0.75, 1, '75 %')].filter(s => s.kg < kgRoh)
+  const leiter = mitStange
+    ? [{ label: 'Leere Stange', kg: AUFWAERM_STANGE, wdh: 10 } as AufwaermSatz].concat(
+        stufen.filter(s => s.kg > AUFWAERM_STANGE),
+      )
+    : stufen
+
+  return leiter.filter((s, i) => i === 0 || s.kg > leiter[i - 1].kg)
 }
 
 /** Geschätztes 1RM eines einzelnen Satzes — bevorzugt die RPE-Tabelle
@@ -307,7 +384,7 @@ export function muskelgruppenDesTags(exercises: Exercise[]): MuskelgruppenSatz[]
     Bank-Progression (siehe bench/queries.ts benchRowsFor), nicht aus
     diesem Namen. Sonst unverändert der normale Name. */
 export function anzeigeName(exercise: Pick<Exercise, 'name' | 'bench_slot'>, plan: Plan, week: number): string {
-  if (plan.typ === 'bench' && week === 4 && exercise.bench_slot) return `${exercise.name} (Deload)`
+  if (plan.typ === 'bench' && blockWoche(week) === 4 && exercise.bench_slot) return `${exercise.name} (Deload)`
   return exercise.name
 }
 

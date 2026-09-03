@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen, naechsteSortierung, umsortieren, neueSortierNummern } from './calc'
+import { blockWoche, wochenLabel, einheitMinuten, startNachPause, aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen, naechsteSortierung, umsortieren, neueSortierNummern } from './calc'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 
 function einheit(patch: Partial<TrainingSession>): TrainingSession {
@@ -63,8 +63,28 @@ describe('aufwaermPlan', () => {
     expect(aufwaermPlan(true, 0, 2.5)).toEqual([])
   })
 
-  it('bleibt bei anderen Übungen leer, egal wie schwer', () => {
-    expect(aufwaermPlan(false, 200, 2.5)).toEqual([])
+  // Frueher bekamen andere Uebungen gar keine Leiter. Gefehlt hat das
+  // Aufwaermen im Studio aber bei allem Schweren, nicht nur an der Bank —
+  // seitdem dieselben Prozentstufen, nur ohne leere Stange.
+  it('gibt anderen Übungen die Prozentstufen ohne Stange', () => {
+    expect(aufwaermPlan(false, 200, 2.5).map(s => s.label)).toEqual(['50 %', '65 %', '75 %'])
+  })
+
+  it('lässt die Leiter bei leichten Übungen ganz weg', () => {
+    expect(aufwaermPlan(false, 10, 2.5)).toEqual([])
+  })
+
+  it('führt keine Stufe zweimal mit demselben Gewicht', () => {
+    for (const kg of [12.5, 15, 17.5, 20, 25, 40, 77.5]) {
+      const gewichte = aufwaermPlan(false, kg, 2.5).map(s => s.kg)
+      expect(gewichte).toEqual([...new Set(gewichte)].sort((a, b) => a - b))
+    }
+  })
+
+  it('bleibt unter dem Arbeitsgewicht', () => {
+    for (const kg of [30, 45, 100, 137.5]) {
+      for (const s of aufwaermPlan(true, kg, 2.5)) expect(s.kg).toBeLessThan(kg)
+    }
   })
 })
 
@@ -180,6 +200,94 @@ describe('anzeigeName', () => {
   it('lässt den Namen bei allgemeinen Plänen unverändert, auch in Woche 4', () => {
     const ex = exercise({ name: 'Bankdrücken Langhantel', bench_slot: 'd1' })
     expect(anzeigeName(ex, plan({ typ: 'general' }), 4)).toBe('Bankdrücken Langhantel')
+  })
+})
+
+describe('einheitMinuten', () => {
+  it('rechnet die Differenz in Minuten', () => {
+    expect(einheitMinuten('2026-09-03T18:00:00Z', '2026-09-03T19:12:00Z')).toBe(72)
+  })
+
+  // Der Grund fuer die Umstellung: Frueher stempelte die Mutation ihre
+  // Endzeit selbst. Offline lag sie bis zum naechsten Netz in der
+  // Warteschlange — und schrieb dann die Dauer bis zum Synchronisieren.
+  it('haengt nicht am Zeitpunkt des Speicherns', () => {
+    const start = '2026-09-03T18:00:00Z'
+    const ende = '2026-09-03T19:00:00Z'
+    // Dieselbe Einheit, egal wann sie beim Server ankommt.
+    expect(einheitMinuten(start, ende)).toBe(60)
+  })
+
+  it('gibt nie weniger als eine Minute zurueck', () => {
+    expect(einheitMinuten('2026-09-03T18:00:00Z', '2026-09-03T18:00:05Z')).toBe(1)
+    expect(einheitMinuten('2026-09-03T19:00:00Z', '2026-09-03T18:00:00Z')).toBe(1)
+  })
+
+  it('faellt bei unbrauchbaren Angaben auf 1 zurueck, statt NaN zu liefern', () => {
+    expect(einheitMinuten('kaputt', '2026-09-03T18:00:00Z')).toBe(1)
+    expect(einheitMinuten('2026-09-03T18:00:00Z', '')).toBe(1)
+  })
+})
+
+describe('startNachPause', () => {
+  it('schiebt den Start um die Pausendauer nach vorn', () => {
+    expect(startNachPause('2026-09-03T18:00:00Z', '2026-09-03T18:30:00Z', '2026-09-03T18:50:00Z')).toBe(
+      '2026-09-03T18:20:00.000Z',
+    )
+  })
+
+  it('laesst den Start bei unsinniger Pause unangetastet', () => {
+    const start = '2026-09-03T18:00:00Z'
+    expect(startNachPause(start, '2026-09-03T18:30:00Z', '2026-09-03T18:10:00Z')).toBe(start)
+    expect(startNachPause(start, 'kaputt', '2026-09-03T18:50:00Z')).toBe(start)
+  })
+
+  // Zusammenspiel: Die Pause darf in der Dauer nicht auftauchen.
+  it('haelt die Pause aus der Dauer heraus', () => {
+    const neuerStart = startNachPause('2026-09-03T18:00:00Z', '2026-09-03T18:30:00Z', '2026-09-03T18:50:00Z')
+    expect(einheitMinuten(neuerStart, '2026-09-03T19:20:00Z')).toBe(60)
+  })
+})
+
+describe('blockWoche', () => {
+  it('bildet die ersten vier Wochen auf sich selbst ab', () => {
+    expect([1, 2, 3, 4].map(blockWoche)).toEqual([1, 2, 3, 4])
+  })
+
+  // Der Kern der Umstellung: Woche 5 ist die erste Woche des zweiten
+  // Blocks. Vorher sprang plans.week dafuer auf 1 zurueck — und weil
+  // logged_sets allein ueber die Wochenzahl eindeutig sind, musste der
+  // alte Block weichen.
+  it('faengt im naechsten Block wieder bei eins an', () => {
+    expect([5, 6, 7, 8].map(blockWoche)).toEqual([1, 2, 3, 4])
+    expect([9, 12, 13].map(blockWoche)).toEqual([1, 4, 1])
+  })
+
+  it('trifft die Deload-Woche in jedem Block', () => {
+    for (const w of [4, 8, 12, 16, 40]) expect(blockWoche(w)).toBe(4)
+  })
+})
+
+describe('wochenLabel', () => {
+  it('beschriftet Bankfokus-Plaene nach der Blockwoche, nicht nach der laufenden', () => {
+    const p = plan({ typ: 'bench' })
+    expect(wochenLabel(1, p)).toBe('Woche 1')
+    expect(wochenLabel(4, p)).toBe('Woche 4 · Deload')
+    // Woche 9 ist Woche 1 des dritten Blocks.
+    expect(wochenLabel(9, p)).toBe('Woche 1')
+    expect(wochenLabel(12, p)).toBe('Woche 4 · Deload')
+  })
+
+  it('zaehlt bei Standardplaenen durch', () => {
+    expect(wochenLabel(9, plan({ typ: 'general' }))).toBe('Woche 9')
+  })
+})
+
+describe('anzeigeName ueber Blockgrenzen', () => {
+  it('haengt (Deload) auch in der Deload-Woche spaeterer Bloecke an', () => {
+    const ex = { name: 'Bankdrücken Langhantel', bench_slot: 'd1' } as Exercise
+    expect(anzeigeName(ex, plan({ typ: 'bench' }), 12)).toBe('Bankdrücken Langhantel (Deload)')
+    expect(anzeigeName(ex, plan({ typ: 'bench' }), 9)).toBe('Bankdrücken Langhantel')
   })
 })
 

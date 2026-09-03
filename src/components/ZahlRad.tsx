@@ -12,6 +12,11 @@ interface ZahlRadProps {
   leerOption?: boolean
   /** Einheit hinter der Zahl im Numpad-Display, z. B. "kg" oder "min". */
   einheit?: string
+  /** Erlaubte Nachkommastellen beim Übernehmen einer getippten Zahl.
+      Standard sind zwei; Gewichtsfelder geben drei mit, weil sich mit
+      Mikro-Scheiben Sprünge wie 0,125 kg ergeben, die sonst still
+      weggerundet würden. */
+  nachkomma?: number
   /** Nur das Numpad, ohne die scrollbare Werteliste darüber — für Felder
       ohne sinnvolle Werteauswahl (z. B. Zielgewicht, Testsatz), bei denen
       jeder Wert gleich plausibel ist und ein Rad nur Platz kosten würde. */
@@ -28,7 +33,7 @@ const TASTEN = ['7', '8', '9', '4', '5', '6', '1', '2', '3', ',', '0', '⌫']
     Listenschritte (z. B. 83,7 kg). Als Bottom-Sheet mit eigenem
     Scrollbereich für die Liste, damit auch lange Listen (Gewicht in
     2,5-kg-Schritten bis 300 kg) bequem erreichbar bleiben. */
-export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einheit, nurNumpad, onWahl, onSchliessen }: ZahlRadProps) {
+export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einheit, nurNumpad, nachkomma = 2, onWahl, onSchliessen }: ZahlRadProps) {
   const listeRef = useRef<HTMLDivElement>(null)
   const [eingabe, setEingabe] = useState('')
 
@@ -79,7 +84,8 @@ export function ZahlRad({ offen, titel, werte, aktuell, format, leerOption, einh
 
   const uebernehmen = () => {
     if (!gueltig || geparst == null) return
-    onWahl(Math.round(geparst * 100) / 100)
+    const faktor = 10 ** nachkomma
+    onWahl(Math.round(geparst * faktor) / faktor)
     onSchliessen()
   }
 
@@ -168,6 +174,7 @@ interface ZahlEingabeProps {
   leerOption?: boolean
   einheit?: string
   nurNumpad?: boolean
+  nachkomma?: number
   platzhalter?: string
   className?: string
   onWahl: (n: number | null) => void
@@ -176,7 +183,7 @@ interface ZahlEingabeProps {
 /** Antippbarer Auslöser fürs ZahlRad — Drop-in-Ersatz für ein Zahlenfeld
     (gleiche ".inp"-Optik), öffnet beim Antippen die Auswahlliste statt
     die Tastatur. */
-export function ZahlEingabe({ wert, werte, format = String, titel, leerOption, einheit, nurNumpad, platzhalter = '—', className, onWahl }: ZahlEingabeProps) {
+export function ZahlEingabe({ wert, werte, format = String, titel, leerOption, einheit, nurNumpad, nachkomma, platzhalter = '—', className, onWahl }: ZahlEingabeProps) {
   const [offen, setOffen] = useState(false)
   return (
     <>
@@ -196,6 +203,7 @@ export function ZahlEingabe({ wert, werte, format = String, titel, leerOption, e
         leerOption={leerOption}
         einheit={einheit}
         nurNumpad={nurNumpad}
+        nachkomma={nachkomma}
         onWahl={onWahl}
         onSchliessen={() => setOffen(false)}
       />
