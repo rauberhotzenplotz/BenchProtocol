@@ -189,8 +189,15 @@ export function useSession(dayId: string | undefined, week: number) {
   })
 }
 
+/** startedAt/endedAt und die Pausenzeitpunkte kommen vom Aufrufer, nicht
+    aus der Mutation selbst: Ohne Netz liegt sie bis zur naechsten
+    Verbindung in der Warteschlange und wuerde sonst den Zeitpunkt des
+    Synchronisierens eintragen statt den der Handlung. Siehe
+    einheitMinuten() in calc.ts. */
 export function useStartSession() {
-  return useMutation<TrainingSession, Error, { dayId: string; week: number }>({ mutationKey: MUTATION_KEYS.startSession })
+  return useMutation<TrainingSession, Error, { dayId: string; week: number; startedAt: string }>({
+    mutationKey: MUTATION_KEYS.startSession,
+  })
 }
 
 /** dayId/week/planId/planTyp werden nur für den offline-optimistischen
@@ -198,7 +205,7 @@ export function useStartSession() {
     (siehe registerOfflineMutationDefaults) — der eigentliche Supabase-
     Aufruf nutzt weiterhin nur id/startedAt. */
 export function useEndSession() {
-  return useMutation<number, Error, { id: string; startedAt: string; dayId: string; week: number; planId: string; planTyp: PlanTyp }>({
+  return useMutation<number, Error, { id: string; startedAt: string; endedAt: string; dayId: string; week: number; planId: string; planTyp: PlanTyp }>({
     mutationKey: MUTATION_KEYS.endSession,
   })
 }
@@ -222,14 +229,16 @@ export function useSkipSession() {
 /** Hält eine laufende Einheit an, ohne sie zu beenden — die Gegenstelle zu
     useResumeSession() unten. */
 export function usePauseSession() {
-  return useMutation<void, Error, { id: string; dayId: string; week: number }>({ mutationKey: MUTATION_KEYS.pauseSession })
+  return useMutation<void, Error, { id: string; dayId: string; week: number; pausedAt: string }>({
+    mutationKey: MUTATION_KEYS.pauseSession,
+  })
 }
 
 /** Setzt eine pausierte Einheit fort: verschiebt started_at um die
     Pausendauer nach vorn, damit die spätere Dauer-Berechnung in
     useEndSession() die Pause nicht mitzählt. */
 export function useResumeSession() {
-  return useMutation<void, Error, { id: string; dayId: string; week: number; startedAt: string; pausedAt: string }>({
+  return useMutation<void, Error, { id: string; dayId: string; week: number; startedAt: string; pausedAt: string; jetzt: string }>({
     mutationKey: MUTATION_KEYS.resumeSession,
   })
 }

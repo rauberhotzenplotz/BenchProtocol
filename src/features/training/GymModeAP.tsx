@@ -8,7 +8,9 @@ import {
   letzteEinheitFuerUebung,
   satzE1rm,
   wochenLabel,
+  blockWoche,
   istBankdruecken,
+  aufwaermPlan,
   anzeigeName,
   schemaMitSaetzen,
   umsortieren,
@@ -23,6 +25,7 @@ import { ZahlRad } from '../../components/ZahlRad'
 import { GymRing } from '../../components/GymRing'
 import { GymFertig } from './GymFertig'
 import { zahlenBereich } from '../../lib/zahlen'
+import { standFuerWoche, standAendern } from './trainingsStand'
 import { zeitText } from '../../lib/zeit'
 import { vibrieren, SATZ_ERLEDIGT } from '../../lib/haptik'
 import { useSchliessenPerZurueck } from '../../lib/backClose'
@@ -86,7 +89,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const progressionZeileFuer = (ex: Exercise) => {
     if (!progression) return undefined
     const slot = ex.bench_slot ?? (istBankdruecken(ex) ? 'd1' : null)
-    return slot ? benchRowsFor(progression, slot).find(r => r.week === week) : undefined
+    return slot ? benchRowsFor(progression, slot).find(r => r.week === blockWoche(week)) : undefined
   }
   const sollFuer = (ex: Exercise) => {
     const zeile = progressionZeileFuer(ex)
@@ -117,7 +120,14 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
     return sortiert
   }, [day.exercises, eigeneReihenfolge])
 
-  const [uebIdx, setUebIdx] = useState(0)
+  // Wo man zuletzt stand. Ohne das begann die Einheit nach jedem
+  // Wiederöffnen der App wieder bei Übung 1 — auf dem Handy passiert
+  // das schon, wenn Android die WebView zwischen zwei Sätzen wegräumt.
+  const [uebIdx, setUebIdxRoh] = useState(() => standFuerWoche(week)?.uebIdx ?? 0)
+  const setUebIdx = (i: number) => {
+    setUebIdxRoh(i)
+    standAendern({ dayId: day.id, woche: week, uebIdx: i })
+  }
   const exercise = uebungen[Math.min(uebIdx, uebungen.length - 1)]
   const progressionZeile = progressionZeileFuer(exercise)
   const sets = setsByExercise.get(exercise.id) ?? []
@@ -264,6 +274,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
       endSession.mutate({
         id: session.id,
         startedAt: session.started_at,
+        endedAt: new Date().toISOString(),
         dayId: day.id,
         week,
         planId: plan.id,
@@ -289,7 +300,24 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
     else setFertig(true)
   }
 
-  const warmup = istBankdruecken(exercise) ? 1 : 0
+  // Aufwärmleiter je Übung. Sie stand vor der Umstellung auf diesen
+  // Gym-Modus im alten und ging dabei verloren — übrig blieb der Text
+  // "1 Warmup Satz", der nichts anzeigte und nichts konnte. Das
+  // Arbeitsgewicht kommt aus Zeile 1, also aus derselben Quelle wie die
+  // Tabelle darunter (Bank-Progression, sonst letzte Einheit).
+  const warmSaetze = aufwaermPlan(istBankdruecken(exercise), werteFuer(0).kg ?? 0, plate)
+  // Je Übung einmal weggeklickt. Bewusst nur im Gedächtnis dieser
+  // Einheit: Aufwärmen ist nichts, was man protokolliert.
+  const [aufgewaermt, setAufgewaermt] = useState<ReadonlySet<string>>(new Set())
+  const warmOffen = warmSaetze.length > 0 && !aufgewaermt.has(exercise.id)
+  const warmUmschalten = (fertig: boolean) =>
+    setAufgewaermt(prev => {
+      const neu = new Set(prev)
+      if (fertig) neu.add(exercise.id)
+      else neu.delete(exercise.id)
+      return neu
+    })
+
   const pauseLaeuft = restTimer.label != null && restTimer.secondsLeft > 0
 
   if (fertig) {
@@ -314,12 +342,19 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
     <div className="ap">
       <div className="ap-griff" />
 
+      {/* Der einzige Weg aus dem Gym-Modus heraus. Vorher stand hier ein
+          Kettensymbol neben dem Tagesnamen — als Ausgang war das nicht zu
+          erkennen, und weil der Gym-Modus die Navigationsleiste
+          vollflächig verdeckt, kam man während einer laufenden Einheit gar
+          nicht mehr in einen anderen Tab. Jetzt ein beschrifteter Knopf
+          mit dem Pfeil nach unten, der zum Griff darüber passt. */}
       <div className="ap-kopf">
-        <button className="ap-titelbtn" onClick={onClose}>
-          {day.name}
-          <svg viewBox="0 0 24 24">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z" />
+        <button className="ap-titelbtn" onClick={onClose} aria-label={`Gym-Modus schließen — zurück zu ${day.name}`}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
           </svg>
+          {day.name}
+          <span className="ap-titelbtn-hinweis">Schließen</span>
         </button>
       </div>
 
@@ -364,7 +399,30 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
           {exercise.rest && <span>Pause {exercise.rest}</span>}
         </div>
 
-        {warmup > 0 && <div className="ap-warmup">{warmup} Warmup Satz</div>}
+        {warmSaetze.length > 0 &&
+          (warmOffen ? (
+            <div className="ap-warm">
+              <div className="ap-warm-kopf">Aufwärmen · vor dem ersten Arbeitssatz</div>
+              {warmSaetze.map((s, i) => (
+                <div key={s.label} className="ap-warm-zeile">
+                  <span className="ap-nr">{i + 1}</span>
+                  <span className="ap-warm-lab">{s.label}</span>
+                  <span className="ap-warm-kg">
+                    {zahl(s.kg)}
+                    <em>kg</em>
+                  </span>
+                  <span className="ap-warm-wdh">× {s.wdh}</span>
+                </div>
+              ))}
+              <button type="button" className="ap-warm-fertig" onClick={() => warmUmschalten(true)}>
+                Aufgewärmt
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="ap-warmup" onClick={() => warmUmschalten(false)}>
+              Aufgewärmt ✓ · Leiter zeigen
+            </button>
+          ))}
 
         {/* Die große Pausenuhr steht dort, wo früher die Historie klebte —
             im Training ist sie die Angabe, auf die man wirklich schaut. */}
@@ -545,6 +603,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
         aktuell={radOffen ? werteFuer(radOffen.position).kg : null}
         format={String}
         einheit="kg"
+        nachkomma={3}
         leerOption
         onWahl={kg => radOffen && schreibe(radOffen.position, { kg })}
         onSchliessen={() => setRadOffen(null)}

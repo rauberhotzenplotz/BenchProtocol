@@ -90,9 +90,16 @@ export function SessionMenu({ session, dayId, week, exerciseIds, onAbschliessen,
               onClick={() => {
                 schliessen()
                 if (pausiert) {
-                  resumeSession.mutate({ id: session.id, dayId, week, startedAt: session.started_at, pausedAt: session.paused_at! })
+                  resumeSession.mutate({
+                    id: session.id,
+                    dayId,
+                    week,
+                    startedAt: session.started_at,
+                    pausedAt: session.paused_at!,
+                    jetzt: new Date().toISOString(),
+                  })
                 } else {
-                  pauseSession.mutate({ id: session.id, dayId, week })
+                  pauseSession.mutate({ id: session.id, dayId, week, pausedAt: new Date().toISOString() })
                 }
               }}
             >

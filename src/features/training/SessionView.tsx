@@ -12,7 +12,7 @@ import {
   useUpdateExercise,
   useUpsertSet,
 } from './queries'
-import { setsOf, tonnageOf, wochenLabel, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, anzeigeName, naechsteSortierung, umsortieren, neueSortierNummern } from './calc'
+import { setsOf, schemaMitSaetzen, tonnageOf, wochenLabel, blockWoche, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, anzeigeName, naechsteSortierung, umsortieren, neueSortierNummern } from './calc'
 import { useBenchProgression, benchRowsFor } from '../bench/queries'
 import { useZiehSortieren, ziehStil } from '../../lib/ziehSortieren'
 import { LetzteEinheitPanel } from './LetzteEinheitPanel'
@@ -30,6 +30,7 @@ import { cssVars } from '../../lib/style'
 import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 import { ZahlEingabe } from '../../components/ZahlRad'
 import { zahlenBereich } from '../../lib/zahlen'
+import { standFuerWoche, standAendern } from './trainingsStand'
 
 const REP_WERTE = zahlenBereich(1, 30, 1)
 const RPE_WERTE = zahlenBereich(5, 10, 0.5)
@@ -88,12 +89,40 @@ export function SessionView({
     // hängen. Der automatische Block-Check läuft ohnehin nicht hier,
     // sondern im registrierten onSuccess von endSession
     // (src/lib/offline/training.ts) — also erst nach bestätigtem Sync.
-    endSession.mutate({ id: session.id, startedAt: session.started_at, dayId: day.id, week, planId: plan.id, planTyp: plan.typ })
+    endSession.mutate({
+      id: session.id,
+      startedAt: session.started_at,
+      endedAt: new Date().toISOString(),
+      dayId: day.id,
+      week,
+      planId: plan.id,
+      planTyp: plan.typ,
+    })
   }
 
   const laeuft = !!session && !session.ended_at
   const [neueUebung, setNeueUebung] = useState(false)
-  const [gymOffen, setGymOffen] = useState(false)
+  // Beim Wiederöffnen der App dort weitermachen, wo man war: War der
+  // Gym-Modus für diesen Tag zuletzt offen, geht er wieder auf, sobald
+  // feststeht, dass die Einheit noch läuft (siehe unten am Render).
+  const [gymOffenRoh, setGymOffenRoh] = useState(() => {
+    const stand = standFuerWoche(week)
+    return stand?.dayId === day.id && stand.gymOffen
+  })
+  /** Setzt den Gym-Modus und schreibt ihn in den gemerkten Stand — nur so
+      findet die schwebende Pausenuhr nach einem Tab-Wechsel wieder
+      hierher zurück. */
+  // useCallback und nicht einfach eine Funktion pro Render: Der Rückruf
+  // steckt unten in warpFertig und im setReopenGym-Effekt. Als frische
+  // Funktion je Render würden die beiden die Fassung des ersten Renders
+  // festhalten und den Stand später für den falschen Tag schreiben.
+  const setGymOffen = useCallback(
+    (offen: boolean) => {
+      setGymOffenRoh(offen)
+      standAendern({ dayId: day.id, woche: week, gymOffen: offen })
+    },
+    [day.id, week],
+  )
   const [warpLaeuft, setWarpLaeuft] = useState(false)
 
   // Der Sprung läuft vor dem Gym-Modus, nicht darüber: er deckt die
@@ -113,7 +142,7 @@ export function SessionView({
   const warpFertig = useCallback(() => {
     setWarpLaeuft(false)
     setGymOffen(true)
-  }, [])
+  }, [setGymOffen])
   // Auto-Start aus dem Cockpit: erst die Session anstoßen (falls sie noch
   // nicht läuft), dann — sobald sie da ist — den Warp-Sprung in den
   // Gym-Modus auslösen. Zwei Ref-Wächter statt Zustand, damit jeder
@@ -126,7 +155,7 @@ export function SessionView({
     if (!laeuft) {
       if (!autoSessionAngestossen.current) {
         autoSessionAngestossen.current = true
-        startSession.mutate({ dayId: day.id, week })
+        startSession.mutate({ dayId: day.id, week, startedAt: new Date().toISOString() })
       }
       return
     }
@@ -152,8 +181,8 @@ export function SessionView({
   useEffect(() => {
     restTimer.setReopenGym(() => setGymOffen(true))
     return () => restTimer.setReopenGym(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- restTimer.setReopenGym ist über den Context stabil, nur beim Mounten/Unmounten registrieren
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restTimer.setReopenGym ist über den Context stabil; neu registriert wird nur bei gewechseltem Tag
+  }, [setGymOffen])
 
   // Umsortieren per Aufnehmen und Ziehen. Anders als im Gym-Modus geht
   // das hier sofort in den Plan: Die Tagesansicht ist die Stelle, an der
@@ -289,7 +318,10 @@ export function SessionView({
             )}
           </>
         ) : (
-          <button className="btn primary" onClick={() => startSession.mutate({ dayId: day.id, week })}>
+          <button
+            className="btn primary"
+            onClick={() => startSession.mutate({ dayId: day.id, week, startedAt: new Date().toISOString() })}
+          >
             {session ? 'Erneut starten' : 'Training starten'}
           </button>
         )}
@@ -349,7 +381,8 @@ export function SessionView({
 
       {warpLaeuft && <Warp onEnde={warpFertig} />}
 
-      {gymOffen &&
+      {gymOffenRoh &&
+        laeuft &&
         day.exercises.length > 0 &&
         createPortal(
           // Portal statt normalem Kind-Render: der Gym-Modus ist ein
@@ -434,7 +467,7 @@ function ExerciseBlock({
   const progressionZeile = (() => {
     if (!progression) return undefined
     const slot = exercise.bench_slot ?? (istBankdruecken(exercise) ? 'd1' : null)
-    return slot ? benchRowsFor(progression, slot).find(r => r.week === week) : undefined
+    return slot ? benchRowsFor(progression, slot).find(r => r.week === blockWoche(week)) : undefined
   })()
   const soll = setsOf(progressionZeile ? progressionZeile.scheme : exercise.scheme)
   const ok = sets.filter(s => s.done).length
@@ -593,6 +626,30 @@ function ExerciseBlock({
                   onKeyDown={onKeyDownAndroidBackspaceFix}
                 />
               </label>
+              {/* Die geplante Satzanzahl steckt im Schema der Übung, und
+                  das war hier bisher nirgends änderbar: Aus dem Katalog
+                  angelegte Übungen bringen kein eigenes Schema mit und
+                  bekommen deshalb die Vorgabe "3 × 10" — es standen also
+                  überall drei Sätze, ohne Weg, das zu ändern. */}
+              <label className="ueb-einst-feld">
+                <span>
+                  Sätze · Vorgabe des Plans
+                  {progressionZeile && ' · diese Woche gibt die Bank-Progression vor'}
+                </span>
+                <ZahlEingabe
+                  wert={setsOf(exercise.scheme)}
+                  werte={zahlenBereich(1, 12, 1)}
+                  titel="Geplante Sätze"
+                  className="mono"
+                  onWahl={n =>
+                    n != null &&
+                    updateExercise.mutate({
+                      id: exercise.id,
+                      patch: { scheme: schemaMitSaetzen(exercise.scheme, n) },
+                    })
+                  }
+                />
+              </label>
               {planTyp === 'bench' && (
                 <div className="ueb-einst-feld">
                   <span>Bank-Zuordnung · steuert die Aufwärmsätze</span>
@@ -695,7 +752,7 @@ function SetRow({
   return (
     <div className={'setline' + (set.done ? ' ok' : '') + (zeigtRpe ? '' : ' ohne-rpe')}>
       <span className="nr">{set.position + 1}</span>
-      <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" einheit="kg" className="mono kgw" leerOption onWahl={kg => onChange({ kg })} />
+      <ZahlEingabe wert={set.kg} werte={kgWerte} titel="Gewicht" einheit="kg" className="mono kgw" nachkomma={3} leerOption onWahl={kg => onChange({ kg })} />
       <ZahlEingabe wert={set.reps} werte={REP_WERTE} titel="Wiederholungen" className="mono repw" leerOption onWahl={reps => onChange({ reps })} />
       {zeigtRpe && <ZahlEingabe wert={set.rpe} werte={RPE_WERTE} titel="RPE" className="mono rpew" leerOption onWahl={rpe => onChange({ rpe })} />}
       <span className="rm">{rm != null ? Math.round(rm) : '—'}</span>

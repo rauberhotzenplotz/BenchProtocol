@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import type { Exercise, LoggedSet, PlanDay, PlanTyp, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../../features/training/queries'
 import { pruefeWochenabschluss } from '../../features/training/wochenAbschluss'
+import { einheitMinuten, startNachPause } from '../../features/training/calc'
 import {
   upsertInArray,
   removeFromArray,
@@ -227,11 +228,16 @@ export function registriereTrainingMutationen(qc: QueryClient) {
 
   qc.setMutationDefaults(MUTATION_KEYS.startSession, {
     scope: SYNC_SCOPE,
-    mutationFn: async ({ dayId, week }: { dayId: string; week: number }) => {
+    // startedAt kommt vom Aufrufer, nicht aus new Date() hier drin: Ohne
+    // Netz liegt diese Mutation bis zur naechsten Verbindung in der
+    // Warteschlange und haette sonst den Zeitpunkt des Synchronisierens
+    // als Trainingsbeginn eingetragen. Gilt genauso fuer die drei
+    // Einheiten-Mutationen darunter.
+    mutationFn: async ({ dayId, week, startedAt }: { dayId: string; week: number; startedAt: string }) => {
       const { data, error } = await supabase
         .from('sessions')
         .upsert(
-          { day_id: dayId, week, started_at: new Date().toISOString(), ended_at: null, minutes: null, status: 'completed', paused_at: null },
+          { day_id: dayId, week, started_at: startedAt, ended_at: null, minutes: null, status: 'completed', paused_at: null },
           { onConflict: 'day_id,week' },
         )
         .select()
@@ -239,7 +245,7 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       if (error) throw error
       return data as TrainingSession
     },
-    onMutate: async ({ dayId, week }) => {
+    onMutate: async ({ dayId, week, startedAt }) => {
       await qc.cancelQueries({ queryKey: ['session', dayId, week] })
       await qc.cancelQueries({ queryKey: ['sessions'] })
       await qc.cancelQueries({ queryKey: ['sessions-all'] })
@@ -249,7 +255,7 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       const optimistic = buildOptimisticSession(prevSession, {
         day_id: dayId,
         week,
-        started_at: new Date().toISOString(),
+        started_at: startedAt,
         ended_at: null,
         minutes: null,
         status: 'completed',
@@ -305,24 +311,27 @@ export function registriereTrainingMutationen(qc: QueryClient) {
 
   qc.setMutationDefaults(MUTATION_KEYS.endSession, {
     scope: SYNC_SCOPE,
-    mutationFn: async ({ id, startedAt }: { id: string; startedAt: string; dayId: string; week: number; planId: string; planTyp: PlanTyp }) => {
-      const minutes = Math.max(1, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000))
+    mutationFn: async ({ id, startedAt, endedAt }: { id: string; startedAt: string; endedAt: string; dayId: string; week: number; planId: string; planTyp: PlanTyp }) => {
+      const minutes = einheitMinuten(startedAt, endedAt)
       const { error } = await supabase
         .from('sessions')
-        .update({ ended_at: new Date().toISOString(), minutes })
+        .update({ ended_at: endedAt, minutes })
         .eq('id', id)
       if (error) throw error
       return minutes
     },
-    onMutate: async ({ dayId, week, startedAt }) => {
+    onMutate: async ({ dayId, week, startedAt, endedAt }) => {
       await qc.cancelQueries({ queryKey: ['session', dayId, week] })
       await qc.cancelQueries({ queryKey: ['sessions'] })
       await qc.cancelQueries({ queryKey: ['sessions-all'] })
       const prevSession = qc.getQueryData<TrainingSession | null>(['session', dayId, week])
       const prevSessions = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions'] })
       const prevSessionsAll = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] })
-      const minutes = Math.max(1, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000))
-      const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, ended_at: new Date().toISOString(), minutes })
+      // Dieselben Werte wie im mutationFn — vorher rechneten beide je
+      // eigenstaendig mit Date.now(), die Anzeige wich dadurch von dem ab,
+      // was schliesslich in der Datenbank landete.
+      const minutes = einheitMinuten(startedAt, endedAt)
+      const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, ended_at: endedAt, minutes })
       qc.setQueryData(['session', dayId, week], optimistic)
       qc.setQueriesData<TrainingSession[]>(
         { queryKey: ['sessions'], predicate: (q: Query) => q.queryKey[2] === week && passtZuTag(q, dayId) },
@@ -377,20 +386,20 @@ export function registriereTrainingMutationen(qc: QueryClient) {
     },
   })
 
-  qc.setMutationDefaults<void, Error, { id: string; dayId: string; week: number }>(MUTATION_KEYS.pauseSession, {
+  qc.setMutationDefaults<void, Error, { id: string; dayId: string; week: number; pausedAt: string }>(MUTATION_KEYS.pauseSession, {
     scope: SYNC_SCOPE,
-    mutationFn: async ({ id }) => {
-      const { error } = await supabase.from('sessions').update({ paused_at: new Date().toISOString() }).eq('id', id)
+    mutationFn: async ({ id, pausedAt }) => {
+      const { error } = await supabase.from('sessions').update({ paused_at: pausedAt }).eq('id', id)
       if (error) throw error
     },
-    onMutate: async ({ dayId, week }) => {
+    onMutate: async ({ dayId, week, pausedAt }) => {
       await qc.cancelQueries({ queryKey: ['session', dayId, week] })
       await qc.cancelQueries({ queryKey: ['sessions'] })
       await qc.cancelQueries({ queryKey: ['sessions-all'] })
       const prevSession = qc.getQueryData<TrainingSession | null>(['session', dayId, week])
       const prevSessions = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions'] })
       const prevSessionsAll = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] })
-      const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, paused_at: new Date().toISOString() })
+      const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, paused_at: pausedAt })
       qc.setQueryData(['session', dayId, week], optimistic)
       qc.setQueriesData<TrainingSession[]>(
         { queryKey: ['sessions'], predicate: (q: Query) => q.queryKey[2] === week && passtZuTag(q, dayId) },
@@ -406,7 +415,7 @@ export function registriereTrainingMutationen(qc: QueryClient) {
     onSuccess: einheitenInvalidieren,
   })
 
-  qc.setMutationDefaults<void, Error, { id: string; dayId: string; week: number; startedAt: string; pausedAt: string }>(
+  qc.setMutationDefaults<void, Error, { id: string; dayId: string; week: number; startedAt: string; pausedAt: string; jetzt: string }>(
     MUTATION_KEYS.resumeSession,
     {
       scope: SYNC_SCOPE,
@@ -414,19 +423,19 @@ export function registriereTrainingMutationen(qc: QueryClient) {
       // einfach nur zu löschen: sonst zählte die in endSession aus der
       // Zeitdifferenz berechnete Dauer die Pause mit. Ist rechnerisch
       // dasselbe wie "eine Stoppuhr anhalten und weiterlaufen lassen".
-      mutationFn: async ({ id, startedAt, pausedAt }) => {
-        const neuerStart = new Date(new Date(startedAt).getTime() + (Date.now() - new Date(pausedAt).getTime())).toISOString()
+      mutationFn: async ({ id, startedAt, pausedAt, jetzt }) => {
+        const neuerStart = startNachPause(startedAt, pausedAt, jetzt)
         const { error } = await supabase.from('sessions').update({ started_at: neuerStart, paused_at: null }).eq('id', id)
         if (error) throw error
       },
-      onMutate: async ({ dayId, week, startedAt, pausedAt }) => {
+      onMutate: async ({ dayId, week, startedAt, pausedAt, jetzt }) => {
         await qc.cancelQueries({ queryKey: ['session', dayId, week] })
         await qc.cancelQueries({ queryKey: ['sessions'] })
         await qc.cancelQueries({ queryKey: ['sessions-all'] })
         const prevSession = qc.getQueryData<TrainingSession | null>(['session', dayId, week])
         const prevSessions = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions'] })
         const prevSessionsAll = qc.getQueriesData<TrainingSession[]>({ queryKey: ['sessions-all'] })
-        const neuerStart = new Date(new Date(startedAt).getTime() + (Date.now() - new Date(pausedAt).getTime())).toISOString()
+        const neuerStart = startNachPause(startedAt, pausedAt, jetzt)
         const optimistic = buildOptimisticSession(prevSession, { day_id: dayId, week, started_at: neuerStart, paused_at: null })
         qc.setQueryData(['session', dayId, week], optimistic)
         qc.setQueriesData<TrainingSession[]>(

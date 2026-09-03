@@ -35,7 +35,7 @@ export function AusgangsdatenCard({ plan }: { plan: Plan }) {
               <span style={{ fontSize: 13, color: 'var(--ink-3)', marginLeft: 4 }}>kg</span>
             </div>
           ) : (
-            <ZahlEingabe wert={plan.work} titel="Gewicht" einheit="kg" nurNumpad className="big" onWahl={v => setzen({ work: v })} />
+            <ZahlEingabe wert={plan.work} titel="Gewicht" einheit="kg" nurNumpad nachkomma={3} className="big" onWahl={v => setzen({ work: v })} />
           )}
         </div>
         <div className="field" style={{ maxWidth: 110 }}>

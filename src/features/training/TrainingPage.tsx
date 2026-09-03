@@ -6,6 +6,7 @@ import { gruppeSetsByExercise } from './calc'
 import { DayListView } from './DayListView'
 import { SessionView } from './SessionView'
 import { PlanPicker } from '../plans/PlanPicker'
+import { standFuerWoche, standAendern, standSchreiben } from './trainingsStand'
 
 export function TrainingPage() {
   const { activePlan } = useActivePlan()
@@ -17,6 +18,23 @@ export function TrainingPage() {
   const autoStartDayId = (location.state as { autoStartDayId?: string } | null)?.autoStartDayId
   const [offenerTag, setOffenerTag] = useState<string | null>(() => autoStartDayId ?? null)
   const [autoStartGym, setAutoStartGym] = useState(() => !!autoStartDayId)
+
+  // Den zuletzt offenen Tag wieder aufmachen. Genau daran fehlte es, wenn
+  // Android die WebView im Hintergrund weggeräumt hatte — man stand wieder
+  // in der Tagesliste statt in der laufenden Einheit (siehe
+  // trainingsStand.ts).
+  //
+  // Abgeleitet beim Rendern statt im useState-Startwert: Der Plan (und
+  // damit die Woche, gegen die der gemerkte Stand geprüft wird) steht beim
+  // ersten Render noch nicht zwangsläufig fest. Im Startwert wäre die
+  // Prüfung dann gegen Woche 1 gelaufen und die Wiederherstellung still
+  // ausgefallen. Genau einmal, danach gehört die Auswahl dem Nutzer.
+  const [wiederhergestellt, setWiederhergestellt] = useState(!!autoStartDayId)
+  if (!wiederhergestellt && activePlan) {
+    setWiederhergestellt(true)
+    const stand = standFuerWoche(activePlan.week)
+    if (stand) setOffenerTag(stand.dayId)
+  }
 
   const { data: days } = useDays(activePlan?.id)
   const alleExerciseIds = (days ?? []).flatMap(d => d.exercises.map(ex => ex.id))
@@ -49,6 +67,15 @@ export function TrainingPage() {
 
   if (!days) return null
 
+  /** Tag öffnen/schließen und den Stand mitschreiben. Beim Schließen
+      fällt der gemerkte Gym-Zustand mit weg — wer bewusst zurück in die
+      Tagesliste geht, will beim nächsten Start auch dort landen. */
+  const tagOeffnen = (dayId: string | null) => {
+    setOffenerTag(dayId)
+    if (dayId) standAendern({ dayId, woche: week })
+    else standSchreiben(null)
+  }
+
   if (offenerTagDaten) {
     return (
       <SessionView
@@ -59,7 +86,7 @@ export function TrainingPage() {
         alleSaetzeJemals={saetzeJemals ?? []}
         alleSaetzeJemalsBereit={saetzeJemals !== undefined}
         session={session}
-        onBack={() => setOffenerTag(null)}
+        onBack={() => tagOeffnen(null)}
         autoStartGym={autoStartGym}
         onAutoStartConsumed={() => setAutoStartGym(false)}
       />
@@ -74,7 +101,7 @@ export function TrainingPage() {
       sessions={sessions ?? []}
       alleSessionenJemals={sessionenJemals ?? []}
       alleSaetzeJemals={saetzeJemals ?? []}
-      onOpen={setOffenerTag}
+      onOpen={tagOeffnen}
     />
   )
 }

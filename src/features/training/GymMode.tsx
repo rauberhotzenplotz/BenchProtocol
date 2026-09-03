@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
-import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken, tonnageOf, satzE1rm, letzteEinheitFuerUebung, wochenLabel } from './calc'
+import { setsOf, letzterSatz, aufwaermPlan, istBankdruecken, tonnageOf, satzE1rm, letzteEinheitFuerUebung, wochenLabel, blockWoche } from './calc'
 import { LetzteEinheitPanel } from './LetzteEinheitPanel'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
@@ -105,7 +105,7 @@ export function GymMode({
   const progressionZeileFuer = (ex: Exercise) => {
     if (!progression) return undefined
     const slot = ex.bench_slot ?? (istBankdruecken(ex) ? 'd1' : null)
-    return slot ? benchRowsFor(progression, slot).find(r => r.week === week) : undefined
+    return slot ? benchRowsFor(progression, slot).find(r => r.week === blockWoche(week)) : undefined
   }
   const sollFuer = (ex: Exercise) => {
     const zeile = progressionZeileFuer(ex)
@@ -332,7 +332,16 @@ export function GymMode({
     // registrierten onSuccess von endSession (src/lib/offlineMutations.ts)
     // — vorher lief er ohne auf endSession zu warten, also potenziell noch
     // vor dessen Bestätigung; jetzt garantiert erst danach, auch offline.
-    if (session) endSession.mutate({ id: session.id, startedAt: session.started_at, dayId: day.id, week, planId: plan.id, planTyp: plan.typ })
+    if (session)
+      endSession.mutate({
+        id: session.id,
+        startedAt: session.started_at,
+        endedAt: new Date().toISOString(),
+        dayId: day.id,
+        week,
+        planId: plan.id,
+        planTyp: plan.typ,
+      })
     onClose()
   }
 
