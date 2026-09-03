@@ -2,7 +2,7 @@ import { useMutation, useQuery, type QueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { MUTATION_KEYS } from '../../lib/offline/keys'
 import type { BenchProgressionRow, BenchSlot, Exercise, TrainingSession } from '../../types/db'
-import { wocheErledigt } from '../training/calc'
+import { wocheErledigt, blockWoche, BLOCK_WOCHEN } from '../training/calc'
 import { naechstesE1rm, round } from './calc'
 import { zielgewicht } from '../rpeblock/e1rm'
 
@@ -83,7 +83,7 @@ const REFERENZ_RPE = 8
 export async function advanceBlockIfDue(qc: QueryClient, planId: string) {
   const { data: plan, error: planErr } = await supabase.from('plans').select('*').eq('id', planId).single()
   if (planErr) throw planErr
-  if (plan.typ !== 'bench' || plan.week !== 4) return null
+  if (plan.typ !== 'bench' || blockWoche(plan.week) !== 4) return null
 
   const { data: days, error: daysErr } = await supabase
     .from('plan_days')
@@ -95,27 +95,41 @@ export async function advanceBlockIfDue(qc: QueryClient, planId: string) {
   const exerciseIds = alleExercises.map(ex => ex.id)
   if (!exerciseIds.length) return null
 
-  const dayIdsAlle = (days as { id: string }[]).map(d => d.id)
-  const { data: woche4Sessions, error: sessErr } = await supabase.from('sessions').select('*').in('day_id', dayIdsAlle).eq('week', 4)
-  if (sessErr) throw sessErr
-  if (!wocheErledigt(dayIdsAlle, woche4Sessions as TrainingSession[], 4)) return null
+  // Der laufende Block umfasst die vier Wochen, die auf die aktuelle
+  // Deload-Woche zurückreichen — bei durchgehend gezählten Wochen also
+  // z. B. 9 bis 12, nicht mehr immer 1 bis 4.
+  const blockStart = plan.week - (BLOCK_WOCHEN - 1)
 
-  const { data: wochen1bis3, error: w13Err } = await supabase
+  const dayIdsAlle = (days as { id: string }[]).map(d => d.id)
+  const { data: deloadSessions, error: sessErr } = await supabase
+    .from('sessions')
+    .select('*')
+    .in('day_id', dayIdsAlle)
+    .eq('week', plan.week)
+  if (sessErr) throw sessErr
+  if (!wocheErledigt(dayIdsAlle, deloadSessions as TrainingSession[], plan.week)) return null
+
+  const { data: aufbauWochen, error: w13Err } = await supabase
     .from('logged_sets')
     .select('*')
     .in('exercise_id', exerciseIds)
-    .lte('week', 3)
+    .gte('week', blockStart)
+    .lte('week', plan.week - 1)
   if (w13Err) throw w13Err
 
-  const ergebnis = naechstesE1rm(alleExercises, wochen1bis3)
+  const ergebnis = naechstesE1rm(alleExercises, aufbauWochen, blockStart)
 
-  const dayIds = (days as { id: string }[]).map(d => d.id)
-  await supabase.from('logged_sets').delete().in('exercise_id', exerciseIds).lte('week', 4)
-  await supabase.from('sessions').delete().in('day_id', dayIds).lte('week', 4)
-
+  // Früher wurden hier die Sätze und Einheiten der Wochen 1–4 gelöscht.
+  // Das war keine Aufräumarbeit, sondern eine Zwangsmaßnahme: Die
+  // Wochenzahl sprang auf 1 zurück, und logged_sets/sessions sind allein
+  // über sie eindeutig — der neue Block wäre sonst mit dem alten
+  // kollidiert. Der Preis war die gesamte Trainingshistorie bei jedem
+  // Blockwechsel: Rekorde, Cockpit-Kennzahlen, Heatmap, "Letzte Einheit".
+  // Seit die Wochen durchzählen (siehe blockWoche in training/calc.ts)
+  // gibt es keine Kollision mehr, und damit auch keinen Grund zu löschen.
   const patch: Record<string, unknown> = {
     block: (plan.block ?? 1) + 1,
-    week: 1,
+    week: plan.week + 1,
     // Der neue Block startet seine Woche 1 jetzt — ohne den Reset behielte
     // die Anzeige den Startzeitpunkt des vorigen Blocks.
     week_started_at: new Date().toISOString(),

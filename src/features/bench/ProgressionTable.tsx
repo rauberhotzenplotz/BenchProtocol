@@ -1,6 +1,7 @@
 import type { BenchProgressionRow, Plan } from '../../types/db'
 import { useUpdateBenchProgressionRow } from './queries'
 import { benchLoad } from './calc'
+import { blockWoche } from '../training/calc'
 import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
 
 export function ProgressionTable({ plan, rows, dim }: { plan: Plan; rows: BenchProgressionRow[]; dim: boolean }) {
@@ -20,7 +21,7 @@ export function ProgressionTable({ plan, rows, dim }: { plan: Plan; rows: BenchP
         </thead>
         <tbody>
           {rows.map(r => (
-            <tr key={r.id} className={r.week === 4 ? 'deload' : ''} style={r.week === plan.week ? { background: 'rgba(53,240,208,.05)' } : undefined}>
+            <tr key={r.id} className={r.week === 4 ? 'deload' : ''} style={r.week === blockWoche(plan.week) ? { background: 'rgba(53,240,208,.05)' } : undefined}>
               <td className="wk">{r.week === 4 ? 'W4 · Deload' : `Woche ${r.week}`}</td>
               <td className="mono muted">{r.scheme}</td>
               <td className="pct">

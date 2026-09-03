@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { TrainingSession } from '../../types/db'
-import { wocheErledigt } from './calc'
+import { wocheErledigt, blockWoche } from './calc'
 import { advanceBlockIfDue } from '../bench/queries'
 
 /** Schaltet die Woche weiter, sobald alle Trainingstage der laufenden
@@ -36,11 +36,11 @@ export async function pruefeWochenabschluss(qc: QueryClient, planId: string) {
 
   // Die Deload-Woche eines Bankfokus-Plans hat ihre eigene, umfangreichere
   // Logik (1RM-Neuberechnung, Block-Reset) — hier nicht duplizieren.
-  if (plan.typ === 'bench' && plan.week === 4) return advanceBlockIfDue(qc, planId)
+  if (plan.typ === 'bench' && blockWoche(plan.week) === 4) return advanceBlockIfDue(qc, planId)
 
-  // Reine Weiterschaltung, keine Löschung: anders als beim Blockwechsel
-  // (Wochenzahlen laufen dort wieder bei 1 an) wächst die Wochenzahl hier
-  // schlicht weiter — die Historie bleibt vollständig erhalten.
+  // Reine Weiterschaltung. Die Wochenzahl wächst hier wie beim
+  // Blockwechsel schlicht weiter — sie springt seit dem Umbau nirgends
+  // mehr zurück, damit die Historie vollständig erhalten bleibt.
   const { error: updateErr } = await supabase
     .from('plans')
     .update({ week: plan.week + 1, week_started_at: new Date().toISOString() })

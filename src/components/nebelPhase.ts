@@ -1,4 +1,5 @@
 import type { Plan } from '../types/db'
+import { blockWoche } from '../features/training/calc'
 
 /** Stimmung des Hintergrundnebels. Bankfokus-Pläne laufen in festen
     Vierwochenblöcken (siehe wochenLabel in features/training/calc.ts):
@@ -9,7 +10,8 @@ export type NebelPhase = 'aufbau' | 'schwer' | 'deload'
 
 export function nebelPhase(plan: Plan | null | undefined): NebelPhase {
   if (!plan || plan.typ !== 'bench') return 'aufbau'
-  if (plan.week === 4) return 'deload'
-  if (plan.week === 3) return 'schwer'
+  const w = blockWoche(plan.week)
+  if (w === 4) return 'deload'
+  if (w === 3) return 'schwer'
   return 'aufbau'
 }

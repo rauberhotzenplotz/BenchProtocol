@@ -81,6 +81,21 @@ describe('naechstesE1rm', () => {
     expect(ergebnis.begruendung).toContain('3')
   })
 
+  // Seit die Wochen durchzaehlen, beginnt der dritte Block bei Woche 9.
+  // Ohne den Blockstart wuerde hier nach den Wochen 1-3 gesucht und
+  // nichts gefunden — der Block liefe stumm als INSUFFICIENT_DATA durch.
+  it('wertet den Block ab der uebergebenen Startwoche aus', () => {
+    const saetze: LoggedSet[] = [
+      satz({ week: 9, kg: 100, reps: 5, rpe: 7 }),
+      satz({ week: 10, kg: 102.5, reps: 5, rpe: 8 }),
+      satz({ week: 11, kg: 108, reps: 5, rpe: 8.5 }),
+    ]
+    const ergebnis = naechstesE1rm([bankUebung], saetze, 9)
+    expect(ergebnis.neuesE1rm as number).toBeGreaterThan(126)
+    // Dieselben Saetze ohne Blockstart: nichts gefunden.
+    expect(naechstesE1rm([bankUebung], saetze).begruendung).toContain('3')
+  })
+
   it('lässt das 1RM unverändert bei hoher RPE-Drift (REDUCE_FATIGUE)', () => {
     const saetze: LoggedSet[] = [
       satz({ week: 1, kg: 100, reps: 5, rpe: 7 }), // planmäßig

@@ -1,9 +1,10 @@
 import type { Plan } from '../../types/db'
+import { blockWoche } from './calc'
 
 /** Hinweis vor dem Trainingsstart in der Deload-Woche eines Bankfokus-
     Blocks — verschwindet, sobald die Einheit läuft (siehe SessionView). */
 export function DeloadBanner({ plan }: { plan: Plan }) {
-  if (plan.typ !== 'bench' || plan.week !== 4) return null
+  if (plan.typ !== 'bench' || blockWoche(plan.week) !== 4) return null
   return (
     <div className="deload-banner">
       <b>Deload-Woche</b>

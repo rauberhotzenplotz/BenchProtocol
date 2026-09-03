@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { BenchProgressionRow, BenchSlot, Plan } from '../../types/db'
 import { benchLoad } from './calc'
+import { blockWoche } from '../training/calc'
 import { cssVars } from '../../lib/style'
 
 /** Anteil der Bankdrück-Last je Muskel. Anatomie, keine Messung: Die
@@ -198,7 +199,7 @@ function Striche({ toene, gespiegelt }: { toene: Record<string, Ton>; gespiegelt
 export function LastVerteilung({ plan, zeilen }: { plan: Plan; zeilen: Record<BenchSlot, BenchProgressionRow[]> }) {
   const [slot, setSlot] = useState<BenchSlot>('d1')
 
-  const zeile = zeilen[slot].find(r => r.week === plan.week)
+  const zeile = zeilen[slot].find(r => r.week === blockWoche(plan.week))
   const intensitaet = zeile?.pct ?? 0
   const gewicht = zeile ? benchLoad(plan, zeile) : 0
   const { map, spitze } = toeneBerechnen(intensitaet)

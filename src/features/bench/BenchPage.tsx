@@ -7,7 +7,7 @@ import { GoalCard } from './GoalCard'
 import { RechnerCard } from './RechnerCard'
 import { LastVerteilung } from './LastVerteilung'
 import { CountUp } from '../../components/CountUp'
-import { wochenLabel } from '../training/calc'
+import { wochenLabel, blockWoche } from '../training/calc'
 import { cssVars } from '../../lib/style'
 import type { Plan } from '../../types/db'
 
@@ -52,7 +52,7 @@ function BenchTab({ plan }: { plan: Plan }) {
   const bsp = !plan.beruehrt
   const e1 = baseE1RM(plan)
   const rowsD1 = progression ? benchRowsFor(progression, 'd1') : []
-  const heuteD1 = rowsD1.find(r => r.week === plan.week)
+  const heuteD1 = rowsD1.find(r => r.week === blockWoche(plan.week))
   const zielD1 = heuteD1 ? benchLoad(plan, heuteD1) : 0
 
   return (

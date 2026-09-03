@@ -58,7 +58,15 @@ export interface BlockErgebnis {
     übernehmen das gemessene Bestwert-1RM; bei REDUCE_FATIGUE (RPE-Drift
     zu hoch) oder INSUFFICIENT_DATA (nicht alle drei Wochen sauber
     geloggt) bleibt das 1RM beim Blockstart stehen, kein Sprung ins Blaue. */
-export function naechstesE1rm(exercises: Exercise[], wochenSaetze: LoggedSet[]): BlockErgebnis {
+export function naechstesE1rm(
+  exercises: Exercise[],
+  wochenSaetze: LoggedSet[],
+  /** Laufende Wochenzahl der ersten Woche dieses Blocks. Seit Wochen
+      durchgehend zählen (siehe blockWoche in training/calc.ts) ist das
+      nicht mehr zwangsläufig 1: Block 3 beginnt bei Woche 9. Die
+      Auswertung selbst rechnet weiter in Blockwochen 1–3. */
+  blockStartWoche = 1,
+): BlockErgebnis {
   const bankUebung = exercises.find(ex => ex.bench_slot === 'd1')
   if (!bankUebung) {
     return { neuesE1rm: null, begruendung: 'Keine als „Bank schwer“ markierte Übung im Plan gefunden — Ausgangsgewicht bleibt unverändert.' }
@@ -68,7 +76,7 @@ export function naechstesE1rm(exercises: Exercise[], wochenSaetze: LoggedSet[]):
     woche,
     topSatz: topSatzDerWoche(
       wochenSaetze
-        .filter(s => s.exercise_id === bankUebung.id && s.week === woche)
+        .filter(s => s.exercise_id === bankUebung.id && s.week === blockStartWoche + woche - 1)
         .map(s => ({ gewicht: s.kg ?? 0, wdh: s.reps ?? 0, rpe: s.rpe })),
     ),
     geplanterRpe: GEPLANTE_RPE[woche] ?? null,
