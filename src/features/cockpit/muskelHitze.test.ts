@@ -195,6 +195,14 @@ describe('flaechenFuerMuskel', () => {
     expect(flaechenFuerMuskel('Gluteus Medius')).toEqual(['abductors'])
   })
 
+  // Kleine Helfermuskeln teilen sich die Flaeche ihres Hauptmuskels.
+  it('ordnet Helfermuskeln der passenden Flaeche zu', () => {
+    expect(flaechenFuerMuskel('Anconeus')).toEqual(['triceps'])
+    expect(flaechenFuerMuskel('Brachialis')).toEqual(['biceps'])
+    expect(flaechenFuerMuskel('Brachioradialis')).toEqual(['forearm'])
+    expect(flaechenFuerMuskel('Trapezius')).toEqual(['trapezius'])
+  })
+
   it('laesst Muskeln ohne Flaeche im Modell aus', () => {
     expect(flaechenFuerMuskel('Iliopsoas')).toEqual([])
     expect(flaechenFuerMuskel('Tibialis Anterior')).toEqual([])

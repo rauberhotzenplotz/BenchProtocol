@@ -92,7 +92,10 @@ export function flaechenFuerMuskel(muskel: string): string[] {
     return ['back-deltoids']
   if (t.includes('delt')) return ['front-deltoids']
   if (t.startsWith('biceps brachii') || t.startsWith('brachialis')) return ['biceps']
-  if (t.startsWith('triceps')) return ['triceps']
+  // Der Anconeus streckt mit dem Trizeps zusammen den Ellbogen und taucht
+  // im Katalog als dessen Sekundärmuskel auf (Kabelzug Trizepsdrücken).
+  // Eine eigene Fläche hat er im Modell nicht.
+  if (t.startsWith('triceps') || t.startsWith('anconeus')) return ['triceps']
   if (t.startsWith('brachioradialis') || t.includes('carpi') || t.includes('forearm')) return ['forearm']
   if (t.startsWith('rectus abdominis')) return ['abs']
   if (t.startsWith('obliques') || t.includes('oblique')) return ['obliques']
