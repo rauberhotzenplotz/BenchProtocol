@@ -363,6 +363,9 @@ export function vorgabe(eintrag) {
 export const GERAET_TIER = {
   Maschine: 0,
   Barbell: 0,
+  // Markenmaschinen (siehe werkzeuge/hammer-strength.mjs) hinter den
+  // Grundgeraeten: Wer "Bankdruecken" sucht, meint zuerst die Langhantel.
+  'Hammer Strength': 2,
   Dumbbell: 1,
   Cable: 1,
   Bodyweight: 1,
