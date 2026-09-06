@@ -1,49 +1,49 @@
 -- Übungskatalog: deutsche Namen, ausgedünnt, neu sortiert.
---
--- Erzeugt von werkzeuge/katalog-deutsch.mjs aus
--- Fitness_Datenbank_DE_Jargon_FINAL.xlsx. Nicht von Hand ändern, sondern
--- den Generator anpassen und neu laufen lassen.
---
--- Ausgangslage: Der Katalog stammte aus einer Functional-Fitness-Sammlung.
--- 2856 der 3242 Namen trugen englische Wörter, 1053 waren unverändert
--- englisch ("Eigengewichts Alternating Heel Taps"), 2363 hatten fünf
--- Wörter oder mehr. Zwei Drittel der Einträge hingen an Geräten, die in
--- keinem normalen Studio stehen -- 861 Kettlebell, 195 Clubbell, 165
--- Slider, 125 Turnringe. Maschinen fehlten dagegen vollständig.
---
--- Danach stehen 715 Einträge im Katalog, alle auf Deutsch, mit
--- Haupt-, Sekundär- und Tertiärmuskel und einem Bekanntheitsrang, der die
--- Grundübung je Muskelgruppe nach vorn stellt.
---
--- Bestehende Zeilen werden aktualisiert, nicht ersetzt: Sie behalten ihre
--- id, und exercises.library_id in bestehenden Plänen bleibt gültig. Nur
--- was wegfällt, wird gelöscht -- dort setzt der Fremdschlüssel
--- library_id auf null (on delete set null, siehe 0011). Die Übungen in
--- den Plänen und alle geloggten Sätze bleiben in jedem Fall unangetastet.
---
--- Läuft für jeden Nutzer, der schon einen Katalog hat -- exercise_library
--- hängt an RLS und gehört je Zeile einem Nutzer.
+  --
+  -- Erzeugt von werkzeuge/katalog-deutsch.mjs aus
+  -- Fitness_Datenbank_DE_Jargon_FINAL.xlsx. Nicht von Hand ändern, sondern
+  -- den Generator anpassen und neu laufen lassen.
+  --
+  -- Ausgangslage: Der Katalog stammte aus einer Functional-Fitness-Sammlung.
+  -- 2856 der 3242 Namen trugen englische Wörter, 1053 waren unverändert
+  -- englisch ("Eigengewichts Alternating Heel Taps"), 2363 hatten fünf
+  -- Wörter oder mehr. Zwei Drittel der Einträge hingen an Geräten, die in
+  -- keinem normalen Studio stehen -- 861 Kettlebell, 195 Clubbell, 165
+  -- Slider, 125 Turnringe. Maschinen fehlten dagegen vollständig.
+  --
+  -- Danach stehen 716 Einträge im Katalog, alle auf Deutsch, mit
+  -- Haupt-, Sekundär- und Tertiärmuskel und einem Bekanntheitsrang, der die
+  -- Grundübung je Muskelgruppe nach vorn stellt.
+  --
+  -- Bestehende Zeilen werden aktualisiert, nicht ersetzt: Sie behalten ihre
+  -- id, und exercises.library_id in bestehenden Plänen bleibt gültig. Nur
+  -- was wegfällt, wird gelöscht -- dort setzt der Fremdschlüssel
+  -- library_id auf null (on delete set null, siehe 0011). Die Übungen in
+  -- den Plänen und alle geloggten Sätze bleiben in jedem Fall unangetastet.
+  --
+  -- Läuft für jeden Nutzer, der schon einen Katalog hat -- exercise_library
+  -- hängt an RLS und gehört je Zeile einem Nutzer.
 
-begin;
+  begin;
 
-create temporary table katalog_neu (
-  alt_name        text,
-  name            text not null,
-  name_en         text,
-  name_de_raw     text,
-  muscle_group    text,
-  primary_muscle  text,
-  secondary_muscle text,
-  tertiary_muscle text,
-  equipment       text,
-  difficulty      text,
-  scheme          text,
-  rest            text,
-  popularity      int
-) on commit drop;
+  create temporary table katalog_neu (
+    alt_name        text,
+    name            text not null,
+    name_en         text,
+    name_de_raw     text,
+    muscle_group    text,
+    primary_muscle  text,
+    secondary_muscle text,
+    tertiary_muscle text,
+    equipment       text,
+    difficulty      text,
+    scheme          text,
+    rest            text,
+    popularity      int
+  ) on commit drop;
 
-insert into katalog_neu values
-    (null, 'Abduktorenmaschine', null, null, 'Abduktoren', 'Gluteus Medius', 'Gluteus Maximus', null, 'Maschine', 'Fortgeschritten', '3 × 15', '60 s', 2),
+  insert into katalog_neu values
+      (null, 'Abduktorenmaschine', null, null, 'Abduktoren', 'Gluteus Medius', 'Gluteus Maximus', null, 'Maschine', 'Fortgeschritten', '3 × 15', '60 s', 2),
     (null, 'Adduktorenmaschine', null, null, 'Adduktoren', 'Adductor Magnus', null, null, 'Maschine', 'Fortgeschritten', '3 × 15', '60 s', 2),
     (null, 'Hüftstoß-Maschine', null, null, 'Gesäß', 'Gluteus Maximus', 'Biceps Femoris', null, 'Maschine', 'Fortgeschritten', '4 × 10', '2 min', 2),
     (null, 'Latzug', null, null, 'Rücken', 'Latissimus Dorsi', 'Biceps Brachii', null, 'Maschine', 'Fortgeschritten', '4 × 10', '2 min', 2),
@@ -458,6 +458,8 @@ insert into katalog_neu values
     ('Double Kurzhantel Overhead Curtsy Ausfallschritt', 'Kurzhantel Curtsy-Ausfallschritt, über Kopf', 'Double Dumbbell Overhead Curtsy Lunge', 'Double Kurzhantel Overhead Curtsy Ausfallschritt', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', 'Adductor Magnus', 'Dumbbell', 'Fortgeschritten', '4 × 8', '2 min', 3115),
     ('Single Arm Kurzhantel Suitcase Walking Ausfallschritt', 'Kurzhantel Gehender Ausfallschritt, einarmig', 'Single Arm Dumbbell Suitcase Walking Lunge', 'Single Arm Kurzhantel Suitcase Walking Ausfallschritt', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', 'Biceps Femoris', 'Dumbbell', 'blutiger Anfänger', '4 × 8', '2 min', 3115),
     ('Alternating Double Kurzhantel Negativbank Bankdrücken', 'Kurzhantel Negativbankdrücken, im Wechsel', 'Alternating Double Dumbbell Decline Bench Press', 'Alternating Double Kurzhantel Negativbank Bankdrücken', 'Brust', 'Pectoralis Major', 'Triceps Brachii', null, 'Dumbbell', 'Anfänger', '3 × 12', '90 s', 3115),
+    ('Double Kurzhantel Seated Reverse Fly', 'Kurzhantel Reverse Flys, sitzend', 'Double Dumbbell Seated Reverse Fly', 'Double Kurzhantel Seated Reverse Fly', 'Schultern', 'Posterior Deltoids', null, null, 'Dumbbell', 'Anfänger', '3 × 12', '90 s', 3115),
+    ('Double Kurzhantel Bent Over Reverse Fly', 'Kurzhantel Reverse Flys, vorgebeugt', 'Double Dumbbell Bent Over Reverse Fly', 'Double Kurzhantel Bent Over Reverse Fly', 'Schultern', 'Posterior Deltoids', null, null, 'Dumbbell', 'Anfänger', '3 × 12', '90 s', 3115),
     ('Single Arm Bar Chin Up', 'Klimmzugstange Klimmzug im Untergriff, einarmig', 'Single Arm Bar Chin Up', 'Single Arm Bar Chin Up', 'Bizeps', 'Biceps Brachii', 'Latissimus Dorsi', null, 'Pull Up Bar', 'Master', '4 × 8', '2 min', 3116),
     ('Bar Eccentric Chin Up', 'Klimmzugstange Klimmzug im Untergriff, exzentrisch', 'Bar Eccentric Chin Up', 'Bar Eccentric Chin Up', 'Bizeps', 'Biceps Brachii', 'Latissimus Dorsi', null, 'Pull Up Bar', 'blutiger Anfänger', '4 × 8', '2 min', 3116),
     ('Double Kurzhantel Suitcase Alternating Reverse Ausfallschritt', 'Kurzhantel Ausfallschritt rückwärts, im Wechsel', 'Double Dumbbell Suitcase Alternating Reverse Lunge', 'Double Kurzhantel Suitcase Alternating Reverse Ausfallschritt', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', 'Biceps Femoris', 'Dumbbell', 'blutiger Anfänger', '4 × 8', '2 min', 3116),
@@ -489,6 +491,7 @@ insert into katalog_neu values
     ('Kettlebell Sumo Deadlift', 'Kettlebell Sumo-Kreuzheben', 'Kettlebell Sumo Deadlift', 'Kettlebell Sumo Deadlift', 'Rücken', 'Latissimus Dorsi', 'Gluteus Maximus', 'Biceps Femoris', 'Kettlebell', 'Anfänger', '4 × 8', '2 min', 3303),
     ('Double Kettlebell Suitcase Reverse Ausfallschritt', 'Kettlebell Ausfallschritt rückwärts', 'Double Kettlebell Suitcase Reverse Lunge', 'Double Kettlebell Suitcase Reverse Ausfallschritt', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', 'Biceps Femoris', 'Kettlebell', 'blutiger Anfänger', '4 × 8', '2 min', 3304),
     ('Double Kettlebell Suitcase Walking Ausfallschritt', 'Kettlebell Gehender Ausfallschritt', 'Double Kettlebell Suitcase Walking Lunge', 'Double Kettlebell Suitcase Walking Ausfallschritt', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', 'Biceps Femoris', 'Kettlebell', 'blutiger Anfänger', '4 × 8', '2 min', 3304),
+    ('Resistance Band Reverse Fly', 'Widerstandsband Reverse Flys', 'Resistance Band Reverse Fly', 'Resistance Band Reverse Fly', 'Schultern', 'Posterior Deltoids', null, null, 'Resistance Band', 'Anfänger', '3 × 12', '90 s', 3304),
     ('Single Arm Kettlebell Suitcase Carry', 'Kettlebell Koffertragen, einarmig', 'Single Arm Kettlebell Suitcase Carry', 'Single Arm Kettlebell Suitcase Carry', 'Unterarme', 'Brachioradialis', 'Obliques', null, 'Kettlebell', 'Anfänger', '3 × 15', '60 s', 3314),
     ('Single Arm Kettlebell Suitcase Deadlift', 'Kettlebell Kreuzheben, einarmig', 'Single Arm Kettlebell Suitcase Deadlift', 'Single Arm Kettlebell Suitcase Deadlift', 'Rücken', 'Latissimus Dorsi', 'Obliques', null, 'Kettlebell', 'blutiger Anfänger', '4 × 8', '2 min', 3314),
     ('Single Arm Kettlebell Bottoms Up Negativbank Bankdrücken', 'Kettlebell Negativbankdrücken, einarmig', 'Single Arm Kettlebell Bottoms Up Decline Bench Press', 'Single Arm Kettlebell Bottoms Up Negativbank Bankdrücken', 'Brust', 'Pectoralis Major', 'Triceps Brachii', null, 'Kettlebell', 'blutiger Anfänger', '3 × 12', '90 s', 3314),
@@ -614,6 +617,7 @@ insert into katalog_neu values
     ('Double Kettlebell Chest Fly', 'Kettlebell Fliegende', 'Double Kettlebell Chest Fly', 'Double Kettlebell Chest Fly', 'Brust', 'Pectoralis Major', 'Anterior Deltoids', 'Biceps Brachii', 'Kettlebell', 'Anfänger', '3 × 12', '90 s', 5303),
     ('Double Kettlebell Spider Curl', 'Kettlebell Spidercurl', 'Double Kettlebell Spider Curl', 'Double Kettlebell Spider Curl', 'Bizeps', 'Biceps Brachii', 'Brachialis', 'Brachioradialis', 'Kettlebell', 'blutiger Anfänger', '3 × 12', '90 s', 5303),
     ('Double Kettlebell Suitcase Split Kniebeuge', 'Kettlebell Split-Kniebeuge', 'Double Kettlebell Suitcase Split Squat', 'Double Kettlebell Suitcase Split Kniebeuge', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', 'Biceps Femoris', 'Kettlebell', 'blutiger Anfänger', '4 × 8', '2 min', 5303),
+    ('Resistance Band Chest Fly', 'Widerstandsband Fliegende', 'Resistance Band Chest Fly', 'Resistance Band Chest Fly', 'Brust', 'Pectoralis Major', 'Anterior Deltoids', 'Biceps Brachii', 'Resistance Band', 'Anfänger', '3 × 12', '90 s', 5303),
     ('Double Kettlebell Negativbank Bench Chest Fly', 'Kettlebell Fliegende, Negativbank', 'Double Kettlebell Decline Bench Chest Fly', 'Double Kettlebell Negativbank Bench Chest Fly', 'Brust', 'Pectoralis Major', 'Anterior Deltoids', 'Biceps Brachii', 'Kettlebell', 'Anfänger', '3 × 12', '90 s', 5314),
     ('Double Kettlebell Schrägbank Bench Chest Fly', 'Kettlebell Fliegende, Schrägbank', 'Double Kettlebell Incline Bench Chest Fly', 'Double Kettlebell Schrägbank Bench Chest Fly', 'Brust', 'Pectoralis Major', 'Anterior Deltoids', 'Biceps Brachii', 'Kettlebell', 'Anfänger', '3 × 12', '90 s', 5314),
     ('Single Arm Kettlebell Spider Curl', 'Kettlebell Spidercurl, einarmig', 'Single Arm Kettlebell Spider Curl', 'Single Arm Kettlebell Spider Curl', 'Bizeps', 'Biceps Brachii', 'Brachialis', 'Brachioradialis', 'Kettlebell', 'blutiger Anfänger', '3 × 12', '90 s', 5314),
@@ -717,8 +721,6 @@ insert into katalog_neu values
     ('Cable Face Pull', 'Kabelzug Face Pull', 'Cable Face Pull', 'Cable Face Pull', 'Schultern', 'Posterior Deltoids', 'Infraspinatus', 'Teres Minor', 'Cable', 'blutiger Anfänger', '3 × 12', '90 s', 9104),
     ('Kurzhantel Goblet Pistol Kniebeuge', 'Kurzhantel Pistol Squat', 'Dumbbell Goblet Pistol Squat', 'Kurzhantel Goblet Pistol Kniebeuge', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', null, 'Dumbbell', 'Experte', '3 × 12', '90 s', 9104),
     ('Eigengewichts Feet Elevated Pike Liegestütz', 'Liegestütz, erhöht', 'Bodyweight Feet Elevated Pike Push Up', 'Eigengewichts Feet Elevated Pike Liegestütz', 'Schultern', 'Anterior Deltoids', 'Triceps Brachii', null, 'Bodyweight', 'Fortgeschritten', '4 × 8', '2 min', 9113),
-    ('Double Kurzhantel Seated Reverse Fly', 'Kurzhantel Fliegende, sitzend', 'Double Dumbbell Seated Reverse Fly', 'Double Kurzhantel Seated Reverse Fly', 'Schultern', 'Posterior Deltoids', null, null, 'Dumbbell', 'Anfänger', '3 × 12', '90 s', 9114),
-    ('Double Kurzhantel Bent Over Reverse Fly', 'Kurzhantel Fliegende, vorgebeugt', 'Double Dumbbell Bent Over Reverse Fly', 'Double Kurzhantel Bent Over Reverse Fly', 'Schultern', 'Posterior Deltoids', null, null, 'Dumbbell', 'Anfänger', '3 × 12', '90 s', 9114),
     ('Eigengewichts Hand Assisted Pistol Kniebeuge', 'Pistol Squat, unterstützt', 'Bodyweight Hand Assisted Pistol Squat', 'Eigengewichts Hand Assisted Pistol Kniebeuge', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', null, 'Bodyweight', 'Fortgeschritten', '3 × 12', '90 s', 9114),
     ('Eigengewichts Hand Assisted Sissy Kniebeuge', 'Sissy Squat, unterstützt', 'Bodyweight Hand Assisted Sissy Squat', 'Eigengewichts Hand Assisted Sissy Kniebeuge', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', null, 'Bodyweight', 'blutiger Anfänger', '3 × 12', '90 s', 9114),
     ('Cable Half Kneeling Face Pull', 'Kabelzug Face Pull, kniend', 'Cable Half Kneeling Face Pull', 'Cable Half Kneeling Face Pull', 'Schultern', 'Posterior Deltoids', 'Infraspinatus', 'Teres Minor', 'Cable', 'blutiger Anfänger', '3 × 12', '90 s', 9115),
@@ -727,7 +729,6 @@ insert into katalog_neu values
     ('Eigengewichts Alternating Pistol Kniebeuge', 'Pistol Squat, im Wechsel', 'Bodyweight Alternating Pistol Squat', 'Eigengewichts Alternating Pistol Kniebeuge', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', null, 'Bodyweight', 'Experte', '3 × 12', '90 s', 9115),
     ('Kurzhantel Goblet Alternating Pistol Kniebeuge', 'Kurzhantel Pistol Squat, im Wechsel', 'Dumbbell Goblet Alternating Pistol Squat', 'Kurzhantel Goblet Alternating Pistol Kniebeuge', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', null, 'Dumbbell', 'Experte', '3 × 12', '90 s', 9116),
     ('Single Arm Kurzhantel Overhead Carry', 'Kurzhantel Tragen, einarmig, über Kopf', 'Single Arm Dumbbell Overhead Carry', 'Single Arm Kurzhantel Overhead Carry', 'Schultern', 'Anterior Deltoids', 'Obliques', null, 'Dumbbell', 'Fortgeschritten', '3 × 12', '90 s', 9126),
-    ('Resistance Band Reverse Fly', 'Widerstandsband Fliegende', 'Resistance Band Reverse Fly', 'Resistance Band Reverse Fly', 'Schultern', 'Posterior Deltoids', null, null, 'Resistance Band', 'Anfänger', '3 × 12', '90 s', 9303),
     ('Double Kettlebell Mountain Climber', 'Kettlebell Mountain Climber', 'Double Kettlebell Mountain Climber', 'Double Kettlebell Mountain Climber', 'Bauchmuskeln', 'Rectus Abdominis', 'Iliopsoas', 'Anterior Deltoids', 'Kettlebell', 'blutiger Anfänger', '3 × 15', '60 s', 9304),
     ('Kettlebell Goblet Pistol Kniebeuge', 'Kettlebell Pistol Squat', 'Kettlebell Goblet Pistol Squat', 'Kettlebell Goblet Pistol Kniebeuge', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', null, 'Kettlebell', 'Experte', '3 × 12', '90 s', 9304),
     ('Superband Sissy Kniebeuge', 'Superband Sissy Squat', 'Superband Sissy Squat', 'Superband Sissy Kniebeuge', 'Quadrizeps', 'Quadriceps Femoris', 'Gluteus Maximus', null, 'Superband', 'Fortgeschritten', '3 × 12', '90 s', 9304),
@@ -759,46 +760,47 @@ insert into katalog_neu values
     ('Kettlebell Goblet Carry', 'Kettlebell Tragen', 'Kettlebell Goblet Carry', 'Kettlebell Goblet Carry', 'Bauchmuskeln', 'Rectus Abdominis', null, null, 'Kettlebell', 'blutiger Anfänger', '3 × 15', '60 s', 11303),
     ('Superband Isometric Split Kniebeuge Pallof Press', 'Superband Split-Kniebeuge, isometrisch', 'Superband Isometric Split Squat Pallof Press', 'Superband Isometric Split Kniebeuge Pallof Press', 'Bauchmuskeln', 'Obliques', 'Rectus Abdominis', null, 'Superband', 'Fortgeschritten', '4 × 8', '2 min', 11314);
 
--- 1. Bestehende Einträge an Ort und Stelle aktualisieren, gefunden über
---    ihren bisherigen Namen. Bewusst kein Löschen-und-neu-Anlegen: Die
---    Zeilen behalten so ihre id, und exercises.library_id in bestehenden
---    Plänen bleibt gültig.
-update exercise_library el set
-  name             = k.name,
-  name_en          = k.name_en,
-  name_de_raw      = k.name_de_raw,
-  muscle_group     = k.muscle_group,
-  primary_muscle   = k.primary_muscle,
-  secondary_muscle = k.secondary_muscle,
-  tertiary_muscle  = k.tertiary_muscle,
-  equipment        = k.equipment,
-  difficulty       = k.difficulty,
-  scheme           = coalesce(el.scheme, k.scheme),
-  rest             = coalesce(el.rest, k.rest),
-  popularity       = k.popularity
-from katalog_neu k
-where el.name = k.alt_name and k.alt_name is not null;
+  -- 1. Bestehende Einträge an Ort und Stelle aktualisieren, gefunden über
+  --    ihren bisherigen Namen. Bewusst kein Löschen-und-neu-Anlegen: Die
+  --    Zeilen behalten so ihre id, und exercises.library_id in bestehenden
+  --    Plänen bleibt gültig.
+  update exercise_library el set
+    name             = k.name,
+    name_en          = k.name_en,
+    name_de_raw      = k.name_de_raw,
+    muscle_group     = k.muscle_group,
+    primary_muscle   = k.primary_muscle,
+    secondary_muscle = k.secondary_muscle,
+    tertiary_muscle  = k.tertiary_muscle,
+    equipment        = k.equipment,
+    difficulty       = k.difficulty,
+    scheme           = coalesce(el.scheme, k.scheme),
+    rest             = coalesce(el.rest, k.rest),
+    popularity       = k.popularity
+  from katalog_neu k
+  where el.name = k.alt_name and k.alt_name is not null;
 
--- 2. Alles, was nicht übernommen wurde, entfernen: die Geräte, die in
---    keinem Studio stehen, die nicht übersetzbaren Bewegungen und die von
---    Hand angelegten Vorlagen. Letztere fallen weg, weil sich Übungen
---    nicht mehr selbst anlegen lassen und ihnen die Muskelzuordnung
---    fehlt, die das Cockpit jetzt auswertet.
-delete from exercise_library
-where name not in (select name from katalog_neu);
+  -- 2. Alles, was nicht übernommen wurde, entfernen: die Geräte, die in
+  --    keinem Studio stehen, die nicht übersetzbaren Bewegungen und die von
+  --    Hand angelegten Vorlagen. Letztere fallen weg, weil sich Übungen
+  --    nicht mehr selbst anlegen lassen und ihnen die Muskelzuordnung
+  --    fehlt, die das Cockpit jetzt auswertet.
+  delete from exercise_library
+  where name not in (select name from katalog_neu);
 
--- 3. Was noch fehlt, anlegen — vor allem die Maschinen, die die Quelle
---    gar nicht kennt. Je Nutzer, der schon einen Katalog hat.
-insert into exercise_library
-  (user_id, name, name_en, name_de_raw, muscle_group, primary_muscle, secondary_muscle,
-   tertiary_muscle, equipment, difficulty, scheme, rest, sort_order, popularity)
-select
-  n.user_id, k.name, k.name_en, k.name_de_raw, k.muscle_group, k.primary_muscle,
-  k.secondary_muscle, k.tertiary_muscle, k.equipment, k.difficulty, k.scheme, k.rest, 0, k.popularity
-from (select distinct user_id from exercise_library) as n
-cross join katalog_neu k
-where not exists (
-  select 1 from exercise_library el where el.user_id = n.user_id and el.name = k.name
-);
+  -- 3. Was noch fehlt, anlegen — vor allem die Maschinen, die die Quelle
+  --    gar nicht kennt. Je Nutzer, der schon einen Katalog hat.
+  insert into exercise_library
+    (user_id, name, name_en, name_de_raw, muscle_group, primary_muscle, secondary_muscle,
+     tertiary_muscle, equipment, difficulty, scheme, rest, sort_order, popularity)
+  select
+    n.user_id, k.name, k.name_en, k.name_de_raw, k.muscle_group, k.primary_muscle,
+    k.secondary_muscle, k.tertiary_muscle, k.equipment, k.difficulty, k.scheme, k.rest, 0, k.popularity
+  from (select distinct user_id from exercise_library) as n
+  cross join katalog_neu k
+  where not exists (
+    select 1 from exercise_library el where el.user_id = n.user_id and el.name = k.name
+  );
 
-commit;
+  commit;
+  

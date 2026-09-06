@@ -69,6 +69,11 @@ export const BEWEGUNG = [
   [/chest press/, 'Brustdrücken'],
   [/push ?up/, 'Liegestütz'],
   [/pull ?over/, 'Überzug'],
+  // Muss vor der Brust-Zeile stehen: \bfly\b traf sonst auch "Reverse
+  // Fly", und eine Übung für die hintere Schulter hieß danach wie eine
+  // Brustübung. Die Muskelangaben blieben dabei richtig — nur der Name
+  // versprach etwas anderes.
+  [/rear delt fly|reverse fly/, 'Reverse Flys'],
   [/chest fly|pec fly|\bfly\b|flye/, 'Fliegende'],
   [/\bdip\b|\bdips\b/, 'Dip'],
 
@@ -123,7 +128,6 @@ export const BEWEGUNG = [
   [/arnold press/, 'Arnold-Drücken'],
   [/lateral raise|side raise/, 'Seitheben'],
   [/front raise/, 'Frontheben'],
-  [/rear delt fly|reverse fly/, 'Reverse Flys'],
   [/external rotation/, 'Außenrotation'],
   [/internal rotation/, 'Innenrotation'],
   [/handstand push ?up/, 'Handstand-Liegestütz'],
@@ -394,232 +398,239 @@ export function bewerte(eintrag) {
 
 // ── Hauptlauf ────────────────────────────────────────────────────────
 
+// Nur beim direkten Aufruf laufen -- die Wörterbücher oben werden auch
+// importiert (etwa zum Nachprüfen einzelner Namen).
+const direkt = process.argv[1]?.endsWith('katalog-deutsch.mjs')
 const datei = process.argv[2]
-if (!datei) {
+if (direkt && !datei) {
   console.error('Aufruf: node werkzeuge/katalog-deutsch.mjs "<pfad zur xlsx>"')
   process.exit(1)
 }
 
-const roh = await readXlsxFile(datei)
-const zeilen = Array.isArray(roh) && roh[0]?.data ? roh[0].data : roh
-const kopf = zeilen[0].map(z => String(z ?? ''))
-const daten = zeilen.slice(1)
-const sp = n => kopf.findIndex(k => k === n)
+async function hauptlauf() {
+  const roh = await readXlsxFile(datei)
+  const zeilen = Array.isArray(roh) && roh[0]?.data ? roh[0].data : roh
+  const kopf = zeilen[0].map(z => String(z ?? ''))
+  const daten = zeilen.slice(1)
+  const sp = n => kopf.findIndex(k => k === n)
 
-const I = {
-  en: sp('Übung'),
-  clean: sp('Deutsche Übungsbezeichnung_clean'),
-  gruppe: sp('Zielmuskelgruppe'),
-  haupt: sp('Hauptmuskel'),
-  sek: sp('Sekundärer Muskel'),
-  ter: sp('Tertiärer Muskel'),
-  geraet: sp('Hauptgerät'),
-  schwer: sp('Schwierigkeitsgrad'),
-  pause: sp('Pausenzeit (empfohlen)'),
-}
-
-const feld = (z, k) => {
-  const w = z[I[k]]
-  return w == null ? null : String(w).trim() || null
-}
-
-let ohneGeraet = 0
-let ohneBewegung = 0
-const behalten = []
-const namen = new Set()
-
-for (const z of daten) {
-  const geraet = feld(z, 'geraet')
-  if (!(geraet in GERAET_DE)) {
-    ohneGeraet++
-    continue
+  const I = {
+    en: sp('Übung'),
+    clean: sp('Deutsche Übungsbezeichnung_clean'),
+    gruppe: sp('Zielmuskelgruppe'),
+    haupt: sp('Hauptmuskel'),
+    sek: sp('Sekundärer Muskel'),
+    ter: sp('Tertiärer Muskel'),
+    geraet: sp('Hauptgerät'),
+    schwer: sp('Schwierigkeitsgrad'),
+    pause: sp('Pausenzeit (empfohlen)'),
   }
-  const neu = eindeutschen(feld(z, 'en'), geraet)
-  if (!neu) {
-    ohneBewegung++
-    continue
+
+  const feld = (z, k) => {
+    const w = z[I[k]]
+    return w == null ? null : String(w).trim() || null
   }
-  // Gleichnamige Varianten treten auf, sobald zwei englische Namen auf
-  // dieselbe Bewegung samt Zusätzen zusammenfallen. Der erste gewinnt;
-  // ein zweiter Eintrag mit identischem Namen wäre im Picker nicht zu
-  // unterscheiden.
-  if (namen.has(neu.name)) continue
-  namen.add(neu.name)
-  behalten.push({
-    name: neu.name,
-    zusaetze: neu.zusaetze,
-    altName: feld(z, 'clean'),
-    nameEn: feld(z, 'en'),
-    gruppe: feld(z, 'gruppe'),
-    haupt: feld(z, 'haupt'),
-    sek: feld(z, 'sek'),
-    ter: feld(z, 'ter'),
-    geraet,
-    schwer: feld(z, 'schwer'),
-    pause: feld(z, 'pause'),
-  })
+
+  let ohneGeraet = 0
+  let ohneBewegung = 0
+  const behalten = []
+  const namen = new Set()
+
+  for (const z of daten) {
+    const geraet = feld(z, 'geraet')
+    if (!(geraet in GERAET_DE)) {
+      ohneGeraet++
+      continue
+    }
+    const neu = eindeutschen(feld(z, 'en'), geraet)
+    if (!neu) {
+      ohneBewegung++
+      continue
+    }
+    // Gleichnamige Varianten treten auf, sobald zwei englische Namen auf
+    // dieselbe Bewegung samt Zusätzen zusammenfallen. Der erste gewinnt;
+    // ein zweiter Eintrag mit identischem Namen wäre im Picker nicht zu
+    // unterscheiden.
+    if (namen.has(neu.name)) continue
+    namen.add(neu.name)
+    behalten.push({
+      name: neu.name,
+      zusaetze: neu.zusaetze,
+      altName: feld(z, 'clean'),
+      nameEn: feld(z, 'en'),
+      gruppe: feld(z, 'gruppe'),
+      haupt: feld(z, 'haupt'),
+      sek: feld(z, 'sek'),
+      ter: feld(z, 'ter'),
+      geraet,
+      schwer: feld(z, 'schwer'),
+      pause: feld(z, 'pause'),
+    })
+  }
+
+  // Maschinen ergänzen — sie fehlen in der Quelle vollständig.
+  for (const [name, gruppe, haupt, sek, schema, pause] of MASCHINEN) {
+    if (namen.has(name)) continue
+    namen.add(name)
+    behalten.push({
+      name,
+      zusaetze: 0,
+      altName: null,
+      nameEn: null,
+      gruppe,
+      haupt,
+      sek,
+      ter: null,
+      geraet: 'Maschine',
+      schwer: 'Fortgeschritten',
+      pause,
+      schema,
+    })
+  }
+
+  for (const e of behalten) {
+    e.rang = bewerte(e)
+    const v = vorgabe(e)
+    // Maschinen bringen ihr Schema selbst mit, alles andere bekommt die
+    // Vorgabe -- die Quelle hat gar keins.
+    e.schema = e.schema ?? v.scheme
+    e.pause = v.rest
+  }
+  behalten.sort((a, b) => a.rang - b.rang || a.name.localeCompare(b.name, 'de'))
+
+  console.log('Quelle:', daten.length, 'Zeilen')
+  console.log('  ausgeschieden, Gerät nicht im Studio:', ohneGeraet)
+  console.log('  ausgeschieden, Bewegung nicht übersetzbar:', ohneBewegung)
+  console.log('  behalten:', behalten.length)
+  console.log('\nStichprobe:')
+  for (let i = 0; i < behalten.length; i += Math.max(1, Math.floor(behalten.length / 25))) {
+    console.log('  ', behalten[i].altName, '  ->  ', behalten[i].name)
+  }
+
+  const jeGeraet = new Map()
+  for (const e of behalten) jeGeraet.set(e.geraet, (jeGeraet.get(e.geraet) ?? 0) + 1)
+  console.log('\nNach Gerät:')
+  for (const [k, v] of [...jeGeraet.entries()].sort((a, b) => b[1] - a[1])) console.log(`  ${String(v).padStart(4)}  ${k}`)
+
+  const jeGruppe = new Map()
+  for (const e of behalten) jeGruppe.set(e.gruppe, (jeGruppe.get(e.gruppe) ?? 0) + 1)
+  console.log('\nNach Muskelgruppe (jeweils die drei bestplatzierten):')
+  for (const [k, v] of [...jeGruppe.entries()].sort((a, b) => b[1] - a[1])) {
+    const oben = behalten.filter(e => e.gruppe === k).slice(0, 3).map(e => e.name)
+    console.log(`  ${String(v).padStart(4)}  ${k.padEnd(14)} ${oben.join(' · ')}`)
+  }
+
+  // ── SQL ──────────────────────────────────────────────────────────────
+
+  const q = w => (w == null || w === '' ? 'null' : `'${String(w).replace(/'/g, "''")}'`)
+
+  // alt_name ist der Name, unter dem der Eintrag heute in der Datenbank
+  // steht (Spalte "Deutsche Übungsbezeichnung_clean" der Quelle). Über ihn
+  // werden bestehende Zeilen wiedergefunden und an Ort und Stelle
+  // aktualisiert, statt sie zu löschen und neu anzulegen — nur so behalten
+  // sie ihre id und damit die Verknüpfung aus exercises.library_id.
+  // Maschinen haben keinen Vorgänger und tragen hier null.
+  const werte = behalten
+    .map(e =>
+      `    (${[q(e.altName), q(e.name), q(e.nameEn), q(e.altName), q(e.gruppe), q(e.haupt), q(e.sek), q(e.ter), q(e.geraet), q(e.schwer), q(e.schema ?? null), q(e.pause), e.rang].join(', ')})`,
+    )
+    .join(',\n')
+
+  const sql = `-- Übungskatalog: deutsche Namen, ausgedünnt, neu sortiert.
+  --
+  -- Erzeugt von werkzeuge/katalog-deutsch.mjs aus
+  -- Fitness_Datenbank_DE_Jargon_FINAL.xlsx. Nicht von Hand ändern, sondern
+  -- den Generator anpassen und neu laufen lassen.
+  --
+  -- Ausgangslage: Der Katalog stammte aus einer Functional-Fitness-Sammlung.
+  -- 2856 der 3242 Namen trugen englische Wörter, 1053 waren unverändert
+  -- englisch ("Eigengewichts Alternating Heel Taps"), 2363 hatten fünf
+  -- Wörter oder mehr. Zwei Drittel der Einträge hingen an Geräten, die in
+  -- keinem normalen Studio stehen -- 861 Kettlebell, 195 Clubbell, 165
+  -- Slider, 125 Turnringe. Maschinen fehlten dagegen vollständig.
+  --
+  -- Danach stehen ${behalten.length} Einträge im Katalog, alle auf Deutsch, mit
+  -- Haupt-, Sekundär- und Tertiärmuskel und einem Bekanntheitsrang, der die
+  -- Grundübung je Muskelgruppe nach vorn stellt.
+  --
+  -- Bestehende Zeilen werden aktualisiert, nicht ersetzt: Sie behalten ihre
+  -- id, und exercises.library_id in bestehenden Plänen bleibt gültig. Nur
+  -- was wegfällt, wird gelöscht -- dort setzt der Fremdschlüssel
+  -- library_id auf null (on delete set null, siehe 0011). Die Übungen in
+  -- den Plänen und alle geloggten Sätze bleiben in jedem Fall unangetastet.
+  --
+  -- Läuft für jeden Nutzer, der schon einen Katalog hat -- exercise_library
+  -- hängt an RLS und gehört je Zeile einem Nutzer.
+
+  begin;
+
+  create temporary table katalog_neu (
+    alt_name        text,
+    name            text not null,
+    name_en         text,
+    name_de_raw     text,
+    muscle_group    text,
+    primary_muscle  text,
+    secondary_muscle text,
+    tertiary_muscle text,
+    equipment       text,
+    difficulty      text,
+    scheme          text,
+    rest            text,
+    popularity      int
+  ) on commit drop;
+
+  insert into katalog_neu values
+  ${werte};
+
+  -- 1. Bestehende Einträge an Ort und Stelle aktualisieren, gefunden über
+  --    ihren bisherigen Namen. Bewusst kein Löschen-und-neu-Anlegen: Die
+  --    Zeilen behalten so ihre id, und exercises.library_id in bestehenden
+  --    Plänen bleibt gültig.
+  update exercise_library el set
+    name             = k.name,
+    name_en          = k.name_en,
+    name_de_raw      = k.name_de_raw,
+    muscle_group     = k.muscle_group,
+    primary_muscle   = k.primary_muscle,
+    secondary_muscle = k.secondary_muscle,
+    tertiary_muscle  = k.tertiary_muscle,
+    equipment        = k.equipment,
+    difficulty       = k.difficulty,
+    scheme           = coalesce(el.scheme, k.scheme),
+    rest             = coalesce(el.rest, k.rest),
+    popularity       = k.popularity
+  from katalog_neu k
+  where el.name = k.alt_name and k.alt_name is not null;
+
+  -- 2. Alles, was nicht übernommen wurde, entfernen: die Geräte, die in
+  --    keinem Studio stehen, die nicht übersetzbaren Bewegungen und die von
+  --    Hand angelegten Vorlagen. Letztere fallen weg, weil sich Übungen
+  --    nicht mehr selbst anlegen lassen und ihnen die Muskelzuordnung
+  --    fehlt, die das Cockpit jetzt auswertet.
+  delete from exercise_library
+  where name not in (select name from katalog_neu);
+
+  -- 3. Was noch fehlt, anlegen — vor allem die Maschinen, die die Quelle
+  --    gar nicht kennt. Je Nutzer, der schon einen Katalog hat.
+  insert into exercise_library
+    (user_id, name, name_en, name_de_raw, muscle_group, primary_muscle, secondary_muscle,
+     tertiary_muscle, equipment, difficulty, scheme, rest, sort_order, popularity)
+  select
+    n.user_id, k.name, k.name_en, k.name_de_raw, k.muscle_group, k.primary_muscle,
+    k.secondary_muscle, k.tertiary_muscle, k.equipment, k.difficulty, k.scheme, k.rest, 0, k.popularity
+  from (select distinct user_id from exercise_library) as n
+  cross join katalog_neu k
+  where not exists (
+    select 1 from exercise_library el where el.user_id = n.user_id and el.name = k.name
+  );
+
+  commit;
+  `
+
+  const ziel = new URL('../supabase/migrations/0014_katalog_deutsch.sql', import.meta.url)
+  writeFileSync(ziel, sql)
+  console.log(`\nGeschrieben: supabase/migrations/0014_katalog_deutsch.sql (${Math.round(sql.length / 1024)} KB)`)
 }
 
-// Maschinen ergänzen — sie fehlen in der Quelle vollständig.
-for (const [name, gruppe, haupt, sek, schema, pause] of MASCHINEN) {
-  if (namen.has(name)) continue
-  namen.add(name)
-  behalten.push({
-    name,
-    zusaetze: 0,
-    altName: null,
-    nameEn: null,
-    gruppe,
-    haupt,
-    sek,
-    ter: null,
-    geraet: 'Maschine',
-    schwer: 'Fortgeschritten',
-    pause,
-    schema,
-  })
-}
-
-for (const e of behalten) {
-  e.rang = bewerte(e)
-  const v = vorgabe(e)
-  // Maschinen bringen ihr Schema selbst mit, alles andere bekommt die
-  // Vorgabe -- die Quelle hat gar keins.
-  e.schema = e.schema ?? v.scheme
-  e.pause = v.rest
-}
-behalten.sort((a, b) => a.rang - b.rang || a.name.localeCompare(b.name, 'de'))
-
-console.log('Quelle:', daten.length, 'Zeilen')
-console.log('  ausgeschieden, Gerät nicht im Studio:', ohneGeraet)
-console.log('  ausgeschieden, Bewegung nicht übersetzbar:', ohneBewegung)
-console.log('  behalten:', behalten.length)
-console.log('\nStichprobe:')
-for (let i = 0; i < behalten.length; i += Math.max(1, Math.floor(behalten.length / 25))) {
-  console.log('  ', behalten[i].altName, '  ->  ', behalten[i].name)
-}
-
-const jeGeraet = new Map()
-for (const e of behalten) jeGeraet.set(e.geraet, (jeGeraet.get(e.geraet) ?? 0) + 1)
-console.log('\nNach Gerät:')
-for (const [k, v] of [...jeGeraet.entries()].sort((a, b) => b[1] - a[1])) console.log(`  ${String(v).padStart(4)}  ${k}`)
-
-const jeGruppe = new Map()
-for (const e of behalten) jeGruppe.set(e.gruppe, (jeGruppe.get(e.gruppe) ?? 0) + 1)
-console.log('\nNach Muskelgruppe (jeweils die drei bestplatzierten):')
-for (const [k, v] of [...jeGruppe.entries()].sort((a, b) => b[1] - a[1])) {
-  const oben = behalten.filter(e => e.gruppe === k).slice(0, 3).map(e => e.name)
-  console.log(`  ${String(v).padStart(4)}  ${k.padEnd(14)} ${oben.join(' · ')}`)
-}
-
-// ── SQL ──────────────────────────────────────────────────────────────
-
-const q = w => (w == null || w === '' ? 'null' : `'${String(w).replace(/'/g, "''")}'`)
-
-// alt_name ist der Name, unter dem der Eintrag heute in der Datenbank
-// steht (Spalte "Deutsche Übungsbezeichnung_clean" der Quelle). Über ihn
-// werden bestehende Zeilen wiedergefunden und an Ort und Stelle
-// aktualisiert, statt sie zu löschen und neu anzulegen — nur so behalten
-// sie ihre id und damit die Verknüpfung aus exercises.library_id.
-// Maschinen haben keinen Vorgänger und tragen hier null.
-const werte = behalten
-  .map(e =>
-    `    (${[q(e.altName), q(e.name), q(e.nameEn), q(e.altName), q(e.gruppe), q(e.haupt), q(e.sek), q(e.ter), q(e.geraet), q(e.schwer), q(e.schema ?? null), q(e.pause), e.rang].join(', ')})`,
-  )
-  .join(',\n')
-
-const sql = `-- Übungskatalog: deutsche Namen, ausgedünnt, neu sortiert.
---
--- Erzeugt von werkzeuge/katalog-deutsch.mjs aus
--- Fitness_Datenbank_DE_Jargon_FINAL.xlsx. Nicht von Hand ändern, sondern
--- den Generator anpassen und neu laufen lassen.
---
--- Ausgangslage: Der Katalog stammte aus einer Functional-Fitness-Sammlung.
--- 2856 der 3242 Namen trugen englische Wörter, 1053 waren unverändert
--- englisch ("Eigengewichts Alternating Heel Taps"), 2363 hatten fünf
--- Wörter oder mehr. Zwei Drittel der Einträge hingen an Geräten, die in
--- keinem normalen Studio stehen -- 861 Kettlebell, 195 Clubbell, 165
--- Slider, 125 Turnringe. Maschinen fehlten dagegen vollständig.
---
--- Danach stehen ${behalten.length} Einträge im Katalog, alle auf Deutsch, mit
--- Haupt-, Sekundär- und Tertiärmuskel und einem Bekanntheitsrang, der die
--- Grundübung je Muskelgruppe nach vorn stellt.
---
--- Bestehende Zeilen werden aktualisiert, nicht ersetzt: Sie behalten ihre
--- id, und exercises.library_id in bestehenden Plänen bleibt gültig. Nur
--- was wegfällt, wird gelöscht -- dort setzt der Fremdschlüssel
--- library_id auf null (on delete set null, siehe 0011). Die Übungen in
--- den Plänen und alle geloggten Sätze bleiben in jedem Fall unangetastet.
---
--- Läuft für jeden Nutzer, der schon einen Katalog hat -- exercise_library
--- hängt an RLS und gehört je Zeile einem Nutzer.
-
-begin;
-
-create temporary table katalog_neu (
-  alt_name        text,
-  name            text not null,
-  name_en         text,
-  name_de_raw     text,
-  muscle_group    text,
-  primary_muscle  text,
-  secondary_muscle text,
-  tertiary_muscle text,
-  equipment       text,
-  difficulty      text,
-  scheme          text,
-  rest            text,
-  popularity      int
-) on commit drop;
-
-insert into katalog_neu values
-${werte};
-
--- 1. Bestehende Einträge an Ort und Stelle aktualisieren, gefunden über
---    ihren bisherigen Namen. Bewusst kein Löschen-und-neu-Anlegen: Die
---    Zeilen behalten so ihre id, und exercises.library_id in bestehenden
---    Plänen bleibt gültig.
-update exercise_library el set
-  name             = k.name,
-  name_en          = k.name_en,
-  name_de_raw      = k.name_de_raw,
-  muscle_group     = k.muscle_group,
-  primary_muscle   = k.primary_muscle,
-  secondary_muscle = k.secondary_muscle,
-  tertiary_muscle  = k.tertiary_muscle,
-  equipment        = k.equipment,
-  difficulty       = k.difficulty,
-  scheme           = coalesce(el.scheme, k.scheme),
-  rest             = coalesce(el.rest, k.rest),
-  popularity       = k.popularity
-from katalog_neu k
-where el.name = k.alt_name and k.alt_name is not null;
-
--- 2. Alles, was nicht übernommen wurde, entfernen: die Geräte, die in
---    keinem Studio stehen, die nicht übersetzbaren Bewegungen und die von
---    Hand angelegten Vorlagen. Letztere fallen weg, weil sich Übungen
---    nicht mehr selbst anlegen lassen und ihnen die Muskelzuordnung
---    fehlt, die das Cockpit jetzt auswertet.
-delete from exercise_library
-where name not in (select name from katalog_neu);
-
--- 3. Was noch fehlt, anlegen — vor allem die Maschinen, die die Quelle
---    gar nicht kennt. Je Nutzer, der schon einen Katalog hat.
-insert into exercise_library
-  (user_id, name, name_en, name_de_raw, muscle_group, primary_muscle, secondary_muscle,
-   tertiary_muscle, equipment, difficulty, scheme, rest, sort_order, popularity)
-select
-  n.user_id, k.name, k.name_en, k.name_de_raw, k.muscle_group, k.primary_muscle,
-  k.secondary_muscle, k.tertiary_muscle, k.equipment, k.difficulty, k.scheme, k.rest, 0, k.popularity
-from (select distinct user_id from exercise_library) as n
-cross join katalog_neu k
-where not exists (
-  select 1 from exercise_library el where el.user_id = n.user_id and el.name = k.name
-);
-
-commit;
-`
-
-const ziel = new URL('../supabase/migrations/0014_katalog_deutsch.sql', import.meta.url)
-writeFileSync(ziel, sql)
-console.log(`\nGeschrieben: supabase/migrations/0014_katalog_deutsch.sql (${Math.round(sql.length / 1024)} KB)`)
+if (direkt) await hauptlauf()
