@@ -24,7 +24,7 @@ import { benchLoad } from '../bench/calc'
 import { ZahlRad } from '../../components/ZahlRad'
 import { GymRing } from '../../components/GymRing'
 import { GymFertig } from './GymFertig'
-import { zahlenBereich } from '../../lib/zahlen'
+import { zahlenBereich, formatGewicht } from '../../lib/zahlen'
 import { standFuerWoche, standAendern } from './trainingsStand'
 import { zeitText } from '../../lib/zeit'
 import { vibrieren, SATZ_ERLEDIGT } from '../../lib/haptik'
@@ -32,6 +32,7 @@ import { useSchliessenPerZurueck } from '../../lib/backClose'
 import { useZiehSortieren, ziehStil } from '../../lib/ziehSortieren'
 
 const REP_WERTE = zahlenBereich(1, 30, 1)
+const RPE_WERTE = zahlenBereich(5, 10, 0.5)
 
 /** Zielwiederholungen aus einem Schema wie "4 × 8" — für die Kopfzeile
     "Maschine · 8 Wdh", die bei Alpha Progression über der Satztabelle steht. */
@@ -45,6 +46,13 @@ function zielWdh(scheme: string | null | undefined): number {
 function zahl(n: number | null | undefined, nachkomma = 1): string {
   if (n == null) return '—'
   return n.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: nachkomma })
+}
+
+/** Gewichte gehen über formatGewicht: Sie dürfen drei Nachkommastellen
+    tragen, zahl() rundet auf eine. Ein eingetragenes 82,125 stand hier
+    sonst als 82,1 -- also anders, als es eingegeben wurde. */
+function gewicht(n: number | null | undefined): string {
+  return n == null ? '—' : formatGewicht(n)
 }
 
 interface Props {
@@ -173,7 +181,15 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   // sondern nur auf Wunsch — der Platz gehört der Pausenuhr.
   const [historieOffen, setHistorieOffen] = useState(false)
 
-  const [radOffen, setRadOffen] = useState<{ feld: 'kg' | 'reps'; position: number } | null>(null)
+  const [radOffen, setRadOffen] = useState<{ feld: 'kg' | 'reps' | 'rpe'; position: number } | null>(null)
+
+  /** RPE nur beim Bankdrücken — dieselbe Regel wie in der Tagesansicht.
+      Ohne dieses Feld gab es im Gym-Modus überhaupt keinen Weg, ein RPE
+      einzutragen. Damit blieb logged_sets.rpe leer, und die
+      Blockauswertung (naechstesE1rm in bench/calc.ts) fand nichts, worauf
+      sie das nächste 1RM stützen konnte -- sie fiel jedes Mal auf
+      INSUFFICIENT_DATA zurück und liess das Ausgangsgewicht stehen. */
+  const zeigtRpe = istBankdruecken(exercise)
 
   /** Was in einer Zeile steht, bevor etwas eingetragen wurde: erst die
       Bank-Progression dieser Woche (die weiß um Steigerung und Deload),
@@ -190,7 +206,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const plate = plan.plate ?? 2.5
   const kgWerte = zahlenBereich(plate, 300, plate)
 
-  const schreibe = (position: number, patch: { kg?: number | null; reps?: number | null; done?: boolean; done_at?: string | null }) => {
+  const schreibe = (position: number, patch: { kg?: number | null; reps?: number | null; rpe?: number | null; done?: boolean; done_at?: string | null }) => {
     upsertSet.mutate({ exercise_id: exercise.id, week, position, ...patch })
   }
 
@@ -212,7 +228,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
     const { satz, kg, reps } = werteFuer(position)
     const jetztErledigt = !satz?.done
     if (jetztErledigt && istRekord(kg, reps, alleSaetzeJemals, exercise.id)) {
-      setErzielteRekorde(r => [...r, `${anzeigeName(exercise, plan, week)} · ${zahl(kg)} kg × ${zahl(reps, 0)}`])
+      setErzielteRekorde(r => [...r, `${anzeigeName(exercise, plan, week)} · ${gewicht(kg)} kg × ${zahl(reps, 0)}`])
     }
     schreibe(position, {
       kg,
@@ -408,7 +424,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
                   <span className="ap-nr">{i + 1}</span>
                   <span className="ap-warm-lab">{s.label}</span>
                   <span className="ap-warm-kg">
-                    {zahl(s.kg)}
+                    {gewicht(s.kg)}
                     <em>kg</em>
                   </span>
                   <span className="ap-warm-wdh">× {s.wdh}</span>
@@ -435,10 +451,11 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
           </div>
         )}
 
-        <div className="ap-tabkopf">
+        <div className={'ap-tabkopf' + (zeigtRpe ? ' mit-rpe' : '')}>
           <span>#</span>
           <span>KG</span>
           <span>WDH</span>
+          {zeigtRpe && <span>RPE</span>}
           <span>1RM</span>
           <span />
         </div>
@@ -450,7 +467,9 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
           return (
             <div
               key={position}
-              className={'ap-zeile' + (istAktiv ? ' aktiv' : '') + (satz?.done ? ' erledigt' : '')}
+              className={
+                'ap-zeile' + (zeigtRpe ? ' mit-rpe' : '') + (istAktiv ? ' aktiv' : '') + (satz?.done ? ' erledigt' : '')
+              }
               onClick={() => setAktiv(position)}
             >
               <span className="ap-nr">
@@ -468,7 +487,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
                   setRadOffen({ feld: 'kg', position })
                 }}
               >
-                {zahl(kg)}
+                {gewicht(kg)}
               </button>
               <button
                 className="ap-feld"
@@ -480,6 +499,19 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
               >
                 {zahl(reps, 0)}
               </button>
+
+              {zeigtRpe && (
+                <button
+                  className="ap-feld"
+                  onClick={e => {
+                    e.stopPropagation()
+                    setAktiv(position)
+                    setRadOffen({ feld: 'rpe', position })
+                  }}
+                >
+                  {zahl(satz?.rpe)}
+                </button>
+              )}
 
               <span className="ap-wert">{zahl(rm)}</span>
 
@@ -533,7 +565,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
                 {letzteEinheit.map(s => (
                   <div key={s.id} className="ap-hzeile">
                     <span>{s.position + 1}</span>
-                    <span>{zahl(s.kg)}</span>
+                    <span>{gewicht(s.kg)}</span>
                     <span>{zahl(s.reps, 0)}</span>
                     <span>{zahl(satzE1rm(s.kg, s.reps, s.rpe))}</span>
                   </div>
@@ -601,11 +633,21 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
         titel="Gewicht"
         werte={kgWerte}
         aktuell={radOffen ? werteFuer(radOffen.position).kg : null}
-        format={String}
+        format={formatGewicht}
         einheit="kg"
         nachkomma={3}
         leerOption
         onWahl={kg => radOffen && schreibe(radOffen.position, { kg })}
+        onSchliessen={() => setRadOffen(null)}
+      />
+      <ZahlRad
+        offen={radOffen?.feld === 'rpe'}
+        titel="RPE"
+        werte={RPE_WERTE}
+        aktuell={radOffen ? (sets.find(s => s.position === radOffen.position)?.rpe ?? null) : null}
+        format={String}
+        leerOption
+        onWahl={rpe => radOffen && schreibe(radOffen.position, { rpe })}
         onSchliessen={() => setRadOffen(null)}
       />
       <ZahlRad

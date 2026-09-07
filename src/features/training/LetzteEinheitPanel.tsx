@@ -1,5 +1,6 @@
 import type { LoggedSet } from '../../types/db'
 import { satzE1rm } from './calc'
+import { formatGewicht } from '../../lib/zahlen'
 
 interface Props {
   saetze: LoggedSet[]
@@ -22,7 +23,7 @@ export function LetzteEinheitPanel({ saetze, label }: Props) {
             <div key={s.id} className="letzte-einheit-zeile">
               <span className="nr">{s.position + 1}</span>
               <span className="mono">
-                {s.kg ?? '—'}
+                {s.kg == null ? '—' : formatGewicht(s.kg)}
                 <em>kg</em>
               </span>
               <span className="mono">
