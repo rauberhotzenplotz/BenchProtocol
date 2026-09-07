@@ -1403,6 +1403,12 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   text-align: left; color: inherit; font: inherit;
   -webkit-tap-highlight-color: transparent;
 }
+/* Kein Auswahl- und kein Kontextmenue beim langen Druck: Der Kopf ist
+   der Griff zum Umsortieren (siehe lib/ziehSortieren.ts), und Androids
+   Langdruck-Menue brach die Geste ab, bevor sie begann. */
+.ueb-leiste, .ueb-kopf {
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
 .ueb-kopf:hover { background: rgba(255,255,255,.035); }
 .ueb-kopf:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
 .ueb-pfeil { flex: none; display: inline-flex; color: var(--ink-4); }
@@ -2424,6 +2430,13 @@ input[type="date"].inp::-webkit-calendar-picker-indicator { filter: invert(.7); 
   .dock { left: 10px; right: 10px; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); max-width: none; }
   .dock-hint { max-width: none; }
   .toasts { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Die Pausenleiste lag mit bottom:14px genau über der
+     Navigationsleiste (die hier nach unten wandert) und deckte sie mit
+     z-index 130 vollständig ab — während einer Pause kam man deshalb in
+     keinen anderen Tab mehr. Sie rückt jetzt darüber.
+     58 px ist die Höhe der Leiste (6 + 46 + 6), 8 px Luft dazu. */
+  .resttimer { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Bewegung hängt am Schalter in der Seitenleiste, nicht mehr direkt an der
@@ -3388,6 +3401,11 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
   transition: opacity .2s, border-color .2s, color .2s, box-shadow .2s;
   opacity: .6;
 }
+/* Wie beim Kartenkopf in der Tagesansicht: Die Kachel ist der Griff
+   zum Umsortieren, Androids Langdruck-Menue darf nicht dazwischenkommen. */
+.ap-kachel {
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
 .ap-kachel.aktiv {
   opacity: 1; color: var(--neon); border-color: rgba(53,240,208,.5);
   box-shadow: 0 0 24px -8px var(--neon);
@@ -3452,6 +3470,11 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
 /* Satztabelle: fünf Spalten wie in der Vorlage (#, KG, WDH, 1RM, Haken). */
 .ap-tabkopf, .ap-zeile {
   display: grid; grid-template-columns: 54px 1fr 1fr 1fr 58px; gap: 9px; align-items: center;
+}
+/* Beim Bankdrücken kommt RPE als eigene Spalte dazu. Der Abstand wird
+   dabei enger, sonst bleibt auf 375 px für die Zahlen nichts übrig. */
+.ap-tabkopf.mit-rpe, .ap-zeile.mit-rpe {
+  grid-template-columns: 44px 1fr 1fr 1fr 1fr 52px; gap: 6px;
 }
 .ap-tabkopf {
   margin-top: 20px; padding: 0 2px 6px;

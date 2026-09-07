@@ -137,7 +137,7 @@ export function useZiehSortieren({
     if (!behaelter) return
 
     let uhr: ReturnType<typeof setTimeout> | undefined
-    let start: { index: number; x: number; y: number } | null = null
+    let start: { index: number; x: number; y: number; zeiger: number } | null = null
     let mitten: number[] = []
     let klickSchlucken = false
 
@@ -161,6 +161,21 @@ export function useZiehSortieren({
           ? kaesten[1].top - (kaesten[0].top + kaesten[0].height)
           : kaesten[1].left - (kaesten[0].left + kaesten[0].width),
       )
+      // Zeiger festhalten. Ohne das entscheidet der Browser weiter
+      // selbst ueber die Geste: Sobald er sie als Wischen wertet -- und
+      // bei einem langen Druck auf einen <button> tut Android das
+      // regelmaessig -- schickt er pointercancel, und das Ziehen war
+      // vorbei, bevor es sichtbar wurde. Genau daran scheiterte es im
+      // Gym-Modus (Kacheln) und in der Tagesansicht (Kartenkopf), waehrend
+      // es im Plan-Editor ging: dort ist der Griff ein <div>.
+      if (start) {
+        try {
+          behaelter.setPointerCapture(start.zeiger)
+        } catch {
+          // Zeiger schon weg -- dann eben ohne, das Ziehen laeuft
+          // trotzdem ueber die Fenster-Zuhoerer.
+        }
+      }
       vibrieren(AUFGENOMMEN)
       setzen({ achse, von: index, nach: index, schritt: eigen + luecke, versatz: 0 })
     }
@@ -192,6 +207,13 @@ export function useZiehSortieren({
 
     const beiEnde = () => {
       clearTimeout(uhr)
+      if (start) {
+        try {
+          behaelter.releasePointerCapture(start.zeiger)
+        } catch {
+          // War nie gefangen oder ist schon frei.
+        }
+      }
       const z = zustandRef.current
       if (z) {
         // Nach einem Ziehen folgt beim Loslassen noch ein Klick auf den
@@ -222,7 +244,7 @@ export function useZiehSortieren({
       if (!el || !behaelter.contains(el)) return
       const index = Number(el.dataset.zieh)
       if (!Number.isInteger(index)) return
-      start = { index, x: e.clientX, y: e.clientY }
+      start = { index, x: e.clientX, y: e.clientY, zeiger: e.pointerId }
       clearTimeout(uhr)
       uhr = setTimeout(() => {
         if (start) aufnehmen(start.index)

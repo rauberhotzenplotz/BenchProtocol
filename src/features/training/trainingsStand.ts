@@ -72,6 +72,25 @@ export function standLesen(): TrainingsStand | null {
   }
 }
 
+/** Beim nächsten Öffnen des Trainings-Tabs den Gym-Modus aufmachen.
+
+    Gedacht für die schwebende Pausenuhr: Solange die Einheit auf dem
+    Schirm steht, springt sie über einen direkten Rückruf zurück in den
+    Gym-Modus. Hat man den Tab aber verlassen, ist dieser Rückruf weg (er
+    hängt an der gemounteten SessionView), und es bleibt nur die
+    Navigation. Der gemerkte Stand trug an dieser Stelle
+    `gymOffen: false` — man schließt den Gym-Modus ja, bevor man den Tab
+    wechselt —, und der Sprung endete in der Tagesliste.
+
+    Gibt zurück, ob überhaupt ein Stand da war, an den sich anknüpfen
+    lässt. */
+export function gymAnfordern(): boolean {
+  const stand = standLesen()
+  if (!stand) return false
+  standSchreiben({ ...stand, gymOffen: true })
+  return true
+}
+
 export function standSchreiben(stand: TrainingsStand | null) {
   try {
     if (stand) localStorage.setItem(SCHLUESSEL, JSON.stringify(stand))

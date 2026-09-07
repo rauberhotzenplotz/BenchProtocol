@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useRestTimer } from '../features/training/rest-timer-context'
+import { gymAnfordern } from '../features/training/trainingsStand'
 import { GymRing } from './GymRing'
 import { cssVars } from '../lib/style'
 
@@ -15,8 +16,16 @@ export function RestTimerBar() {
   const ueberzogen = secondsLeft <= 0
 
   const zurueckZumGym = () => {
-    if (reopenGym) reopenGym()
-    else navigate('/training')
+    if (reopenGym) {
+      reopenGym()
+      return
+    }
+    // Ohne Rückruf steht die Einheit nicht auf dem Schirm — man ist in
+    // einem anderen Tab. Der gemerkte Stand sagt dann "Gym zu", weil man
+    // ihn vor dem Tabwechsel geschlossen hat; ohne diesen Vermerk landete
+    // der Sprung deshalb in der Tagesliste statt im Gym-Modus.
+    gymAnfordern()
+    navigate('/training')
   }
 
   return (
