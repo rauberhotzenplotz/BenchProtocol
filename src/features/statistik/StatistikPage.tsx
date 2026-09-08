@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useActivePlan } from '../plans/active-plan-context'
 import { useDays, useAllSetsForExercises, useAllSessionsForDays } from '../training/queries'
-import { satzE1rm } from '../training/calc'
+import { satzE1rm, durchschnittsDauerJeUebung } from '../training/calc'
+import { einheitenDaten } from '../cockpit/calc'
 import { PlanPicker } from '../plans/PlanPicker'
 import { formatGewicht } from '../../lib/zahlen'
 import { cssVars } from '../../lib/style'
 import { Liniendiagramm, Verteilung, Balkenreihe } from './Diagramme'
+import { MuskelHeatmap } from './MuskelHeatmap'
+import { DruckZugCard } from './DruckZugCard'
+import { SternbildCard } from './SternbildCard'
+import { TonnageJeEinheit, DauerJeEinheit, DauerJeUebung, LetzteEinheiten } from './EinheitenKarten'
 import {
   belastung,
   intensitaetsZonen,
@@ -40,6 +45,9 @@ function stunden(minuten: number): string {
 
 /** "1 Woche" statt "1 Wochen". */
 const wochenText = (n: number) => (n === 1 ? '1 Woche' : `${n} Wochen`)
+
+/** Dasselbe fuer Einheiten. */
+const einheitenText = (n: number) => (n === 1 ? '1 Einheit' : `${n} Einheiten`)
 
 function Kachel({ wert, einheit, label, hinweis }: { wert: string; einheit?: string; label: string; hinweis?: string }) {
   return (
@@ -114,6 +122,14 @@ export function StatistikPage() {
   const anteile = useMemo(() => uebungsAnteile(saetze, namen), [saetze, namen])
   const last = useMemo(() => belastung(saetze), [saetze])
   const gute = useMemo(() => verwertbar(saetze), [saetze])
+
+  // Grundlage der aus dem Cockpit übernommenen Karten: je Einheit ein
+  // Punkt mit Tonnage, Dauer und Satzstand.
+  const punkte = useMemo(() => einheitenDaten(days ?? [], einheiten, saetze), [days, einheiten, saetze])
+  const dauerJeUebung = useMemo(
+    () => durchschnittsDauerJeUebung(days ?? [], einheiten, saetze),
+    [days, einheiten, saetze],
+  )
 
   const volumenTrend = useMemo(
     () => regression(reihe.map(w => ({ x: w.woche, y: w.tonnage }))),
@@ -197,6 +213,15 @@ export function StatistikPage() {
         <Kachel wert={ganz(gute.reduce((a, x) => a + (x.reps ?? 0), 0))} label="Wiederholungen" />
         <Kachel wert={stunden(gesamtMinuten)} label="Trainingszeit" />
         <Kachel wert={ganz(s.laengste)} einheit="Wo" label="Längste Serie" hinweis="Aufeinanderfolgende Wochen mit mindestens einer Einheit" />
+      </div>
+
+      {/* Aus dem Cockpit übernommen. Beide zeigen dieselbe Woche und
+          rechnen über dieselbe Funktion — sie gehören nebeneinander. */}
+      <div className="st-uebernommen" style={cssVars({ '--i': 2 })}>
+        <MuskelHeatmap days={days} allSets={saetze} />
+      </div>
+      <div className="st-uebernommen" style={cssVars({ '--i': 2 })}>
+        <DruckZugCard days={days} allSets={saetze} />
       </div>
 
       <Karte
@@ -415,6 +440,42 @@ export function StatistikPage() {
           />
         }
         fussnote="Anteil am Gesamtvolumen, die acht größten. Meist steckt der Großteil der Arbeit in einer Handvoll Übungen — welche das sind, überrascht regelmäßig."
+      />
+
+      <Karte
+        i={9}
+        titel="Sternbild"
+        unterzeile={einheitenText(punkte.length)}
+        kinder={<SternbildCard punkte={punkte} />}
+        fussnote="Jede aufgezeichnete Einheit ein Stern, in zeitlicher Reihenfolge verbunden. Bewusst ohne Achsen: Für das genaue Ablesen stehen die Diagramme darüber — hier geht es um den Rhythmus, und der Abstand zeigt die Pausen."
+      />
+
+      <Karte
+        i={10}
+        titel="Tonnage je Einheit"
+        kinder={<TonnageJeEinheit punkte={punkte} />}
+        fussnote="Neueste Einheit oben. Die Balkenlänge bezieht sich auf die schwerste Einheit des Zeitraums."
+      />
+
+      <Karte
+        i={11}
+        titel="Dauer je Einheit"
+        kinder={<DauerJeEinheit punkte={punkte} />}
+        fussnote="Gemessen vom Start bis zum Beenden der Einheit, Pausen herausgerechnet (siehe startNachPause in training/calc.ts)."
+      />
+
+      <Karte
+        i={12}
+        titel="Dauer je Übung"
+        kinder={<DauerJeUebung eintraege={dauerJeUebung} />}
+        fussnote="Die Zeit einer Einheit wird nach abgehakten Sätzen auf ihre Übungen verteilt — eine Schätzung der Verteilung, keine gemessene Zeit je Übung."
+      />
+
+      <Karte
+        i={13}
+        titel="Letzte Einheiten"
+        kinder={<LetzteEinheiten sessions={einheiten} days={days} />}
+        fussnote="Die zehn jüngsten beendeten Einheiten, jüngste oben."
       />
     </section>
   )

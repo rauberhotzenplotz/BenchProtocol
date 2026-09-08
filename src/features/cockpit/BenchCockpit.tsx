@@ -1,17 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
+import { tonnageOf, wochenLabel } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, einheitenDaten, startInfo, wochenPensum } from './calc'
-import { UebungsdauerCard, LetzteEinheitenCard, KennzahlBand, Auswertungen } from './widgets'
+import { naechsterTag, startInfo, wochenPensum } from './calc'
+import { KennzahlBand } from './widgets'
+import { AuswertungenHinweis } from './AuswertungenHinweis'
 import { StartCard } from './StartCard'
 import { tagFarbe } from '../training/dayColor'
-import { DauerEinheitenCard } from './DauerEinheitenCard'
-import { TonnageEinheitenCard } from './TonnageEinheitenCard'
-import { SternbildCard } from './SternbildCard'
-import { DruckZugCard } from './DruckZugCard'
-import { MuskelHeatmap } from './MuskelHeatmap'
 import { CountUp } from '../../components/CountUp'
 import { baseE1RM } from '../bench/calc'
 import { gesamtWochenVolumen } from '../volume/calc'
@@ -22,20 +18,21 @@ interface Props {
   days: DayWithExercises[]
   week: number
   setsByExercise: Map<string, LoggedSet[]>
+  /** Wird seit dem Umzug der Auswertungen in den Statistik-Tab hier
+      nicht mehr ausgewertet, bleibt aber Teil der Schnittstelle: Die
+      CockpitPage reicht beiden Cockpits dieselben Angaben. */
   allSets: LoggedSet[]
   sessions: TrainingSession[]
 }
 
-export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessions }: Props) {
+export function BenchCockpit({ plan, days, week, setsByExercise, sessions }: Props) {
   const navigate = useNavigate()
   const tag = naechsterTag(days, setsByExercise)
-  const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
 
   const e1 = baseE1RM(plan)
 
   const wochenTonnage = days.reduce((a, d) => a + tonnageOf((d.exercises.map(ex => setsByExercise.get(ex.id) ?? [])).flat()), 0)
   const gesamtVolumen = gesamtWochenVolumen(days, setsByExercise)
-  const einheiten = einheitenDaten(days, sessions, allSets)
   const pensum = wochenPensum(days, sessions, week)
 
   return (
@@ -71,29 +68,13 @@ export function BenchCockpit({ plan, days, week, setsByExercise, allSets, sessio
         />
       </div>
 
-      {/* Direkt unter den Kennzahlen: Das Verhaeltnis von Druecken zu
-          Ziehen gehoert zu den Zahlen, nicht zu den Auswertungen weiter
-          unten — eine Schieflage soll auffallen, ohne dass man dafür
-          etwas aufklappt. */}
+      {/* Die Auswertungen liegen jetzt im Statistik-Tab. Hier standen sie
+          dreifach verpackt — hinter einem Aufklapper, darin eine Kachel
+          mit einer Zahl, die eigentliche Grafik erst in einem Vollbild
+          dahinter. Das Cockpit behält, was vor dem Training zählt: was
+          ansteht und die Kennzahlen der Woche. */}
       <div style={{ ...cssVars({ '--i': 3 }), marginBottom: 14 }}>
-        <MuskelHeatmap days={days} allSets={allSets} />
-      </div>
-
-      <div style={{ ...cssVars({ '--i': 4 }), marginBottom: 14 }}>
-        <DruckZugCard days={days} allSets={allSets} />
-      </div>
-
-      <div style={cssVars({ '--i': 5 })}>
-        <SternbildCard punkte={einheiten} gross />
-      </div>
-
-      <div style={{ ...cssVars({ '--i': 6 }), marginTop: 12 }}>
-        <Auswertungen>
-          <LetzteEinheitenCard sessions={sessions} days={days} />
-          <TonnageEinheitenCard punkte={einheiten} />
-          <DauerEinheitenCard punkte={einheiten} />
-          <UebungsdauerCard eintraege={dauerJeUebung} />
-        </Auswertungen>
+        <AuswertungenHinweis />
       </div>
     </>
   )

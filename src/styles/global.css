@@ -4214,3 +4214,46 @@ body:has(.gym) .nebel, body:has(.ap) .nebel { display: none; }
    eine Aussage, sie soll nur nicht mit den Werten konkurrieren. */
 .st-vz.leer { opacity: .45; }
 .st-kachel-wert { white-space: nowrap; }
+
+/* Aus dem Cockpit übernommene Karten bringen ihre eigene .card mit —
+   hier zählt nur, dass der Abstand zu den übrigen Statistikkarten
+   stimmt. */
+.st-uebernommen > .card { margin-bottom: 14px; }
+
+/* Liste der letzten Einheiten. Wie .kalliste im Kalender aufgebaut, aber
+   ohne dessen Rollbegrenzung: Auf dieser Seite darf sie ausklappen. */
+.st-liste { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }
+.st-liste > div {
+  display: grid; grid-template-columns: 4px 1fr auto auto; gap: 10px; align-items: center;
+  padding: 8px 2px; border-bottom: 1px solid var(--line);
+  animation: stRein .4s cubic-bezier(.22,1,.36,1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.st-liste > div:last-child { border-bottom: 0; }
+.st-liste i { display: block; width: 4px; height: 22px; border-radius: 2px; }
+.st-liste-name {
+  font-size: 12.5px; color: var(--ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.st-liste-dat, .st-liste-dau {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: .08em; color: var(--ink-4);
+}
+.st-liste-dau { color: var(--ink-3); }
+
+/* Wegweiser im Cockpit an die Stelle, an der die Auswertungen standen. */
+.ausw-hinweis {
+  display: flex; align-items: center; gap: 14px; text-decoration: none;
+  transition: border-color .2s, background .2s;
+}
+.ausw-hinweis:hover { border-color: var(--ink-4); }
+.ausw-hinweis-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ausw-hinweis-text b {
+  font-family: var(--f-display); font-size: 14px; font-weight: 500;
+  letter-spacing: .02em; color: var(--ink);
+}
+.ausw-hinweis-text small { font-size: 11.5px; line-height: 1.45; color: var(--ink-4); }
+.ausw-hinweis svg {
+  flex: none; width: 26px; height: 26px; margin-left: auto;
+  fill: none; stroke: var(--neon); stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; opacity: .8;
+}

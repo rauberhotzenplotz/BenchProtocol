@@ -1,17 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import type { Plan, LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { tonnageOf, wochenLabel, durchschnittsDauerJeUebung } from '../training/calc'
+import { tonnageOf, wochenLabel } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
-import { naechsterTag, trainingszeitDaten, einheitenDaten, ruhetage, startInfo, wochenPensum } from './calc'
-import { LetzteEinheitenCard, UebungsdauerCard, KennzahlBand, Auswertungen } from './widgets'
+import { naechsterTag, trainingszeitDaten, ruhetage, startInfo, wochenPensum } from './calc'
+import { KennzahlBand } from './widgets'
+import { AuswertungenHinweis } from './AuswertungenHinweis'
 import { StartCard } from './StartCard'
 import { tagFarbe } from '../training/dayColor'
-import { DauerEinheitenCard } from './DauerEinheitenCard'
-import { TonnageEinheitenCard } from './TonnageEinheitenCard'
-import { SternbildCard } from './SternbildCard'
-import { DruckZugCard } from './DruckZugCard'
-import { MuskelHeatmap } from './MuskelHeatmap'
 import { CountUp } from '../../components/CountUp'
 import { cssVars } from '../../lib/style'
 
@@ -28,7 +24,6 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
   const navigate = useNavigate()
   const tag = naechsterTag(days, setsByExercise)
   const t = trainingszeitDaten(sessions)
-  const dauerJeUebung = durchschnittsDauerJeUebung(days, sessions, allSets)
 
   // Tonnage der zuletzt beendeten Einheit + eine kurze Reihe davor als Trend.
   const letzte = sessions.slice(0, 8)
@@ -39,7 +34,6 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
     return tonnageOf(allSets.filter(set => ids.includes(set.exercise_id) && set.week === s.week))
   }
   const letzteTonnage = letzte.length ? tonnageVon(letzte[0]) : 0
-  const einheiten = einheitenDaten(days, sessions, allSets)
   const pensum = wochenPensum(days, sessions, week)
   const ruht = ruhetage(sessions)
 
@@ -74,29 +68,13 @@ export function GeneralCockpit({ plan, days, week, setsByExercise, allSets, sess
         />
       </div>
 
-      {/* Direkt unter den Kennzahlen: Das Verhältnis von Drücken zu
-          Ziehen gehört zu den Zahlen, nicht zu den Auswertungen weiter
-          unten — eine Schieflage soll auffallen, ohne dass man dafür
-          etwas aufklappt. */}
+      {/* Die Auswertungen liegen jetzt im Statistik-Tab. Hier standen sie
+          dreifach verpackt — hinter einem Aufklapper, darin eine Kachel
+          mit einer Zahl, die eigentliche Grafik erst in einem Vollbild
+          dahinter. Das Cockpit behält, was vor dem Training zählt: was
+          ansteht und die Kennzahlen der Woche. */}
       <div style={{ ...cssVars({ '--i': 3 }), marginBottom: 14 }}>
-        <MuskelHeatmap days={days} allSets={allSets} />
-      </div>
-
-      <div style={{ ...cssVars({ '--i': 4 }), marginBottom: 14 }}>
-        <DruckZugCard days={days} allSets={allSets} />
-      </div>
-
-      <div style={cssVars({ '--i': 5 })}>
-        <SternbildCard punkte={einheiten} gross />
-      </div>
-
-      <div style={{ ...cssVars({ '--i': 6 }), marginTop: 12 }}>
-        <Auswertungen>
-          <LetzteEinheitenCard sessions={sessions} days={days} />
-          <TonnageEinheitenCard punkte={einheiten} />
-          <DauerEinheitenCard punkte={einheiten} />
-          <UebungsdauerCard eintraege={dauerJeUebung} />
-        </Auswertungen>
+        <AuswertungenHinweis />
       </div>
     </>
   )

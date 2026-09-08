@@ -1,13 +1,7 @@
 import { useState, type ReactNode } from 'react'
-import type { DayWithExercises } from '../training/queries'
-import { type UebungsDauerSchnitt } from '../training/calc'
-import { tagFarbe } from '../training/dayColor'
 import { prozentAenderung } from './calc'
-import type { TrainingSession } from '../../types/db'
 import { Sparkline } from '../../components/Sparkline'
 import { CountUp } from '../../components/CountUp'
-import { KachelKarte } from './KachelKarte'
-import { ListChart } from './ListChart'
 
 export interface BandWert {
   label: string
@@ -139,52 +133,3 @@ export function TrainingszeitCard({ woche, vorwoche }: { woche: number; vorwoche
 
 /** durchschnittsDauerJeUebung() liefert bereits absteigend sortiert — die
     längste Übung steht damit von selbst ganz oben, genau wie gewünscht. */
-export function UebungsdauerCard({ eintraege }: { eintraege: UebungsDauerSchnitt[] }) {
-  if (eintraege.length < 2) {
-    return <KachelKarte titel="Ø Dauer je Übung" wert="—" hinweis="noch zu wenig abgehakt" />
-  }
-
-  const liste = eintraege.slice(0, 12)
-  const laengste = liste[0]
-
-  return (
-    <KachelKarte titel="Ø Dauer je Übung" wert={laengste.minuten.toFixed(1)} einheit="min" hinweis={`längste: ${laengste.name}`}>
-      <ListChart
-        ariaLabel="Durchschnittliche Dauer je Übung, längste zuerst"
-        zeilen={liste.map(e => ({
-          id: e.id,
-          name: e.name,
-          wert: e.minuten,
-          wertText: `${e.minuten.toFixed(1)} min`,
-          farbe: '#8B7CFF',
-        }))}
-      />
-    </KachelKarte>
-  )
-}
-
-export function LetzteEinheitenCard({ sessions, days }: { sessions: TrainingSession[]; days: DayWithExercises[] }) {
-  // useAllSessionsForDays sortiert bereits absteigend nach Startzeit —
-  // die jüngste Einheit steht dadurch oben.
-  const liste = sessions.filter(s => s.status === 'completed').slice(0, 10)
-  if (!liste.length) {
-    return <KachelKarte titel="Letzte Einheiten" wert="—" hinweis="noch keine beendet" />
-  }
-
-  const zuletzt = days.find(d => d.id === liste[0].day_id)?.name ?? '—'
-
-  return (
-    <KachelKarte titel="Letzte Einheiten" wert={liste.length} hinweis={`zuletzt ${zuletzt}`}>
-      <div className="kalliste" style={{ maxHeight: 'none' }}>
-        {liste.map(s => (
-          <div key={s.id}>
-            <i style={{ background: tagFarbe(days, s.day_id) }} />
-            <span>{days.find(d => d.id === s.day_id)?.name ?? '—'}</span>
-            <span className="dat">{new Date(s.started_at).toLocaleDateString('de-DE')}</span>
-            <span className="dau">{s.minutes} min</span>
-          </div>
-        ))}
-      </div>
-    </KachelKarte>
-  )
-}

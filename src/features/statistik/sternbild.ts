@@ -1,4 +1,4 @@
-import type { EinheitPunkt } from './calc'
+import type { EinheitPunkt } from '../cockpit/calc'
 
 export interface Stern {
   /** 0 = älteste, 1 = jüngste Einheit — nach echtem Kalenderabstand. */

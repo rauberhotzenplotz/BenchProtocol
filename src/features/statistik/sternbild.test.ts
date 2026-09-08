@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { sternbild } from './sternbild'
-import type { EinheitPunkt } from './calc'
+import type { EinheitPunkt } from '../cockpit/calc'
 
 const TAG = 864e5
 

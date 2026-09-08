@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import type { EinheitPunkt } from './calc'
+import type { EinheitPunkt } from '../cockpit/calc'
 import { sternbild } from './sternbild'
-import { KachelKarte } from './KachelKarte'
 
 const W = 660
 const H = 190
@@ -19,21 +18,12 @@ const P = { t: 26, r: 26, b: 26, l: 26 }
     Einfarbig statt nach Trainingstag eingefärbt: das Sternbild ist eine
     Figur, kein Vergleich zwischen Tagen. Mehrere Farben zerlegten es
     optisch wieder in Einzelteile. */
-export function SternbildCard({ punkte, gross = false }: { punkte: EinheitPunkt[]; gross?: boolean }) {
+export function SternbildCard({ punkte }: { punkte: EinheitPunkt[] }) {
   const [hover, setHover] = useState<number | null>(null)
   const sterne = sternbild(punkte)
 
   if (sterne.length < 2) {
-    return gross ? (
-      <div className="card sternbild-gross leer">
-        <h3>Sternbild des Blocks</h3>
-        <p className="muted tiny" style={{ margin: 0 }}>
-          Ab der zweiten aufgezeichneten Einheit entsteht hier deine Figur.
-        </p>
-      </div>
-    ) : (
-      <KachelKarte titel="Sternbild des Blocks" wert="—" hinweis="ab zwei Einheiten" />
-    )
+    return <p className="st-leer">Ab der zweiten aufgezeichneten Einheit entsteht hier deine Figur.</p>
   }
 
   const iw = W - P.l - P.r
@@ -105,24 +95,5 @@ export function SternbildCard({ punkte, gross = false }: { punkte: EinheitPunkt[
     </>
   )
 
-  // Groß steht die Figur offen auf der Übersicht — sie ist das Schaustück
-  // der Seite und wäre hinter einem Tipp verschenkt. Klein bleibt sie eine
-  // Kachel unter den übrigen Auswertungen.
-  if (gross) {
-    return (
-      <div className="card sternbild-gross">
-        <h3>
-          <span className="tick" />
-          Sternbild des Blocks
-        </h3>
-        {inhalt}
-      </div>
-    )
-  }
-
-  return (
-    <KachelKarte titel="Sternbild des Blocks" wert={sterne.length} einheit="Einheiten" hinweis="Abstand zeigt die Pausen">
-      {inhalt}
-    </KachelKarte>
-  )
+  return inhalt
 }
