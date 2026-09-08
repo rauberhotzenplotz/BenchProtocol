@@ -12,7 +12,7 @@ import {
   IconBlocks,
   IconLibrary,
 } from './icons'
-import { useSchliessenPerZurueck } from '../lib/backClose'
+import { useSchliessenPerZurueck, verlaufUebernommen } from '../lib/backClose'
 
 /* Drei Bereiche haben einen eigenen Knopf, der Rest liegt hinter "Mehr" —
    sonst wird die Leiste auf dem Handy zu eng (Pendant zu NAV/MEHR aus der
@@ -92,8 +92,20 @@ export function Nav() {
                 key={to}
                 to={to}
                 role="menuitem"
+                // replace statt push: Das Menü hat beim Öffnen einen
+                // eigenen history-Eintrag nachgeschoben (siehe
+                // useSchliessenPerZurueck). Ersetzt wird genau der — die
+                // Historie steht damit auf [… , Herkunft, Ziel], und
+                // "Zurück" führt sauber dorthin zurück, wo man herkam.
+                replace
                 className={({ isActive }) => 'mehr-eintrag' + (isActive ? ' on' : '')}
-                onClick={() => setOffen(false)}
+                onClick={() => {
+                  // Muss vor dem Schließen stehen: Sonst räumt das
+                  // Aufräumen des Hooks den Eintrag per history.back() ab
+                  // und nimmt die gerade erfolgte Navigation mit zurück.
+                  verlaufUebernommen()
+                  setOffen(false)
+                }}
               >
                 <svg viewBox="0 0 24 24">
                   <Icon />

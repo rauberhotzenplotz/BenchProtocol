@@ -43,6 +43,30 @@ export function ueberlagerungOffen(): boolean {
   return stapel.length > 0
 }
 
+/** Setzt aus, dass die nächste Schließung ihren history-Eintrag selbst
+    abräumt.
+
+    Gebraucht, wenn aus einer Überlagerung heraus navigiert wird — im
+    "Mehr"-Menü der Fall. Dort lief es sonst so ab:
+
+      1. Menü auf   → pushState, Historie: [Cockpit, Overlay]
+      2. Eintrag an → Router pusht,        [Cockpit, Overlay, Rekorde]
+      3. Menü zu    → Aufräumen ruft history.back()
+      4. dessen popstate trifft ein        → zurück auf Cockpit
+
+    Der Sprung landete also auf der Seite, von der man kam, und keiner
+    der Einträge hinter den drei Punkten ließ sich mehr aufrufen. Ein
+    Timing-Problem: history.back() wirkt erst verzögert, die Navigation
+    davor war da längst passiert.
+
+    Der Aufrufer navigiert deshalb mit `replace` — das ersetzt den
+    Overlay-Eintrag durch das Ziel und stellt die Historie damit selbst
+    richtig — und meldet hier, dass zusätzlich nichts abzuräumen ist. */
+let verlaufSchonErsetzt = false
+export function verlaufUebernommen() {
+  verlaufSchonErsetzt = true
+}
+
 function beiZurueck() {
   if (eigeneRuecknahmen > 0) {
     eigeneRuecknahmen--
@@ -79,10 +103,12 @@ export function useSchliessenPerZurueck(offen: boolean, onSchliessen: () => void
       // Per Knopf oder Antippen daneben geschlossen: den eigenen
       // history-Eintrag wieder abräumen, damit "Zurück" später nicht ins
       // Leere trifft. Das dabei ausgelöste popstate ist unseres.
-      if (!perZurueckGeschlossen) {
+      if (!perZurueckGeschlossen && !verlaufSchonErsetzt) {
         eigeneRuecknahmen++
         window.history.back()
       }
+      // Die Meldung gilt genau für diese eine Schließung.
+      verlaufSchonErsetzt = false
     }
   }, [offen])
 }
