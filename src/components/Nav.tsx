@@ -11,6 +11,7 @@ import {
   IconImport,
   IconBlocks,
   IconLibrary,
+  IconStats,
 } from './icons'
 import { useSchliessenPerZurueck, verlaufUebernommen } from '../lib/backClose'
 
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
 ]
 
 const MEHR_ITEMS = [
+  { to: '/statistik', label: 'Statistik', sub: 'Verläufe, Verteilungen, Belastung', Icon: IconStats },
   { to: '/rekorde', label: 'Rekorde', sub: 'Bestleistung je Wiederholungszahl', Icon: IconRecords },
   { to: '/volumen', label: 'Volumen', sub: 'Arbeitssätze je Muskelgruppe', Icon: IconVolume },
   { to: '/bloecke', label: 'Blöcke', sub: 'RPE-basierte Blockprogression je Übung', Icon: IconBlocks },

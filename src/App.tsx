@@ -24,6 +24,7 @@ const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then(
 const GuidePage = lazy(() => import('./features/guide/GuidePage').then(m => ({ default: m.GuidePage })))
 const ImportPage = lazy(() => import('./features/import/ImportPage').then(m => ({ default: m.ImportPage })))
 const RpeBlockPage = lazy(() => import('./features/rpeblock/RpeBlockPage').then(m => ({ default: m.RpeBlockPage })))
+const StatistikPage = lazy(() => import('./features/statistik/StatistikPage').then(m => ({ default: m.StatistikPage })))
 const ExerciseLibraryPage = lazy(() =>
   import('./features/exerciseLibrary/ExerciseLibraryPage').then(m => ({ default: m.ExerciseLibraryPage })),
 )
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/cockpit" element={<CockpitPage />} />
           <Route path="/training" element={<TrainingPage />} />
           <Route path="/bank" element={<BenchPage />} />
+          <Route path="/statistik" element={<StatistikPage />} />
           <Route path="/rekorde" element={<RecordsPage />} />
           <Route path="/volumen" element={<VolumePage />} />
           <Route path="/bloecke" element={<RpeBlockPage />} />

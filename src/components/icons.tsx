@@ -35,6 +35,19 @@ export function IconGuide() {
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 5.5V20.5M8 8h7M8 12h5" />
   )
 }
+export function IconStats() {
+  // Achsenkreuz mit Trendlinie und drei Punkten -- ein Diagramm, kein
+  // Balken: Der Tab zeigt Verlaeufe, keine Einzelwerte.
+  return (
+    <>
+      <path d="M4 4v16h16" />
+      <path d="M7 15l4-5 3 3 5-7" />
+      <circle cx="11" cy="10" r="1.2" />
+      <circle cx="14" cy="13" r="1.2" />
+      <circle cx="19" cy="6" r="1.2" />
+    </>
+  )
+}
 export function IconBlocks() {
   return <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 20l3-8-3-8" />
 }
