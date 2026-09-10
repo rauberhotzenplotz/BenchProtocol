@@ -112,12 +112,45 @@ Sind die 194 Tests grün und der Bau fehlerfrei, steht die Grundlage.
 npm run build
 npx cap sync android
 cd android
-JAVA_HOME="…/Android Studio/jbr" ./gradlew assembleDebug
+./gradlew assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Gradle braucht das JDK, das bei Android Studio mitkommt (Ordner `jbr`). Die
-System-Java-Version reicht nicht.
+**Einmalige Einrichtung je Rechner.** Gradle braucht das JDK, das bei Android
+Studio mitkommt (Ordner `jbr` in dessen Installationsordner). Die
+System-Java-Version reicht nicht, und ein reines JRE auch nicht: Gradles
+`JdkImageTransform` ruft `jlink` auf, das nur in einem vollständigen JDK liegt.
+Das mitgelieferte JBR von PyCharm oder IntelliJ scheitert genau daran mit
+„jlink executable … does not exist".
+
+Damit man den Pfad nicht bei jedem Bau voranstellen muss, gehört er **einmal**
+in die benutzereigene Gradle-Datei — nicht ins Repo, denn er ist je Rechner
+anders:
+
+```properties
+# ~/.gradle/gradle.properties   (Windows: C:\Users\<name>\.gradle\)
+org.gradle.java.home=E:/Daten/MyAppCreations/Android SDK/jbr
+```
+
+Schrägstriche statt Backslashes: In `.properties`-Dateien leitet ein Backslash
+eine Escape-Sequenz ein.
+
+Wo Android Studio liegt, sagt am schnellsten der laufende Prozess:
+
+```powershell
+Get-Process studio64 | Select-Object -ExpandProperty Path
+```
+
+Auf diesem Rechner steht es unter `E:\Daten\MyAppCreations\Android SDK\` — der
+Ordner heißt „Android SDK", ist aber die **Studio-Installation** (enthält
+`bin\studio64.exe`). Das echte SDK liegt daneben unter `SDKFolder\`. Wer nach
+einem Ordner namens „Android Studio" sucht, findet hier nichts.
+
+Prüfen, ob es sitzt:
+
+```bash
+cd android && ./gradlew --version   # "Daemon JVM: … (from org.gradle.java.home)"
+```
 
 ## Fallstricke, die Zeit gekostet haben
 
