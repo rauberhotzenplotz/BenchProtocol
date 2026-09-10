@@ -254,14 +254,13 @@ export function frischeVon(tage: number): number {
   return Math.max(0, 1 - tage / ERHOLUNG_TAGE)
 }
 
-/* Die Farbrampe: von warm (frisch gereizt) nach kühl (erholt). Die
-   Stützpunkte sind die beiden Datentöne der App plus ein kühles Blaugrau
-   als Ende — alle drei gedeckt, damit ein durchtrainierter Körper nicht
-   aussieht wie eine Wärmebildkamera. Rot- und Blauanteil tragen die
-   Aussage, die Sättigung bleibt niedrig. */
-const WARM = [186, 140, 124]
-const MITTE = [154, 140, 184]
-const KUEHL = [126, 142, 182]
+/* Die Farbrampe. Alle Stützpunkte sind Bestandsfarben der App: --magenta,
+   --violet, und als kühles Ende deren Mitte mit --neon. Türkis allein
+   liest sich grün, Violett allein bleibt zu warm — gemischt ergeben die
+   beiden ein helles Blau, ohne eine neue Farbe ins Haus zu holen. */
+const MAGENTA = [255, 77, 157]
+const VIOLETT = [139, 124, 255]
+const TUERKIS = [53, 240, 208]
 
 function mischen(a: number[], b: number[], t: number): number[] {
   const k = Math.min(1, Math.max(0, t))
@@ -269,21 +268,21 @@ function mischen(a: number[], b: number[], t: number): number[] {
 }
 const rgb = (c: number[]) => `rgb(${c.join(',')})`
 
-const ENDE = mischen(KUEHL, MITTE, 0.35)
+const HELLBLAU = mischen(TUERKIS, VIOLETT, 0.5)
 
 /** Tage seit dem letzten Reiz → Farbe. Die Strecke ist die
     Erholungsdauer aus muskelHitze.ts, damit Farbe und Leuchtkraft
     dieselbe Zeitachse benutzen. */
 export function hitzeFarbe(tage: number): string {
-  if (tage >= ERHOLUNG_TAGE) return rgb(ENDE)
+  if (tage >= ERHOLUNG_TAGE) return rgb(HELLBLAU)
   const mitte = ERHOLUNG_TAGE * 0.43
-  if (tage >= mitte) return rgb(mischen(MITTE, ENDE, (tage - mitte) / (ERHOLUNG_TAGE - mitte)))
-  return rgb(mischen(WARM, MITTE, tage / mitte))
+  if (tage >= mitte) return rgb(mischen(VIOLETT, HELLBLAU, (tage - mitte) / (ERHOLUNG_TAGE - mitte)))
+  return rgb(mischen(MAGENTA, VIOLETT, tage / mitte))
 }
 
 /** Dieselbe Farbe, nur durchscheinend — für Ränder, die den Ton nur
     andeuten sollen. Eigene Funktion, weil sich an eine rgb()-Angabe kein
-    Hex-Suffix hängen lässt: "rgb(126,142,182)55" ist ungültiges CSS und
+    Hex-Suffix hängen lässt: "rgb(96,182,232)55" ist ungültiges CSS und
     wird stillschweigend verworfen. */
 export function hitzeFarbeBlass(tage: number, deckkraft: number): string {
   return hitzeFarbe(tage).replace('rgb(', 'rgba(').replace(')', `, ${deckkraft})`)

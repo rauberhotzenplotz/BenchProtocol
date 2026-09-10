@@ -1,3 +1,5 @@
+import { Fragment } from 'react'
+import { formatGewicht } from '../../lib/zahlen'
 import type { BenchProgressionRow, Plan } from '../../types/db'
 import { useUpdateBenchProgressionRow } from './queries'
 import { benchLoad } from './calc'
@@ -9,19 +11,24 @@ export function ProgressionTable({ plan, rows, dim }: { plan: Plan; rows: BenchP
 
   return (
     <div className="tbl-wrap" style={{ border: 0, background: 'transparent' }}>
-      <table className="bench-tbl" style={{ minWidth: 340, opacity: dim ? 0.55 : 1 }}>
+      <table className="bench-tbl" style={{ opacity: dim ? 0.55 : 1 }}>
         <thead>
           <tr>
             <th>Woche</th>
             <th>Vorgabe</th>
-            <th style={{ width: 74 }}>% 1RM</th>
-            <th style={{ width: 96 }}>Gewicht</th>
-            <th>Hinweis</th>
+            <th style={{ width: 58 }}>% 1RM</th>
+            <th style={{ width: 86 }}>Gewicht</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(r => (
-            <tr key={r.id} className={r.week === 4 ? 'deload' : ''} style={r.week === blockWoche(plan.week) ? { background: 'rgba(53,240,208,.05)' } : undefined}>
+            /* Der Hinweis steht in einer eigenen Zeile unter den Zahlen.
+               Als fuenfte Spalte machte er die Tabelle 433 px breit -- in
+               einer 309 px breiten Karte, deren Scrollbalken global
+               ausgeblendet ist. Ausgerechnet die Kilo-Vorgabe, die
+               wichtigste Zahl der Seite, lag damit ausserhalb des Bildes. */
+            <Fragment key={r.id}>
+            <tr className={r.week === 4 ? 'deload' : ''} style={r.week === blockWoche(plan.week) ? { background: 'rgba(var(--akzent-rgb),.05)' } : undefined}>
               <td className="wk">{r.week === 4 ? 'W4 · Deload' : `Woche ${r.week}`}</td>
               <td className="mono muted">{r.scheme}</td>
               <td className="pct">
@@ -36,14 +43,18 @@ export function ProgressionTable({ plan, rows, dim }: { plan: Plan; rows: BenchP
                     if (!isNaN(v) && v > 0) updateRow.mutate({ id: r.id, pct: v / 100 })
                   }}
                 />
-                <span className="muted tiny"> %</span>
               </td>
               <td className="load">
-                {benchLoad(plan, r)}
-                <span style={{ fontSize: 12, color: 'var(--ink-3)' }}> kg</span>
+                {formatGewicht(benchLoad(plan, r))}
+                <span style={{ fontSize: 14, color: 'var(--ink-3)' }}> kg</span>
               </td>
-              <td className="hint">{r.hint}</td>
             </tr>
+            {r.hint && (
+              <tr className="hinweiszeile" style={r.week === blockWoche(plan.week) ? { background: 'rgba(var(--akzent-rgb),.05)' } : undefined}>
+                <td colSpan={4}>{r.hint}</td>
+              </tr>
+            )}
+            </Fragment>
           ))}
         </tbody>
       </table>

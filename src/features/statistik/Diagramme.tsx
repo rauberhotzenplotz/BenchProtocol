@@ -11,7 +11,7 @@ import { achsenTeilung, type Regression } from './calc'
  * Schirm der einzige Punkt, der wirklich zählt.
  */
 
-const NEON = 'var(--neon)'
+const NEON = 'var(--akzent)'
 
 export interface LinienPunkt {
   /** Beschriftung der x-Stelle, z. B. "W7". */
@@ -19,18 +19,38 @@ export interface LinienPunkt {
   wert: number
 }
 
-/** Liniendiagramm mit Fläche, Achsen und optionaler Trendgeraden.
+/** Streuwert-Netz aus einem Punkt: zwei Trabanten je Messwert, deren
+    Versatz sich aus dem Wert selbst ergibt statt aus Zufall. Dadurch steht
+    das Netz bei jedem Zeichnen an derselben Stelle -- ein Diagramm, das
+    bei jedem Rendern anders aussieht, waere kein Diagramm.
 
-    Die y-Achse beginnt immer bei 0. Gegen das Minimum normiert sähen drei
-    fast gleich große Wochen wie ein Gebirge aus — dieselbe Überlegung wie
-    beim Sternbild im Cockpit. Wer Unterschiede im Promillebereich sehen
-    will, liest die Zahlen. */
+    Der Versatz ist bewusst klein und an die Schwankung zwischen zwei
+    Wochen gekoppelt: Wo sich viel bewegt, streut das Netz weiter. */
+function trabanten(px: number, py: number, i: number, streuung: number) {
+  const w1 = Math.sin(i * 2.399) * streuung
+  const w2 = Math.cos(i * 1.771) * streuung
+  const w3 = Math.sin(i * 3.117 + 1.2) * streuung
+  const w4 = Math.cos(i * 2.653 + 0.7) * streuung
+  return [
+    { x: px + w1 * 1.6, y: py + w2 },
+    { x: px + w3 * 1.6, y: py - w4 },
+  ]
+}
+
+/** Verlaufsdiagramm im Stil der Vorlage: ein Netz aus Streuwerten im
+    Hintergrund, darueber die Linie mit einem Ring je Messpunkt, und in
+    den unteren Ecken Start- und Endwert.
+
+    Die y-Achse beginnt immer bei 0. Gegen das Minimum normiert saehen drei
+    fast gleich grosse Wochen wie ein Gebirge aus. Zahlen an der Achse gibt
+    es keine mehr: Die beiden Eckwerte sagen, worum es geht, und wer es
+    genau wissen will, liest die Kennzahlenzeile unter dem Diagramm. */
 export function Liniendiagramm({
   punkte,
   einheit,
   farbe = NEON,
   trend,
-  hoehe = 132,
+  hoehe = 158,
   ariaLabel,
 }: {
   punkte: LinienPunkt[]
@@ -46,10 +66,11 @@ export function Liniendiagramm({
 
   const W = 320
   const H = hoehe
-  const links = 40
-  const unten = 18
-  const oben = 8
-  const breite = W - links - 4
+  const links = 6
+  const rechts = 6
+  const unten = 22
+  const oben = 16
+  const breite = W - links - rechts
   const flaeche = H - unten - oben
 
   const hoch = Math.max(...punkte.map(p => p.wert))
@@ -65,32 +86,53 @@ export function Liniendiagramm({
   const striche: number[] = []
   for (let v = 0; v <= deckel + 0.0001; v += schritt) striche.push(v)
 
-  // Beschriftung ausdünnen: Auf 320 Einheiten Breite passen etwa sechs
-  // Marken, bevor sie sich überlappen.
-  const jede = Math.max(1, Math.ceil(punkte.length / 6))
+  // Streuung des Netzes: die mittlere Aenderung von Punkt zu Punkt, in
+  // Bildeinheiten. Bei einer flachen Reihe bleibt das Netz eng am Verlauf.
+  const spruenge = punkte.slice(1).map((p, i) => Math.abs(y(p.wert) - y(punkte[i].wert)))
+  const streuung = Math.min(26, Math.max(9, spruenge.reduce((a, b) => a + b, 0) / Math.max(1, spruenge.length)))
 
-  const kurz = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v)))
+  const netz = punkte.flatMap((p, i) => trabanten(x(i), y(p.wert), i, streuung))
+  const naehe = breite / Math.max(2, punkte.length - 1) * 1.9
+  const faeden: [number, number][] = []
+  for (let a = 0; a < netz.length; a++) {
+    for (let b = a + 1; b < netz.length; b++) {
+      const dx = netz[a].x - netz[b].x
+      const dy = netz[a].y - netz[b].y
+      if (Math.hypot(dx, dy) < naehe) faeden.push([a, b])
+    }
+  }
+
+  const ersteZahl = punkte[0].wert
+  const letzteZahl = punkte[punkte.length - 1].wert
+  // Deutsche Tausenderpunkte statt "12k": Der Eckwert ist eine Angabe,
+  // keine Achsenmarke -- er darf die Stelle genau nennen.
+  const kurz = (v: number) => Math.round(v).toLocaleString('de-DE')
 
   return (
-    <svg className="st-linie" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel} preserveAspectRatio="none">
+    <svg className="st-linie" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel}>
       <defs>
         <linearGradient id={`fl${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={farbe} stopOpacity="0.28" />
+          <stop offset="0%" stopColor={farbe} stopOpacity="0.13" />
           <stop offset="100%" stopColor={farbe} stopOpacity="0" />
         </linearGradient>
       </defs>
 
       {striche.map(v => (
-        <g key={v}>
-          <line className="st-gitter" x1={links} y1={y(v)} x2={W - 4} y2={y(v)} />
-          <text className="st-achse" x={links - 6} y={y(v) + 3.5} textAnchor="end">
-            {kurz(v)}
-          </text>
-        </g>
+        <line key={v} className="st-gitter" x1={links} y1={y(v)} x2={W - rechts} y2={y(v)} />
       ))}
 
+      {/* Das Netz liegt hinter allem: es traegt die Stimmung, nicht die
+          Aussage. */}
+      <g className="st-netz" style={{ color: farbe }}>
+        {faeden.map(([a, b], i) => (
+          <line key={i} x1={netz[a].x} y1={netz[a].y} x2={netz[b].x} y2={netz[b].y} />
+        ))}
+        {netz.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={1.6} />
+        ))}
+      </g>
+
       <path d={fuellung} fill={`url(#fl${id})`} />
-      <path className="st-ser" d={linie} fill="none" stroke={farbe} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
 
       {trend && (
         // Gestrichelt und blass: Die Gerade ist eine Deutung der Punkte,
@@ -105,27 +147,34 @@ export function Liniendiagramm({
         />
       )}
 
+      <path className="st-ser" d={linie} fill="none" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+
       {punkte.map((p, i) => (
         <circle
           key={i}
-          className={'st-punkt' + (i === punkte.length - 1 ? ' letzt' : '')}
+          className={'st-knoten' + (i === punkte.length - 1 ? ' letzt' : '')}
           cx={x(i)}
           cy={y(p.wert)}
-          r={i === punkte.length - 1 ? 3.2 : 1.9}
-          fill={farbe}
+          r={i === punkte.length - 1 ? 4.4 : 3.2}
         />
       ))}
 
-      {punkte.map((p, i) =>
-        i % jede === 0 || i === punkte.length - 1 ? (
-          <text key={p.label + i} className="st-achse" x={x(i)} y={H - 5} textAnchor="middle">
-            {p.label}
-          </text>
-        ) : null,
-      )}
-
-      <text className="st-achse einheit" x={links - 6} y={oben - 1} textAnchor="end">
-        {einheit}
+      {/* Der aktuelle Wert steht am letzten Knoten, die beiden Eckwerte
+          unten -- genau wie in der Vorlage. */}
+      <text className="st-wert" x={W - rechts} y={oben - 5} textAnchor="end">
+        {kurz(letzteZahl)} {einheit}
+      </text>
+      <text className="st-eck" x={links} y={H - 12} textAnchor="start">
+        {kurz(ersteZahl)} {einheit}
+      </text>
+      <text className="st-eck lab" x={links} y={H - 2} textAnchor="start">
+        START
+      </text>
+      <text className="st-eck" x={W - rechts} y={H - 12} textAnchor="end">
+        {kurz(letzteZahl)} {einheit}
+      </text>
+      <text className="st-eck lab" x={W - rechts} y={H - 2} textAnchor="end">
+        AKTUELL
       </text>
     </svg>
   )

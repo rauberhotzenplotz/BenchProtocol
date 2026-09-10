@@ -8,7 +8,7 @@ export function DeloadBanner({ plan }: { plan: Plan }) {
   return (
     <div className="deload-banner">
       <b>Deload-Woche</b>
-      <p>Weniger Gewicht, weniger Sätze — bewusst leichter, damit der nächste Block wieder frisch startet.</p>
+      <p>Weniger Gewicht, weniger Sätze — bewusst leichter.</p>
     </div>
   )
 }

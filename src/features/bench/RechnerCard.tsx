@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatGewicht } from '../../lib/zahlen'
 import { e1rm, brzycki, round, mround } from './calc'
 import { useUpdatePlan } from '../plans/queries'
 import { onKeyDownAndroidBackspaceFix } from '../../lib/nativeShell'
@@ -42,13 +43,13 @@ export function RechnerCard({ planId, plate }: { planId: string; plate: number }
           <div className="lab mono tiny" style={{ color: 'var(--ink-3)' }}>
             EPLEY
           </div>
-          <div style={{ fontFamily: 'var(--f-display)', fontSize: 26, color: 'var(--neon)' }}>{epley} kg</div>
+          <div style={{ fontFamily: 'var(--f-display)', fontSize: 26, color: 'var(--akzent)' }}>{formatGewicht(epley)} kg</div>
         </div>
         <div>
           <div className="lab mono tiny" style={{ color: 'var(--ink-3)' }}>
             BRZYCKI
           </div>
-          <div style={{ fontFamily: 'var(--f-display)', fontSize: 26, color: 'var(--violet)' }}>{brz} kg</div>
+          <div style={{ fontFamily: 'var(--f-display)', fontSize: 26, color: 'var(--ton-b)' }}>{formatGewicht(brz)} kg</div>
         </div>
       </div>
       <div className="row" style={{ gap: 8, marginBottom: 8, alignItems: 'baseline' }}>
@@ -66,7 +67,7 @@ export function RechnerCard({ planId, plate }: { planId: string; plate: number }
         />
         <span className="muted tiny">kg</span>
       </div>
-      <table className="t">
+      <table className="t schmal">
         <thead>
           <tr>
             <th>Anteil</th>

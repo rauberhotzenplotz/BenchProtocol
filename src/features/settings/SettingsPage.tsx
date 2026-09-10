@@ -71,7 +71,6 @@ export function SettingsPage() {
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
-          <span className="eyebrow">App</span>
           <h2>Einstellungen</h2>
         </div>
       </div>
@@ -92,7 +91,6 @@ export function SettingsPage() {
         <div className="setzeile">
           <div className="txt">
             <b>Satzpause automatisch starten</b>
-            <small>Sobald ein Satz abgehakt wird, läuft die Pause der Übung von selbst los.</small>
           </div>
           <div className="pills" role="group" aria-label="Satzpause automatisch starten">
             <button
@@ -118,7 +116,6 @@ export function SettingsPage() {
         <div className="setzeile">
           <div className="txt">
             <b>Vibration im Gym-Modus</b>
-            <small>Kurzes Signal beim Abhaken eines Satzes und am Ende der Einheit. Nur auf Geräten mit Vibrationsmotor.</small>
           </div>
           <div className="pills" role="group" aria-label="Vibration im Gym-Modus">
             <button
@@ -151,7 +148,6 @@ export function SettingsPage() {
         <div className="setzeile" style={{ marginTop: 6 }}>
           <div className="txt">
             <b>Sicherung herunterladen</b>
-            <small>Alle deine Trainingspläne, Tage, Übungen und geloggten Sätze als JSON-Datei.</small>
           </div>
           <button className="btn sm ghost" onClick={() => void exportieren()} disabled={backupBusy || !plans.length}>
             Herunterladen
@@ -160,7 +156,6 @@ export function SettingsPage() {
         <div className="setzeile" style={{ marginTop: 10 }}>
           <div className="txt">
             <b>Sicherung einspielen</b>
-            <small>Aus einer zuvor heruntergeladenen JSON-Datei wiederherstellen. Vorhandene Pläne bleiben erhalten.</small>
           </div>
           <label className="btn sm ghost" style={{ cursor: 'pointer' }}>
             Datei wählen
@@ -188,7 +183,7 @@ export function SettingsPage() {
         <div className="setzeile" style={{ marginTop: 6 }}>
           <div className="txt">
             <b>Alle Daten löschen</b>
-            <small>Löscht alle deine Trainingspläne, Tage, Übungen und geloggten Sätze unwiderruflich.</small>
+            <small>Unwiderruflich.</small>
           </div>
           {!bestaetigen ? (
             <button className="btn sm danger" onClick={() => setBestaetigen(true)} disabled={!plans.length}>

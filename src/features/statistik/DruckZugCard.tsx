@@ -48,8 +48,7 @@ export function DruckZugCard({ days, allSets }: { days: DayWithExercises[]; allS
           <span className="dz-fenster">Letzte 7 Tage</span>
         </h3>
         <p className="muted tiny" style={{ margin: 0 }}>
-          In den letzten sieben Tagen keine abgehakten Sätze für Brust, Schulter oder Rücken. Sobald
-          welche im Protokoll stehen, steht hier das Verhältnis.
+          Noch keine abgehakten Sätze für Brust, Schulter oder Rücken.
         </p>
       </div>
     )

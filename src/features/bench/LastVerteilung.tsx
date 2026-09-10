@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatGewicht } from '../../lib/zahlen'
 import type { BenchProgressionRow, BenchSlot, Plan } from '../../types/db'
 import { benchLoad } from './calc'
 import { blockWoche } from '../training/calc'
@@ -76,23 +77,25 @@ const SAEULE_STUFEN = 16
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
 
-/* Die Farbreise der Studie (Cyan → Giftgrün → Hot-Pink) in den Tokens
-   dieser App: --neon → --good → --magenta. Als Zahlen, weil zwischen den
-   Stufen gemischt wird und CSS das für beliebige Anteile nicht kann. */
-const TUERKIS: [number, number, number] = [53, 240, 208]
-const GRUEN: [number, number, number] = [63, 224, 138]
-const PINK: [number, number, number] = [255, 77, 157]
+/* Die Farbreise der Studie (Cyan → Giftgrün → Hot-Pink) in den Tönen
+   dieser App: wenig Last liest sich kühl, viel Last warm. Als Zahlen,
+   weil zwischen den Stufen gemischt wird und CSS das für beliebige
+   Anteile nicht kann — die Werte entsprechen --ton-b, --good und --ton-c
+   (siehe design/graphit/README.md). */
+const KUEHL: [number, number, number] = [126, 142, 182]
+const MITTE: [number, number, number] = [111, 190, 148]
+const WARM: [number, number, number] = [186, 140, 124]
 
 function mischen(a: [number, number, number], b: [number, number, number], t: number): string {
   const k = clamp(t, 0, 1)
   return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')})`
 }
 
-/** 0 → türkis, 0,62 → grün, 1 → pink. */
+/** 0 → kühl, 0,62 → mittig, 1 → warm. */
 function hitzeFarbe(i: number): string {
-  if (i >= 1) return `rgb(${PINK.join(',')})`
-  if (i >= 0.62) return mischen(GRUEN, PINK, (i - 0.62) / 0.38)
-  return mischen(TUERKIS, GRUEN, i / 0.62)
+  if (i >= 1) return `rgb(${WARM.join(',')})`
+  if (i >= 0.62) return mischen(MITTE, WARM, (i - 0.62) / 0.38)
+  return mischen(KUEHL, MITTE, i / 0.62)
 }
 
 interface Ton {
@@ -153,9 +156,9 @@ function Flaechen({ toene, gespiegelt }: { toene: Record<string, Ton>; gespiegel
 function Striche({ toene, gespiegelt }: { toene: Record<string, Ton>; gespiegelt?: boolean }) {
   return (
     <g transform={gespiegelt ? 'translate(220,0) scale(-1,1)' : undefined}>
-      <path d={KONTUR} fill="none" stroke="var(--neon)" strokeOpacity={0.34} strokeWidth={1} />
+      <path d={KONTUR} fill="none" stroke="var(--akzent)" strokeOpacity={0.34} strokeWidth={1} />
       {KANTEN.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="var(--neon)" strokeOpacity={0.72} strokeWidth={1} strokeLinecap="round" />
+        <path key={i} d={d} fill="none" stroke="var(--akzent)" strokeOpacity={0.72} strokeWidth={1} strokeLinecap="round" />
       ))}
       {Object.keys(FASERN).map(key => (
         <path
@@ -172,7 +175,7 @@ function Striche({ toene, gespiegelt }: { toene: Record<string, Ton>; gespiegelt
       <path
         d="M62 152 L104 148 M65 170 L104 167 M68 188 L104 186"
         fill="none"
-        stroke="var(--neon)"
+        stroke="var(--akzent)"
         strokeOpacity={0.17}
         strokeWidth={0.75}
       />
@@ -242,7 +245,7 @@ export function LastVerteilung({ plan, zeilen }: { plan: Plan; zeilen: Record<Be
         ))}
         <span className="spacer" />
         <span className="mono tiny bk-last">
-          {gewicht ? `${gewicht} kg` : '—'}
+          {gewicht ? `${formatGewicht(gewicht)} kg` : '—'}
           {zeile?.scheme ? ` · ${zeile.scheme}` : ''}
         </span>
       </div>
@@ -258,9 +261,9 @@ export function LastVerteilung({ plan, zeilen }: { plan: Plan; zeilen: Record<Be
             <svg viewBox="0 12 220 196" aria-hidden="true" className="bk-torso">
               <defs>
                 <linearGradient id="bk-scan" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--neon)" stopOpacity={0} />
-                  <stop offset="50%" stopColor="var(--neon)" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="var(--neon)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="var(--akzent)" stopOpacity={0} />
+                  <stop offset="50%" stopColor="var(--akzent)" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="var(--akzent)" stopOpacity={0} />
                 </linearGradient>
                 {/* Die Flächen leuchten, statt sich hart abzugrenzen. */}
                 <filter id="bk-weich" x="-30%" y="-30%" width="160%" height="160%">
@@ -286,30 +289,30 @@ export function LastVerteilung({ plan, zeilen }: { plan: Plan; zeilen: Record<Be
                 <Striche toene={map} gespiegelt />
               </g>
 
-              <path d="M110 34 L110 200" fill="none" stroke="var(--neon)" strokeOpacity={0.34} strokeWidth={1} />
-              <path d="M46 116 Q110 140 174 116" fill="none" stroke="var(--neon)" strokeOpacity={0.17} strokeWidth={0.75} />
+              <path d="M110 34 L110 200" fill="none" stroke="var(--akzent)" strokeOpacity={0.34} strokeWidth={1} />
+              <path d="M46 116 Q110 140 174 116" fill="none" stroke="var(--akzent)" strokeOpacity={0.17} strokeWidth={0.75} />
 
               <g className="bk-fadenkreuz">
-                <circle cx="110" cy="80" r="52" fill="none" strokeWidth={1} strokeDasharray="5 11" stroke="var(--neon)" strokeOpacity={0.5} />
+                <circle cx="110" cy="80" r="52" fill="none" strokeWidth={1} strokeDasharray="5 11" stroke="var(--akzent)" strokeOpacity={0.5} />
               </g>
-              <g fill="none" strokeWidth={1} stroke="var(--neon)" strokeOpacity={0.5}>
+              <g fill="none" strokeWidth={1} stroke="var(--akzent)" strokeOpacity={0.5}>
                 <path d="M110 22 v8 M110 140 v-8 M52 80 h8 M168 80 h-8" />
                 <rect x="86" y="56" width="48" height="48" strokeDasharray="10 38" />
               </g>
 
               {/* Leitlinie auf das gerade abgetastete Segment */}
               <g className="bk-leitlinie">
-                <text x="214" y="22" textAnchor="end" fill="var(--neon)" className="bk-leittext">
+                <text x="214" y="22" textAnchor="end" fill="var(--akzent)" className="bk-leittext">
                   {LANGNAME[gezeigt]} {gezeigtProzent}%
                 </text>
                 <path
                   fill="none"
-                  stroke="var(--neon)"
+                  stroke="var(--akzent)"
                   strokeOpacity={0.65}
                   strokeWidth={0.8}
                   d={`M214 27 L214 34 L${anker[0]} 34 L${anker[0]} ${anker[1]}`}
                 />
-                <circle r="1.9" fill="var(--neon)" cx={anker[0]} cy={anker[1]} />
+                <circle r="1.9" fill="var(--akzent)" cx={anker[0]} cy={anker[1]} />
               </g>
             </svg>
 

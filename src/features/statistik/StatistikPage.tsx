@@ -9,7 +9,6 @@ import { cssVars } from '../../lib/style'
 import { Liniendiagramm, Verteilung, Balkenreihe } from './Diagramme'
 import { MuskelHeatmap } from './MuskelHeatmap'
 import { DruckZugCard } from './DruckZugCard'
-import { SternbildCard } from './SternbildCard'
 import { TonnageJeEinheit, DauerJeEinheit, DauerJeUebung, LetzteEinheiten } from './EinheitenKarten'
 import {
   belastung,
@@ -46,9 +45,6 @@ function stunden(minuten: number): string {
 /** "1 Woche" statt "1 Wochen". */
 const wochenText = (n: number) => (n === 1 ? '1 Woche' : `${n} Wochen`)
 
-/** Dasselbe fuer Einheiten. */
-const einheitenText = (n: number) => (n === 1 ? '1 Einheit' : `${n} Einheiten`)
-
 function Kachel({ wert, einheit, label, hinweis }: { wert: string; einheit?: string; label: string; hinweis?: string }) {
   return (
     <div className="st-kachel" title={hinweis}>
@@ -65,13 +61,11 @@ function Karte({
   titel,
   unterzeile,
   kinder,
-  fussnote,
   i,
 }: {
   titel: string
   unterzeile?: string
   kinder: React.ReactNode
-  fussnote?: string
   i: number
 }) {
   return (
@@ -82,7 +76,6 @@ function Karte({
         {unterzeile && <span className="st-fenster">{unterzeile}</span>}
       </h3>
       {kinder}
-      {fussnote && <p className="st-fuss">{fussnote}</p>}
     </div>
   )
 }
@@ -161,7 +154,7 @@ export function StatistikPage() {
         <div className="view-head">
           <div>
             <h2>Statistik</h2>
-            <p>Leg deinen ersten Trainingsplan an, dann gibt es hier etwas zu rechnen.</p>
+            <p>Leg deinen ersten Trainingsplan an.</p>
           </div>
           <PlanPicker />
         </div>
@@ -184,9 +177,8 @@ export function StatistikPage() {
       <section className="view on frisch">
         <div className="view-head">
           <div>
-            <span className="eyebrow">Auswertung</span>
             <h2>Statistik</h2>
-            <p>Noch kein abgehakter Satz mit Gewicht und Wiederholungen. Sobald du trainierst, füllt sich diese Seite.</p>
+            <p>Noch kein abgehakter Satz — sobald du trainierst, füllt sich diese Seite.</p>
           </div>
         </div>
       </section>
@@ -197,17 +189,12 @@ export function StatistikPage() {
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
-          <span className="eyebrow">Auswertung</span>
           <h2>Statistik</h2>
-          <p>
-            Alles aus deinen abgehakten Sätzen gerechnet — nichts geschätzt. Wo die Daten nicht reichen, bleibt eine
-            Stelle leer statt einer erfundenen Zahl.
-          </p>
         </div>
       </div>
 
       <div className="st-kpi" style={cssVars({ '--i': 1 })}>
-        <Kachel wert={tt.wert} einheit={tt.einheit} label="Gesamtvolumen" hinweis="Gewicht × Wiederholungen, über alle abgehakten Sätze" />
+        <Kachel wert={tt.wert} einheit={tt.einheit} label="Volumen" hinweis="Gewicht × Wiederholungen, über alle abgehakten Sätze" />
         <Kachel wert={ganz(beendete)} label="Einheiten" />
         <Kachel wert={ganz(gute.length)} label="Sätze" />
         <Kachel wert={ganz(gute.reduce((a, x) => a + (x.reps ?? 0), 0))} label="Wiederholungen" />
@@ -233,10 +220,7 @@ export function StatistikPage() {
             {reihe.length < 2 ? (
               // Ein einzelner Punkt ist kein Verlauf. Lieber sagen, was
               // fehlt, als ein leeres Achsenkreuz zeigen.
-              <p className="st-leer">
-                Ein Verlauf braucht mindestens zwei Wochen. Bisher liegt {wochenText(reihe.length)} vor — ab der
-                nächsten erscheint hier die Linie samt Trend.
-              </p>
+              <p className="st-leer">Ein Verlauf braucht zwei Wochen — bisher {wochenText(reihe.length)}.</p>
             ) : (
               <Liniendiagramm
                 punkte={reihe.map(w => ({ label: `W${w.woche}`, wert: w.tonnage }))}
@@ -269,7 +253,6 @@ export function StatistikPage() {
             )}
           </>
         }
-        fussnote="Die Trendgerade ist eine Ausgleichsrechnung über alle Wochen. Die Bestimmtheit sagt, wie gut sie zu den Punkten passt: unter 0,3 ist die Steigung eher Rauschen als Richtung. Die Streuung ist der Variationskoeffizient — wie stark die Wochen um ihren Mittelwert schwanken."
       />
 
       <Karte
@@ -279,11 +262,11 @@ export function StatistikPage() {
         kinder={
           <>
             <div className="st-kpi eng">
-              <Kachel wert={tonnageText(last.akut).wert} einheit={tonnageText(last.akut).einheit} label="Akut · 7 Tage" />
+              <Kachel wert={tonnageText(last.akut).wert} einheit={tonnageText(last.akut).einheit} label="Akut" />
               <Kachel
                 wert={tonnageText(last.chronisch).wert}
                 einheit={tonnageText(last.chronisch).einheit}
-                label="Chronisch · Ø Woche"
+                label="Chronisch"
               />
               <Kachel
                 wert={last.verhaeltnis != null ? last.verhaeltnis.toFixed(2).replace('.', ',') : '—'}
@@ -311,14 +294,12 @@ export function StatistikPage() {
             )}
           </>
         }
-        fussnote="Als Last dient die Tonnage — ein RPE tragen nur Bankdrücken-Sätze, eine Kennzahl mit wechselndem Fundament wäre schlechter als eine gröbere. Das Verhältnis stammt aus der Sportwissenschaft und ist dort umstritten: Es sagt nichts über Verletzungen voraus, beschreibt aber, wie weit die laufende Woche von der Gewöhnung abweicht. Unter vier Wochen Vorlauf bleibt es leer."
       />
 
       {anteile.length > 0 && (
         <Karte
           i={4}
           titel="Kraftverlauf"
-          unterzeile="bestes e1RM je Woche"
           kinder={
             <>
               <div className="st-wahl">
@@ -338,7 +319,7 @@ export function StatistikPage() {
                   <Liniendiagramm
                     punkte={uebungsVerlauf.map(p => ({ label: `W${p.woche}`, wert: p.e1rm }))}
                     einheit="kg"
-                    farbe="var(--violet)"
+                    farbe="var(--ton-b)"
                     trend={uebungsTrend}
                     ariaLabel="Geschätztes Einwiederholungsmaximum je Woche"
                   />
@@ -351,7 +332,7 @@ export function StatistikPage() {
                       Trend
                       <b>
                         {uebungsTrend
-                          ? `${uebungsTrend.steigung >= 0 ? '+' : '−'}${formatGewicht(Math.abs(uebungsTrend.steigung))} kg/Woche`
+                          ? `${uebungsTrend.steigung >= 0 ? '+' : '−'}${formatGewicht(Math.round(Math.abs(uebungsTrend.steigung) * 10) / 10)} kg/Woche`
                           : '—'}
                       </b>
                     </span>
@@ -362,21 +343,16 @@ export function StatistikPage() {
                   </div>
                 </>
               ) : (
-                <p className="st-leer">
-                  Für diese Übung liegen noch keine zwei Wochen mit Sätzen vor. Ab der zweiten erscheint hier der
-                  Verlauf des geschätzten Einwiederholungsmaximums.
-                </p>
+                <p className="st-leer">Für diese Übung liegen noch keine zwei Wochen mit Sätzen vor.</p>
               )}
             </>
           }
-          fussnote="Das geschätzte Einwiederholungsmaximum kommt je Satz aus der RPE-Tabelle, sonst über Epley. Genommen wird der beste Satz der Woche — nicht der Durchschnitt, denn die Bestmarke ist das, was sich verschiebt."
         />
       )}
 
       <Karte
         i={5}
         titel="Intensitätszonen"
-        unterzeile="Anteil am besten e1RM"
         kinder={
           <Verteilung
             faecher={intensitaetsZonen(saetze, besteE1rm).map(f => ({
@@ -387,7 +363,6 @@ export function StatistikPage() {
             ariaLabel="Verteilung der Sätze auf Intensitätszonen"
           />
         }
-        fussnote="Bezugspunkt ist das beste je erreichte e1RM der jeweiligen Übung, nicht ein tagesaktuelles — sonst verschöbe jede neue Bestleistung rückwirkend die ganze Geschichte. Übungen ohne brauchbaren Bezugswert bleiben außen vor."
       />
 
       <Karte
@@ -400,11 +375,10 @@ export function StatistikPage() {
               anteil: f.anteil,
               zusatz: `${f.saetze} Sätze`,
             }))}
-            farbe="var(--magenta)"
+            farbe="var(--ton-c)"
             ariaLabel="Verteilung der Sätze auf Wiederholungsbereiche"
           />
         }
-        fussnote="Die Etiketten sind die geläufigen Einordnungen aus der Trainingslehre — eine Beschreibung, kein Naturgesetz."
       />
 
       <Karte
@@ -417,11 +391,10 @@ export function StatistikPage() {
               wert: t.einheiten,
               titel: `${t.name}: ${t.einheiten} Einheiten, ${stunden(t.minuten)}`,
             }))}
-            farbe="var(--violet)"
+            farbe="var(--ton-b)"
             ariaLabel="Einheiten je Wochentag"
           />
         }
-        fussnote="Zeigt den Rhythmus, den man selbst nicht bemerkt — etwa dass ein Wochentag seit Monaten ausfällt."
       />
 
       <Karte
@@ -439,43 +412,30 @@ export function StatistikPage() {
             ariaLabel="Volumenanteil je Übung"
           />
         }
-        fussnote="Anteil am Gesamtvolumen, die acht größten. Meist steckt der Großteil der Arbeit in einer Handvoll Übungen — welche das sind, überrascht regelmäßig."
-      />
-
-      <Karte
-        i={9}
-        titel="Sternbild"
-        unterzeile={einheitenText(punkte.length)}
-        kinder={<SternbildCard punkte={punkte} />}
-        fussnote="Jede aufgezeichnete Einheit ein Stern, in zeitlicher Reihenfolge verbunden. Bewusst ohne Achsen: Für das genaue Ablesen stehen die Diagramme darüber — hier geht es um den Rhythmus, und der Abstand zeigt die Pausen."
       />
 
       <Karte
         i={10}
         titel="Tonnage je Einheit"
         kinder={<TonnageJeEinheit punkte={punkte} />}
-        fussnote="Neueste Einheit oben. Die Balkenlänge bezieht sich auf die schwerste Einheit des Zeitraums."
       />
 
       <Karte
         i={11}
         titel="Dauer je Einheit"
         kinder={<DauerJeEinheit punkte={punkte} />}
-        fussnote="Gemessen vom Start bis zum Beenden der Einheit, Pausen herausgerechnet (siehe startNachPause in training/calc.ts)."
       />
 
       <Karte
         i={12}
         titel="Dauer je Übung"
         kinder={<DauerJeUebung eintraege={dauerJeUebung} />}
-        fussnote="Die Zeit einer Einheit wird nach abgehakten Sätzen auf ihre Übungen verteilt — eine Schätzung der Verteilung, keine gemessene Zeit je Übung."
       />
 
       <Karte
         i={13}
         titel="Letzte Einheiten"
         kinder={<LetzteEinheiten sessions={einheiten} days={days} />}
-        fussnote="Die zehn jüngsten beendeten Einheiten, jüngste oben."
       />
     </section>
   )

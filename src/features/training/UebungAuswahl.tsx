@@ -288,7 +288,7 @@ export function UebungAuswahl({
         <div className="field">
           <label>Übung</label>
           <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <b style={{ fontFamily: 'var(--f-display)', fontSize: 16, letterSpacing: '.02em' }}>{gewaehlt.name}</b>
+            <b style={{ fontFamily: 'var(--f-display)', fontSize: 17.5, letterSpacing: '.02em' }}>{gewaehlt.name}</b>
             <span className="spacer" />
             <button className="btn ghost sm" onClick={() => setGewaehlt(null)}>
               Andere wählen
@@ -314,7 +314,6 @@ export function UebungAuswahl({
               werte={PAUSE_MINUTEN}
               format={formatPause}
               titel="Pause"
-              einheit="min"
               className="mono"
               onWahl={n => setRestMin(n ?? 2)}
             />

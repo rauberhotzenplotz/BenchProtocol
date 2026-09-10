@@ -1,4 +1,5 @@
 import { useActivePlan } from '../plans/active-plan-context'
+import { formatGewicht } from '../../lib/zahlen'
 import { useBenchProgression, benchRowsFor } from './queries'
 import { baseE1RM, benchLoad } from './calc'
 import { ProgressionTable } from './ProgressionTable'
@@ -30,7 +31,6 @@ export function BenchPage() {
       <section className="view on frisch">
         <div className="view-head" style={cssVars({ '--i': 0 })}>
           <div>
-            <span className="eyebrow">Bankdrücken-Block</span>
             <h2>Bank</h2>
           </div>
         </div>
@@ -84,27 +84,27 @@ function BenchTab({ plan }: { plan: Plan }) {
           </h3>
           <div className="stack">
             <div>
-              <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.15em', textTransform: 'uppercase' }}>
+              <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
                 Bankdrücken schwer
               </div>
-              <div style={{ fontFamily: 'var(--f-display)', fontSize: 44, fontWeight: 600, color: bsp ? 'var(--ink-3)' : 'var(--violet)', lineHeight: 1.05 }}>
+              <div style={{ fontFamily: 'var(--f-display)', fontSize: 44, fontWeight: 600, color: bsp ? 'var(--ink-3)' : 'var(--ton-b)', lineHeight: 1.05 }}>
                 <CountUp value={zielD1} decimals={1} />
-                <span style={{ fontSize: 16, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}> kg</span>
+                <span style={{ fontSize: 17.5, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}> kg</span>
               </div>
               <p className="muted tiny" style={{ margin: '5px 0 0' }}>{heuteD1?.scheme ?? '—'}</p>
             </div>
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 13 }}>
-              <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.15em', textTransform: 'uppercase' }}>
+              <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
                 Geschätztes 1RM
               </div>
-              <div style={{ fontFamily: 'var(--f-display)', fontSize: 28, fontWeight: 600, color: bsp ? 'var(--ink-3)' : 'var(--neon)', lineHeight: 1.05 }}>
-                {e1}
-                <span style={{ fontSize: 14, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}> kg</span>
+              <div style={{ fontFamily: 'var(--f-display)', fontSize: 28, fontWeight: 600, color: bsp ? 'var(--ink-3)' : 'var(--akzent)', lineHeight: 1.05 }}>
+                {formatGewicht(e1)}
+                <span style={{ fontSize: 15.5, color: 'var(--ink-3)', fontFamily: 'var(--f-body)' }}> kg</span>
               </div>
               <p className="muted tiny" style={{ margin: '5px 0 0' }}>
                 {plan.rpe != null
-                  ? `RPE-Tabelle: ${plan.work ?? 0} kg × ${plan.reps ?? 0} Wdh. @ RPE ${plan.rpe}`
-                  : `Epley: ${plan.work ?? 0} × (1 + (${plan.reps ?? 0} + ${plan.rir ?? 0}) / 30)`}
+                  ? `RPE-Tabelle: ${formatGewicht(plan.work ?? 0)} kg × ${plan.reps ?? 0} Wdh. @ RPE ${plan.rpe}`
+                  : `Epley: ${formatGewicht(plan.work ?? 0)} × (1 + (${plan.reps ?? 0} + ${plan.rir ?? 0}) / 30)`}
               </p>
             </div>
           </div>
@@ -120,7 +120,7 @@ function BenchTab({ plan }: { plan: Plan }) {
           </div>
           <div className="card">
             <h3>
-              <span className="tick" style={{ background: 'var(--violet)' }} />
+              <span className="tick" style={{ background: 'var(--ton-b)' }} />
               Bankdrücken mit Pause
             </h3>
             {progression && <ProgressionTable plan={plan} rows={benchRowsFor(progression, 'd3')} dim={bsp} />}

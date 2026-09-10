@@ -79,7 +79,7 @@ export function TrainingCalendar({ plan, days, sessions, alleSaetze }: Props) {
               ←
             </button>
             <span className="spacer" />
-            <b style={{ fontFamily: 'var(--f-display)', fontSize: 18, letterSpacing: '.04em', textTransform: 'uppercase' }}>
+            <b style={{ fontFamily: 'var(--f-display)', fontSize: 19, letterSpacing: '.01em' }}>
               {MONATE[monat]} {jahr}
             </b>
             <span className="spacer" />
@@ -112,8 +112,8 @@ export function TrainingCalendar({ plan, days, sessions, alleSaetze }: Props) {
                   style={{
                     aspectRatio: '1',
                     borderRadius: 8,
-                    border: `1px solid ${istHeute ? 'var(--neon)' : 'var(--line)'}`,
-                    background: einheiten.length ? 'rgba(53,240,208,.1)' : 'transparent',
+                    border: `1px solid ${istHeute ? 'var(--akzent)' : 'var(--line)'}`,
+                    background: einheiten.length ? 'rgba(var(--akzent-rgb),.08)' : 'transparent',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -125,7 +125,7 @@ export function TrainingCalendar({ plan, days, sessions, alleSaetze }: Props) {
                     color: 'inherit',
                   }}
                 >
-                  <span className="mono tiny" style={{ color: istHeute ? 'var(--neon)' : 'var(--ink-2)' }}>
+                  <span className="mono tiny" style={{ color: istHeute ? 'var(--akzent)' : 'var(--ink-2)' }}>
                     {tag}
                   </span>
                   {farben.length > 0 && (
@@ -182,7 +182,7 @@ function TagDetail({
         <button className="btn sm ghost" onClick={onZurueck} aria-label="Zurück zum Kalender">
           ‹ Kalender
         </button>
-        <b style={{ fontFamily: 'var(--f-display)', fontSize: 16, letterSpacing: '.03em' }}>{langDatum}</b>
+        <b style={{ fontFamily: 'var(--f-display)', fontSize: 17.5, letterSpacing: '.03em' }}>{langDatum}</b>
       </div>
 
       <div className="stack" style={{ gap: 14 }}>
@@ -240,7 +240,7 @@ function TagDetail({
                     return (
                       <div key={ex.id}>
                         <div className="row" style={{ gap: 8, alignItems: 'baseline' }}>
-                          <b style={{ fontSize: 13.5 }}>{ex.name}</b>
+                          <b style={{ fontSize: 15.5 }}>{ex.name}</b>
                           {dauer != null && <span className="mono tiny muted">{dauerKurz(dauer)} für diese Übung</span>}
                         </div>
                         <div className="row" style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>

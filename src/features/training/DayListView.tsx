@@ -117,18 +117,18 @@ export function DayListView({ plan, days, alleSaetze, sessions, alleSessionenJem
       {plan.typ === 'bench' && (
         <div className="kachelgrid" style={{ ...cssVars({ '--i': 3 }), marginTop: 16 }}>
           <KachelKarte titel="Nach dem Block" wert={plan.block ?? 1} hinweis="wie die Progression weitergeht">
-            <ul style={{ margin: 0, paddingLeft: 17, color: 'var(--ink-2)', fontSize: 12.8, display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <ul style={{ margin: 0, paddingLeft: 17, color: 'var(--ink-2)', fontSize: 14.5, display: 'flex', flexDirection: 'column', gap: 9 }}>
               <li>
                 Am Ende der Deload-Woche berechnet die App dein neues 1RM automatisch aus den RPE-Werten der Wochen 1–3 auf{' '}
-                <strong style={{ color: 'var(--neon)' }}>Bank schwer</strong>.
+                <strong style={{ color: 'var(--akzent)' }}>Bank schwer</strong>.
               </li>
               <li>
                 Lief der Block planmäßig oder besser (Ø RPE nah am Ziel), übernimmt der nächste Block dein tatsächlich{' '}
-                <strong style={{ color: 'var(--neon)' }}>bestes gemessenes 1RM</strong> aus diesem Block.
+                <strong style={{ color: 'var(--akzent)' }}>bestes gemessenes 1RM</strong> aus diesem Block.
               </li>
               <li>
                 War die Ermüdung höher als geplant oder fehlt eine Woche mit RPE-Eintrag, bleibt das Ausgangsgewicht{' '}
-                <strong style={{ color: 'var(--neon)' }}>unverändert</strong>.
+                <strong style={{ color: 'var(--akzent)' }}>unverändert</strong>.
               </li>
             </ul>
           </KachelKarte>

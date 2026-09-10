@@ -25,7 +25,7 @@ function Leer({ text }: { text: string }) {
 
 export function TonnageJeEinheit({ punkte }: { punkte: EinheitPunkt[] }) {
   if (punkte.length < 2) {
-    return <Leer text="Ab der zweiten aufgezeichneten Einheit steht hier, wie viel Last je Einheit bewegt wurde." />
+    return <Leer text="Ab der zweiten aufgezeichneten Einheit." />
   }
 
   const gesamt = punkte.reduce((a, p) => a + p.tonnage, 0)
@@ -70,7 +70,7 @@ export function TonnageJeEinheit({ punkte }: { punkte: EinheitPunkt[] }) {
 export function DauerJeEinheit({ punkte }: { punkte: EinheitPunkt[] }) {
   const mitDauer = punkte.filter(p => p.minuten > 0)
   if (mitDauer.length < 2) {
-    return <Leer text="Ab der zweiten Einheit mit aufgezeichneter Dauer erscheint hier der Vergleich." />
+    return <Leer text="Ab der zweiten Einheit mit aufgezeichneter Dauer." />
   }
 
   const gesamt = mitDauer.reduce((a, p) => a + p.minuten, 0)
@@ -109,7 +109,7 @@ export function DauerJeEinheit({ punkte }: { punkte: EinheitPunkt[] }) {
 
 export function DauerJeUebung({ eintraege }: { eintraege: UebungsDauerSchnitt[] }) {
   if (eintraege.length < 2) {
-    return <Leer text="Sobald zwei Übungen genug abgehakte Sätze haben, steht hier, welche wie viel Zeit kostet." />
+    return <Leer text="Sobald zwei Übungen genug abgehakte Sätze haben." />
   }
 
   const liste = eintraege.slice(0, 12)
@@ -121,7 +121,7 @@ export function DauerJeUebung({ eintraege }: { eintraege: UebungsDauerSchnitt[] 
         name: e.name,
         wert: e.minuten,
         wertText: `${e.minuten.toFixed(1)} min`,
-        farbe: 'var(--violet)',
+        farbe: 'var(--ton-b)',
       }))}
     />
   )

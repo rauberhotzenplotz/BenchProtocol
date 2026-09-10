@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatGewicht } from '../../lib/zahlen'
 import { useAlleUebungenJemals, useAllSetsForExercises } from '../training/queries'
 import { gruppiere, besteRekorde, type Rekord } from './calc'
 import { cssVars } from '../../lib/style'
@@ -39,7 +40,6 @@ export function RecordsPage() {
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
-          <span className="eyebrow">Bestleistung je Wiederholungszahl</span>
           <h2>Rekorde</h2>
         </div>
       </div>
@@ -55,7 +55,7 @@ export function RecordsPage() {
           </select>
           {bestGesamt && (
             <span className="chip mute">
-              Bestes e1RM {bestGesamt.e1} kg ({bestGesamt.kg} kg × {bestGesamt.reps})
+              Bestes e1RM {formatGewicht(bestGesamt.e1)} kg ({formatGewicht(bestGesamt.kg)} kg × {bestGesamt.reps})
             </span>
           )}
         </div>
@@ -65,7 +65,7 @@ export function RecordsPage() {
             Für „{aktiveGruppe?.name}“ ist noch nichts geloggt.
           </p>
         ) : (
-          <table className="t">
+          <table className="t schmal">
             <thead>
               <tr>
                 <th>Wdh.</th>
@@ -78,8 +78,8 @@ export function RecordsPage() {
               {rekorde.map(r => (
                 <tr key={r.reps}>
                   <td>{r.reps}</td>
-                  <td className="num">{r.kg} kg</td>
-                  <td className="num">{r.e1} kg</td>
+                  <td className="num">{formatGewicht(r.kg)} kg</td>
+                  <td className="num">{formatGewicht(r.e1)} kg</td>
                   <td className="num">{r.woche}</td>
                 </tr>
               ))}

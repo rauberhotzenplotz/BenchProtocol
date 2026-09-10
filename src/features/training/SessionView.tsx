@@ -247,11 +247,11 @@ export function SessionView({
                   setNameBearbeiten(false)
                 }
               }}
-              style={{ fontFamily: 'var(--f-display)', fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', maxWidth: 320 }}
+              style={{ fontFamily: 'var(--f-display)', fontWeight: 800, fontSize: 24, letterSpacing: '.01em', textTransform: 'uppercase', maxWidth: 320 }}
             />
           ) : (
             <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-              <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>
+              <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontWeight: 800, fontSize: 24, letterSpacing: '.01em', textTransform: 'uppercase', lineHeight: 1 }}>
                 {day.name}
               </h2>
               <button
@@ -293,7 +293,7 @@ export function SessionView({
           <div className="lab">Tonnage</div>
           <div className="uhr" style={{ fontSize: 20 }}>
             {Math.round(gesamtTonnage)}
-            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}> kg</span>
+            <span style={{ fontSize: 14, color: 'var(--ink-3)' }}> kg</span>
           </div>
         </div>
         <span className="spacer" />

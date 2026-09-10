@@ -134,15 +134,22 @@ describe('frischeVon', () => {
   })
 })
 
+// Bewusst ohne feste Farbwerte: Die Stuetzpunkte der Rampe gehoeren dem
+// Design und haben schon einmal gewechselt (siehe design/README.md).
+// Geprueft wird die Aussage — warm am Anfang, kuehl am Ende, dazwischen
+// ein eigener Zustand —, nicht der Ton, in dem sie gerade steht.
+const anteile = (farbe: string) => farbe.match(/\d+/g)!.map(Number)
+
 describe('hitzeFarbe', () => {
-  it('leuchtet direkt nach dem Reiz magenta', () => {
-    expect(hitzeFarbe(0)).toBe('rgb(255,77,157)')
+  it('beginnt warm: mehr Rot als Blau', () => {
+    const [r, , b] = anteile(hitzeFarbe(0))
+    expect(r).toBeGreaterThan(b)
   })
 
-  it('landet nach der Erholungsstrecke beim Hellblau', () => {
-    // Die Mitte zwischen --neon und --violet.
-    expect(hitzeFarbe(ERHOLUNG_TAGE)).toBe('rgb(96,182,232)')
-    expect(hitzeFarbe(30)).toBe('rgb(96,182,232)')
+  it('endet kuehl: mehr Blau als Rot, und bleibt dort', () => {
+    const [r, , b] = anteile(hitzeFarbe(ERHOLUNG_TAGE))
+    expect(b).toBeGreaterThan(r)
+    expect(hitzeFarbe(30)).toBe(hitzeFarbe(ERHOLUNG_TAGE))
   })
 
   // Der Sinn der langen Strecke: Dazwischen liegt sichtbar etwas anderes
@@ -151,25 +158,23 @@ describe('hitzeFarbe', () => {
     const mitte = hitzeFarbe(ERHOLUNG_TAGE * 0.43)
     expect(mitte).not.toBe(hitzeFarbe(0))
     expect(mitte).not.toBe(hitzeFarbe(ERHOLUNG_TAGE))
-    expect(mitte).toBe('rgb(139,124,255)')
   })
 
-  // Am Rotanteil gemessen, nicht am blauen: Violett in der Mitte hat mehr
-  // Blau (255) als das Hellblau am Ende (232), der Blauanteil steigt also
-  // erst und faellt dann wieder. Durchgehend faellt allein das Rot — und
-  // genau das heisst "kuehlt ab".
+  // Am Rotanteil gemessen, nicht am blauen: Der mittlere Ton hat mehr Blau
+  // als das kuehle Ende, der Blauanteil steigt also erst und faellt dann
+  // wieder. Durchgehend faellt allein das Rot — und genau das heisst
+  // "kuehlt ab".
   it('kuehlt ueber die Tage durchgehend ab', () => {
-    const rotAnteil = (f: string) => Number(f.match(/\d+/g)![0])
-    const werte = [0, 1, 2, 3, 4, 5, 6, 7].map(d => rotAnteil(hitzeFarbe(d)))
+    const werte = [0, 1, 2, 3, 4, 5, 6, 7].map(d => anteile(hitzeFarbe(d))[0])
     for (let i = 1; i < werte.length; i++) expect(werte[i]).toBeLessThanOrEqual(werte[i - 1])
-    expect(werte[0]).toBe(255)
-    expect(werte[werte.length - 1]).toBe(96)
+    expect(werte[werte.length - 1]).toBeLessThan(werte[0])
   })
 })
 
 describe('hitzeFarbeBlass', () => {
   it('macht aus rgb ein gueltiges rgba', () => {
-    expect(hitzeFarbeBlass(0, 0.4)).toBe('rgba(255,77,157, 0.4)')
+    expect(hitzeFarbeBlass(0, 0.4)).toBe(hitzeFarbe(0).replace('rgb(', 'rgba(').replace(')', ', 0.4)'))
+    expect(hitzeFarbeBlass(0, 0.4)).toMatch(/^rgba\(\d+,\d+,\d+, 0\.4\)$/)
   })
 })
 

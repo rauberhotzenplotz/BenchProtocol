@@ -8,7 +8,8 @@ export function naechsterTag(days: DayWithExercises[], setsByExercise: Map<strin
 }
 
 export interface StartInfo {
-  uebungen: string[]
+  /** Nur die Anzahl: Die Startkarte zaehlt, sie listet nicht mehr auf. */
+  uebungen: number
   saetze: number
   /** Erfahrungswert aus beendeten Einheiten genau dieses Tages. Ohne eine
       einzige beendete Einheit bleibt er null — dann steht in der Startkarte
@@ -16,13 +17,13 @@ export interface StartInfo {
   minuten: number | null
 }
 
-/** Was in der nächsten Einheit ansteht: Übungsnamen, geplante Sätze und die
-    übliche Dauer. Grundlage der Startkarte im Cockpit. */
+/** Was in der nächsten Einheit ansteht: Anzahl der Übungen, geplante
+    Sätze und die übliche Dauer. Grundlage der Startkarte im Cockpit. */
 export function startInfo(tag: DayWithExercises | null, sessions: TrainingSession[]): StartInfo | null {
   if (!tag) return null
   const beendet = sessions.filter(s => s.day_id === tag.id && s.status === 'completed' && s.minutes != null)
   return {
-    uebungen: tag.exercises.map(ex => ex.name),
+    uebungen: tag.exercises.length,
     saetze: tag.exercises.reduce((a, ex) => a + setsOf(ex.scheme), 0),
     minuten: beendet.length ? Math.round(beendet.reduce((a, s) => a + (s.minutes ?? 0), 0) / beendet.length) : null,
   }
@@ -83,10 +84,6 @@ export function dayTonnageFromSets(exerciseIds: string[], sets: LoggedSet[]) {
 export interface EinheitPunkt {
   sessionId: string
   datumLabel: string
-  /** Startzeitpunkt in Millisekunden. Das Sternbild braucht den echten
-      Abstand zwischen den Einheiten, nicht nur ihre Reihenfolge — sonst
-      sähe eine Woche Pause aus wie ein Tag. */
-  zeit: number
   wochenLabel: string
   tagName: string
   minuten: number
@@ -116,7 +113,6 @@ export function einheitenDaten(
     return {
       sessionId: s.id,
       datumLabel: new Date(s.started_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
-      zeit: new Date(s.started_at).getTime(),
       wochenLabel: `W${s.week}`,
       tagName: tag?.name ?? '—',
       minuten: s.minutes ?? 0,

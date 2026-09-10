@@ -119,7 +119,7 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
     <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="planTitel">
         <h4 id="planTitel">Trainingspläne</h4>
-        <p>Wähle einen Plan oder leg einen neuen an. Gewichte und Verlauf bleiben bei den Übungen, auch wenn du wechselst.</p>
+        <p>Gewichte und Verlauf bleiben bei den Übungen, auch wenn du wechselst.</p>
 
         <div className="planliste">
           {plans.map(p => (
@@ -280,7 +280,7 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
                 {testsatzFehler ? (
                   <small className="tiny" style={{ color: 'var(--crit)' }}>{testsatzFehler}</small>
                 ) : (
-                  <small className="muted tiny">Ohne Angabe startest du mit Beispielwerten — trägst du sie später im Bank-Tab nach.</small>
+                  <small className="muted tiny">Ohne Angabe startest du mit Beispielwerten.</small>
                 )}
               </div>
             )}

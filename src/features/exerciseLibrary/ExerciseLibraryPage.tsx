@@ -41,19 +41,11 @@ export function ExerciseLibraryPage() {
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
-          <span className="eyebrow">Vorlagen</span>
           <h2>Übungen</h2>
         </div>
       </div>
 
       <div className="card" style={cssVars({ '--i': 1 })}>
-        <p className="muted tiny" style={{ margin: '0 0 14px' }}>
-          Schema und Pause je Übungsname — beim Anlegen einer Übung in einem Plan schlägt die App sie vor. Nur eine
-          Vorlage: die Übung bleibt danach unabhängig editierbar. Der Katalog selbst lässt sich nicht erweitern; die
-          Muskelbelastung im Cockpit wird aus den hinterlegten Haupt-, Sekundär- und Tertiärmuskeln gerechnet, und die
-          hat nur ein Katalogeintrag.
-        </p>
-
         <div className="field" style={{ marginBottom: 14 }}>
           <label>Suchen</label>
           {/* onKeyDown fängt einen Android-WebView-Bug ab (siehe
@@ -61,7 +53,7 @@ export function ExerciseLibraryPage() {
               Textfelder dieser Seite bekommen ihn deshalb mit. */}
           <input
             className="inp"
-            placeholder="Name auf Deutsch oder Englisch, ab zwei Zeichen"
+            placeholder="Name, ab zwei Zeichen"
             defaultValue={suche}
             onChange={e => setSuche(e.target.value)}
             onKeyDown={onKeyDownAndroidBackspaceFix}
@@ -110,7 +102,6 @@ export function ExerciseLibraryPage() {
                       werte={PAUSE_MINUTEN}
                       format={formatPause}
                       titel="Pause"
-                      einheit="min"
                       className="mono"
                       onWahl={n => updateEntry.mutate({ id: e.id, patch: { rest: formatPause(n ?? 2) } })}
                     />

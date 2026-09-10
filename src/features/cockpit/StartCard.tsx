@@ -9,9 +9,14 @@ interface Props {
   onStart?: () => void
 }
 
-/** Die Einstiegskarte des Cockpits: was als Nächstes ansteht, woraus die
-    Einheit besteht und wie lange sie üblicherweise dauert — mit der ganzen
+/** Die Einstiegskarte des Cockpits: was als Nächstes ansteht, wie gross
+    die Einheit ist und wie lange sie üblicherweise dauert — mit der ganzen
     Karte als Startfläche.
+
+    Die Übungsnamen standen hier einmal mit darin. Sie waren die einzige
+    Stelle der Karte, die umbrach und ihre Höhe vom Plan abhängig machte,
+    und sie beantworteten eine Frage, die man an dieser Stelle nicht hat:
+    Ob man startet, entscheidet der Tag, nicht die Liste darin.
 
     Bewusst kein Kennzahlen-Kästchen wie die Werte darunter: das hier ist die
     einzige Handlung der Seite, alles andere ist Rückschau. Sie bekommt
@@ -33,18 +38,12 @@ export function StartCard({ tag, info, onStart }: Props) {
     )
   }
 
-  // Mehr als vier Namen sprengen auf Handybreite die Karte — der Rest wird
-  // gezählt statt umgebrochen, die vollständige Liste steht ohnehin einen
-  // Tap weiter in der Einheit selbst.
-  const sichtbar = info.uebungen.slice(0, 4)
-  const rest = info.uebungen.length - sichtbar.length
-
   const inhalt = (
     <>
       <span className="eyebrow">Nächster Start</span>
       <span className="sk-name">{tag.name}</span>
       <span className="sk-meta">
-        <span>{info.uebungen.length} Übungen</span>
+        <span>{info.uebungen} Übungen</span>
         <i />
         <span>{info.saetze} Sätze</span>
         {info.minuten != null && (
@@ -54,14 +53,6 @@ export function StartCard({ tag, info, onStart }: Props) {
           </>
         )}
       </span>
-      {sichtbar.length > 0 && (
-        <span className="sk-uebungen">
-          {sichtbar.map(name => (
-            <span key={name}>{name}</span>
-          ))}
-          {rest > 0 && <span className="mehr">+{rest}</span>}
-        </span>
-      )}
     </>
   )
 

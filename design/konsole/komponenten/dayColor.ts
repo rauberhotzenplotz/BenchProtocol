@@ -1,9 +1,4 @@
-/* Fuenf gedeckte Toene statt fuenf Leuchtfarben. Sie muessen sich
-   voneinander unterscheiden lassen, nicht auffallen: In der neuen Optik
-   ist Farbe die Ausnahme, und ein Trainingstag ist kein Alarm. Alle fuenf
-   liegen auf aehnlicher Helligkeit, damit kein Tag wichtiger aussieht als
-   die anderen. */
-const TAG_PALETTE = ['#7E8EB6', '#6FBE94', '#BA8C7C', '#9A8CB8', '#C7A469']
+const TAG_PALETTE = ['#35F0D0', '#8B7CFF', '#FF4D9D', '#3FE08A', '#FFC44D']
 
 /** Feste Farbe je Trainingstag, nach seiner Position in der Tagesliste —
     dieselbe Zuordnung überall, wo Tage nebeneinander auftauchen (Kalender,

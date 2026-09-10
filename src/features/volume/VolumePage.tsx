@@ -41,7 +41,6 @@ export function VolumePage() {
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
-          <span className="eyebrow">Kontrollblatt</span>
           <h2>Volumen</h2>
         </div>
       </div>

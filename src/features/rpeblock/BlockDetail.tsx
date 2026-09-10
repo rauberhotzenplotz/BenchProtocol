@@ -57,7 +57,7 @@ export function BlockDetail({
         <button className="btn sm ghost" onClick={onZurueck} aria-label="Zurück zur Übersicht">
           ‹ Blöcke
         </button>
-        <b style={{ fontFamily: 'var(--f-display)', fontSize: 16 }}>{exerciseName}</b>
+        <b style={{ fontFamily: 'var(--f-display)', fontSize: 17.5 }}>{exerciseName}</b>
         <span className={block.status === 'active' ? 'chip neon' : block.status === 'completed' ? 'chip ok' : 'chip mute'}>
           {block.status === 'active' ? 'läuft' : block.status === 'completed' ? 'abgeschlossen' : 'abgebrochen'}
         </span>

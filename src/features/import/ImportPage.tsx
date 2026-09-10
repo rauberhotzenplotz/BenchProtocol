@@ -99,7 +99,6 @@ export function ImportPage() {
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
-          <span className="eyebrow">Excel-Import</span>
           <h2>Import</h2>
         </div>
       </div>
@@ -204,7 +203,7 @@ export function ImportPage() {
 
       <div className="card" style={cssVars({ '--i': 2 })}>
         <h3>
-          <span className="tick" style={{ background: 'var(--violet)' }} />
+          <span className="tick" style={{ background: 'var(--ton-b)' }} />
           CSV-Import (Verlauf)
         </h3>
         <p className="muted tiny" style={{ margin: '2px 0 12px' }}>

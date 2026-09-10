@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatGewicht } from '../../lib/zahlen'
 import type { Plan } from '../../types/db'
 import { useUpdatePlan } from '../plans/queries'
 import { baseE1RM, round } from './calc'
@@ -24,8 +25,7 @@ export function GoalCard({ plan }: { plan: Plan }) {
         </h3>
         <div className="row" style={{ gap: 14 }}>
           <p className="muted tiny" style={{ margin: 0, flex: 1, minWidth: 200 }}>
-            Leg ein Ziel fest, dann zeigt der Balken, wie weit du auf dem Weg dorthin bist. Als Startpunkt wird dein
-            heutiges geschätztes 1RM von {jetzt} kg gesetzt.
+            Startpunkt ist dein heutiges geschätztes 1RM von {formatGewicht(jetzt)} kg.
           </p>
           <div className="field" style={{ maxWidth: 150 }}>
             <label>Ziel in kg</label>
@@ -76,11 +76,11 @@ export function GoalCard({ plan }: { plan: Plan }) {
       )}
       <div className="row" style={{ alignItems: 'flex-end', gap: 18, marginBottom: 15 }}>
         <div>
-          <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.15em', textTransform: 'uppercase' }}>
+          <div className="lab mono tiny" style={{ color: 'var(--ink-3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
             Aktuell
           </div>
           <div className="goalnum" style={erreicht ? { color: 'var(--good)' } : undefined}>
-            {jetzt}
+            {formatGewicht(jetzt)}
             <u> kg</u>
           </div>
         </div>
@@ -89,7 +89,7 @@ export function GoalCard({ plan }: { plan: Plan }) {
           <span className="chip ok">Ziel erreicht — Zeit für ein neues</span>
         ) : (
           <span className="mono tiny" style={{ color: 'var(--ink-3)' }}>
-            noch <b style={{ color: 'var(--neon)', fontSize: 15 }}>{round(rest, 1)} kg</b>
+            noch <b style={{ color: 'var(--akzent)', fontSize: 16.5 }}>{formatGewicht(round(rest, 1))} kg</b>
           </span>
         )}
       </div>
@@ -101,10 +101,10 @@ export function GoalCard({ plan }: { plan: Plan }) {
       </div>
       <div className="goalends">
         <span>
-          Start <b>{round(start, 1)} kg</b>
+          Start <b>{formatGewicht(round(start, 1))} kg</b>
         </span>
         <span>
-          Ziel <b>{round(plan.goal, 1)} kg</b>
+          Ziel <b>{formatGewicht(round(plan.goal, 1))} kg</b>
         </span>
       </div>
       <div className="row" style={{ marginTop: 13, gap: 8 }}>

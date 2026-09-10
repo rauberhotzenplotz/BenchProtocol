@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatGewicht } from '../../lib/zahlen'
 import type { Plan } from '../../types/db'
 import { useUpdatePlan } from '../plans/queries'
 import { ZahlEingabe } from '../../components/ZahlRad'
@@ -31,15 +32,15 @@ export function AusgangsdatenCard({ plan }: { plan: Plan }) {
           <label>Gewicht</label>
           {gesperrt ? (
             <div className="sperr-wert">
-              {plan.work ?? '—'}
-              <span style={{ fontSize: 13, color: 'var(--ink-3)', marginLeft: 4 }}>kg</span>
+              {plan.work != null ? formatGewicht(plan.work) : '—'}
+              <span style={{ fontSize: 15, color: 'var(--ink-3)', marginLeft: 4 }}>kg</span>
             </div>
           ) : (
             <ZahlEingabe wert={plan.work} titel="Gewicht" einheit="kg" nurNumpad nachkomma={3} className="big" onWahl={v => setzen({ work: v })} />
           )}
         </div>
         <div className="field" style={{ maxWidth: 110 }}>
-          <label>Wiederholungen</label>
+          <label>Wdh.</label>
           {gesperrt ? (
             <div className="sperr-wert">{plan.reps ?? '—'}</div>
           ) : (

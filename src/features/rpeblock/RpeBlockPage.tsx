@@ -27,7 +27,6 @@ export function RpeBlockPage() {
       <section className="view on frisch">
         <div className="view-head">
           <div>
-            <span className="eyebrow">RPE-basierte Blockprogression</span>
             <h2>Blöcke</h2>
             <p>Noch keine Übungen mit einem Plan vorhanden.</p>
           </div>
@@ -42,7 +41,6 @@ export function RpeBlockPage() {
     <section className="view on frisch">
       <div className="view-head" style={cssVars({ '--i': 0 })}>
         <div>
-          <span className="eyebrow">RPE-basierte Blockprogression</span>
           <h2>Blöcke</h2>
         </div>
       </div>

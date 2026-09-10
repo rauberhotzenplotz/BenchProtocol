@@ -14,7 +14,6 @@ export function AuswertungenHinweis() {
     <Link className="card ausw-hinweis" to="/statistik">
       <span className="ausw-hinweis-text">
         <b>Auswertungen</b>
-        <small>Verläufe, Verteilungen, Belastung und Sternbild — jetzt im Statistik-Tab</small>
       </span>
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 4v16h16" />

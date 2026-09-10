@@ -47,7 +47,7 @@ export function BenchCockpit({ plan, days, week, setsByExercise, sessions }: Pro
         <PlanPicker />
       </div>
 
-      <div style={{ ...cssVars({ '--i': 1, '--f': tag ? tagFarbe(days, tag.id) : 'var(--neon)' }), marginBottom: 14 }}>
+      <div style={{ ...cssVars({ '--i': 1, '--f': tag ? tagFarbe(days, tag.id) : 'var(--akzent)' }), marginBottom: 14 }}>
         <StartCard
           tag={tag}
           info={startInfo(tag, sessions)}
