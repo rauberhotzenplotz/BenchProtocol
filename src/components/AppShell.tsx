@@ -11,7 +11,6 @@ import { useAuth } from '../auth/auth-context'
 import { useActivePlan } from '../features/plans/active-plan-context'
 import { pruefeWochenabschluss } from '../features/training/wochenAbschluss'
 import { useLibraryKatalog } from '../features/exerciseLibrary/queries'
-import { nebelPhase } from './nebelPhase'
 
 /** Eigene Komponente statt eines Hooks in AppShell — und das ist keine
     Kosmetik: Als Hook lag der Sekundentakt in AppShell selbst, jede
@@ -26,21 +25,6 @@ function Uhr() {
     return () => clearInterval(id)
   }, [])
   return <div className="clock">{zeit.toLocaleTimeString('de-DE')}</div>
-}
-
-/** Trägt die Blockphase ans <html>, damit der Hintergrundnebel sie
-    aufgreifen kann. Der Umweg über ein Attribut statt über Props ist
-    nötig, weil der Nebel außerhalb des Plan-Kontexts hängt — er steht ja
-    auch auf der Anmeldeseite. Gleiche Bauart wie data-motion. */
-function useNebelPhase() {
-  const { activePlan } = useActivePlan()
-  const phase = nebelPhase(activePlan)
-  useEffect(() => {
-    document.documentElement.dataset.phase = phase
-    return () => {
-      delete document.documentElement.dataset.phase
-    }
-  }, [phase])
 }
 
 /** Schaltet die Woche weiter, sobald alle Trainingstage erledigt sind
@@ -86,7 +70,6 @@ export function AppShell() {
   const speichertGerade = useIsMutating() > 0
   const { signOut } = useAuth()
   const { activePlan } = useActivePlan()
-  useNebelPhase()
   useWochenAbschluss(activePlan)
   // Übungskatalog im Hintergrund vorhalten, solange Netz da ist: nur so
   // lässt sich später ohne Verbindung überhaupt eine Übung hinzufügen

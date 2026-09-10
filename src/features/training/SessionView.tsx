@@ -247,11 +247,11 @@ export function SessionView({
                   setNameBearbeiten(false)
                 }
               }}
-              style={{ fontFamily: 'var(--f-display)', fontWeight: 800, fontSize: 24, letterSpacing: '.01em', textTransform: 'uppercase', maxWidth: 320 }}
+              style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 24, letterSpacing: '.01em', textTransform: 'uppercase', maxWidth: 320 }}
             />
           ) : (
             <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-              <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontWeight: 800, fontSize: 24, letterSpacing: '.01em', textTransform: 'uppercase', lineHeight: 1 }}>
+              <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: 24, letterSpacing: '.01em', textTransform: 'uppercase', lineHeight: 1 }}>
                 {day.name}
               </h2>
               <button

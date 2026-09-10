@@ -3,7 +3,7 @@ import type { MuskelgruppenSatz } from '../features/training/calc'
 // Dieselbe Farbidee wie tagFarbe() (dayColor.ts), nur über einen simplen
 // String-Hash statt fester Listenposition — Muskelgruppen sind Freitext
 // ohne feste Reihenfolge (siehe muskelgruppenDesTags in training/calc.ts).
-const PALETTE = ['#35F0D0', '#8B7CFF', '#FF4D9D', '#3FE08A', '#FFC44D']
+const PALETTE = ['#7E8EB6', '#6FBE94', '#BA8C7C', '#9A8CB8', '#C7A469']
 
 function muskelFarbe(gruppe: string): string {
   let hash = 0

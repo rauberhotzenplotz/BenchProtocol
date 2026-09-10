@@ -1,7 +1,7 @@
 import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
-import { Nebel } from './components/Nebel'
+import { Grund } from './components/Grund'
 import { LoginPage } from './auth/LoginPage'
 import { RequireAuth } from './auth/RequireAuth'
 import { ActivePlanProvider } from './features/plans/ActivePlanContext'
@@ -32,9 +32,9 @@ const ExerciseLibraryPage = lazy(() =>
 export default function App() {
   return (
     <>
-      {/* Außerhalb der Routen: der Nebel liegt fest im Bildschirm und soll
-          beim Seitenwechsel nicht neu aufgebaut werden. */}
-      <Nebel />
+      {/* Außerhalb der Routen: der Grund liegt fest im Bildschirm und
+          soll beim Seitenwechsel nicht neu aufgebaut werden. */}
+      <Grund />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route

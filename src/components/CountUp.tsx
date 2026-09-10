@@ -29,5 +29,7 @@ export function CountUp({ value, decimals = 0, duration = 850 }: Props) {
     return () => cancelAnimationFrame(raf)
   }, [duration])
 
-  return <>{(fertig ? value : anzeige).toFixed(decimals)}</>
+  // Deutsches Komma: Die Zahl steht neben Werten, die formatGewicht
+  // schreibt -- "62,5 kg" hier und "62.5 kg" dort auf einem Schirm fiel auf.
+  return <>{(fertig ? value : anzeige).toFixed(decimals).replace(".", ",")}</>
 }
