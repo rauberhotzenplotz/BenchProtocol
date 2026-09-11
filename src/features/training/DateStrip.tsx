@@ -55,10 +55,6 @@ export function DateStrip({ plan, days, sessions, alleSaetze }: Props) {
     return { iso, tag: d.getDate(), wochentag: WOCHENTAG[d.getDay()], namen, heute: iso === heuteIso }
   })
 
-  const gesamt = nachTag.size
-  const grenze = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate() - 6)
-  const letzte7 = [...nachTag.keys()].filter(iso => new Date(iso) >= grenze).length
-
   return (
     <>
       <button className="streifen" style={cssVars({ '--i': 1 })} onClick={() => setOffen(true)} aria-label="Kalender aller Trainingstage öffnen">
@@ -86,10 +82,6 @@ export function DateStrip({ plan, days, sessions, alleSaetze }: Props) {
               </div>
             </div>
           ))}
-        </div>
-        <div className="streifen-fuss">
-          {letzte7 === 1 ? 'Eine Einheit' : `${letzte7} Einheiten`} in den letzten 7 Tagen
-          {gesamt ? ` · ${gesamt} ${gesamt === 1 ? 'Trainingstag' : 'Trainingstage'} aufgezeichnet` : ''}
         </div>
       </button>
 
