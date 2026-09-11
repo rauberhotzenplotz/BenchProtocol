@@ -58,12 +58,6 @@ export function TrainingCalendar({ plan, days, sessions, alleSaetze }: Props) {
     if (monat === 11) { setMonat(0); setJahr(j => j + 1) } else setMonat(m => m + 1)
   }
 
-  const trainierteTage = [...nachTag.keys()].filter(iso => iso.startsWith(`${jahr}-${String(monat + 1).padStart(2, '0')}`))
-  const minutenGesamt = trainierteTage.reduce(
-    (a, iso) => a + (nachTag.get(iso) ?? []).reduce((b, s) => b + (s.minutes ?? 0), 0),
-    0,
-  )
-
   const gewaehlteSessions = gewaehlteIso ? (nachTag.get(gewaehlteIso) ?? []) : []
 
   return (
@@ -139,13 +133,6 @@ export function TrainingCalendar({ plan, days, sessions, alleSaetze }: Props) {
               )
             })}
           </div>
-
-          <p className="muted tiny" style={{ marginTop: 13 }}>
-            {trainierteTage.length === 0
-              ? 'Noch keine aufgezeichnete Einheit diesen Monat.'
-              : `${trainierteTage.length} ${trainierteTage.length === 1 ? 'Trainingstag' : 'Trainingstage'} diesen Monat${minutenGesamt ? ` · ${minutenGesamt} min insgesamt` : ''}`}
-            {trainierteTage.length > 0 ? ' · antippen für Einzelheiten' : ''}
-          </p>
         </>
       )}
     </div>
@@ -204,7 +191,6 @@ function TagDetail({
                 </span>
                 <span className="chip mute">{wochenLabel(session.week, plan)}</span>
                 {session.minutes && <span className="chip mute">{session.minutes} min</span>}
-                <span className="chip mute">{uebungenMitSaetzen.length} Übungen</span>
                 {gesamtTonnage > 0 && <span className="chip mute">{Math.round(gesamtTonnage)} kg bewegt</span>}
                 <span className="spacer" />
                 {loeschenId === session.id ? (
