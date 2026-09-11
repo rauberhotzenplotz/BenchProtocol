@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import type { TrainingSession } from '../../types/db'
 import { usePauseSession, useResumeSession, useResetSessionSets } from './queries'
 import { useSchliessenPerZurueck } from '../../lib/backClose'
@@ -12,24 +12,15 @@ interface Props {
       als Eintrag in diesem Menü, damit Abschließen/Pausieren/Zurücksetzen
       an einer Stelle stehen (siehe Alpha-Progression-Vorbild). */
   onAbschliessen: () => void
-  /** GymMode braucht den Auslöser absolut positioniert (Pendant zum
-      Schließen-Knopf oben links) statt inline wie in SessionView. */
-  wrapStyle?: CSSProperties
-  /** Seite, an der das Menü unter dem Auslöser aufklappt — 'right' (Standard)
-      passt für einen rechtsbündigen Auslöser, 'left' für einen linken
-      (GymMode: der Auslöser sitzt oben links, das Menü darf nicht über den
-      schmalen Handybildschirm hinaus nach links ragen). */
-  menuAlign?: 'left' | 'right'
 }
 
 /** Session-Zustandsmenü: Abschließen, Pausieren/Fortsetzen (je nach
     session.paused_at) und Zurücksetzen (mit zweistufiger Bestätigung wie
     "Alle Daten löschen" in SettingsPage.tsx). Pausieren/Fortsetzen und
     Zurücksetzen sind eigene Mutationen (lib/offline/training.ts) — nur
-    Abschließen bleibt beim Aufrufer, da SessionView und GymMode dabei
-    unterschiedliche Nebeneffekte haben (Pausentimer stoppen, Ansicht
-    schließen). */
-export function SessionMenu({ session, dayId, week, exerciseIds, onAbschliessen, wrapStyle, menuAlign = 'right' }: Props) {
+    Abschließen bleibt beim Aufrufer, weil dort die Nebeneffekte hängen
+    (Pausentimer stoppen, Ansicht schließen). */
+export function SessionMenu({ session, dayId, week, exerciseIds, onAbschliessen }: Props) {
   const [offen, setOffen] = useState(false)
   const [zuruecksetzenBestaetigen, setZuruecksetzenBestaetigen] = useState(false)
   const pauseSession = usePauseSession()
@@ -50,7 +41,7 @@ export function SessionMenu({ session, dayId, week, exerciseIds, onAbschliessen,
   }
 
   return (
-    <span className="session-menu-wrap" style={wrapStyle}>
+    <span className="session-menu-wrap">
       <button
         className="rowbtn einst"
         aria-haspopup="true"
@@ -72,7 +63,6 @@ export function SessionMenu({ session, dayId, week, exerciseIds, onAbschliessen,
             className="session-menu"
             role="menu"
             aria-label="Einheit-Menü"
-            style={menuAlign === 'left' ? { right: 'auto', left: 0 } : undefined}
           >
             <button
               role="menuitem"

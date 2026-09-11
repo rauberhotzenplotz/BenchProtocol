@@ -98,7 +98,7 @@ export function DateStrip({ plan, days, sessions, alleSaetze }: Props) {
         // <section className="view on frisch">, deren Eintrittsanimation
         // (auch nach Ablauf) einen Containing Block für position:fixed-
         // Nachfahren erzeugt. Ohne Portal würde der Dialog auf die Section
-        // zusammengequetscht statt Vollbild (siehe GymMode-Fix).
+        // zusammengequetscht statt Vollbild (siehe Portal-Fix in SessionView.tsx).
         createPortal(
           <div className="overlay" onClick={e => e.target === e.currentTarget && setOffen(false)}>
             <div className="modal breit" role="dialog" aria-modal="true" aria-label="Trainingskalender">

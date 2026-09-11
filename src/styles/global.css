@@ -1881,35 +1881,6 @@ transition: width .5s cubic-bezier(.22,1,.36,1);
 .zahltast-uebernehmen:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .zahltast-uebernehmen:disabled { opacity: .35; cursor: not-allowed; }
 
-/* Übungswechsel im Gym-Modus: teilt sich die Sheet-Hülle mit dem ZahlRad,
-   bekommt aber eine eigene, ungemaskte Liste — Übungen sind meist eine
-   Handvoll Zeilen, nicht die lange Skala eines Zahlenrads, und mit
-   Zielmaske sähe eine kurze Liste nur seltsam abgeschnitten aus. */
-.uebwahl-liste { padding: 6px 12px 16px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
-.uebwahl-zeile {
-  appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; cursor: pointer;
-  border: 1px solid var(--kante); background: var(--platte); border-radius: var(--r-m);
-  box-shadow: var(--glanz);
-  padding: var(--a-3); display: flex; align-items: center; gap: 12px; text-align: left;
-  transition: background .15s;
-}
-.uebwahl-zeile:hover { border-color: var(--line); background: rgba(255,255,255,.06); }
-.uebwahl-zeile:active { transform: scale(.99); }
-.uebwahl-zeile:focus-visible { outline: 2px solid var(--akzent); outline-offset: -2px; }
-.uebwahl-nr {
-  flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
-  font-family: var(--f-mono); font-size: 13px; color: var(--ink-3); background: rgba(255,255,255,.06);
-}
-.uebwahl-name {
-  flex: 1; min-width: 0; font-family: var(--f-display); font-size: 16px; letter-spacing: .01em; color: var(--ink); line-height: 1.2;
-}
-.uebwahl-status { flex: none; font-family: var(--f-mono); font-size: 14px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.uebwahl-zeile.an { border-color: rgba(var(--akzent-rgb),.5); background: rgba(var(--akzent-rgb),.1); }
-.uebwahl-zeile.an .uebwahl-nr { background: var(--akzent); color: var(--auf-akzent); }
-.uebwahl-zeile.an .uebwahl-name { color: var(--akzent); }
-.uebwahl-zeile.fertig .uebwahl-nr { background: rgba(var(--good-rgb),.15); color: var(--good); }
-.uebwahl-zeile.fertig .uebwahl-status { color: var(--good); }
-
 /* Übungsname im Kopf wird zum Auslöser, sobald es mehr als eine Übung
    gibt. Die Schrift allein ist nur gut 19px hoch — deutlich unter dem
    Mindestmaß für Touch-Ziele (siehe .rowbtn weiter oben) und in der Praxis
@@ -2523,127 +2494,6 @@ white-space: nowrap;
   100%    { opacity: 0; transform: rotate(var(--wa)) translateX(var(--ww)) scaleX(var(--wx)); }
 }
 
-/* ── Supernova bei neuer Bestleistung ───────────────────────────
-   Siehe Supernova.tsx. Liegt über der Satzquittung (135) — beide können
-   gleichzeitig laufen, und die Nova ist das größere Ereignis. */
-.nova {
-  position: fixed; inset: 0; z-index: 138;
-  pointer-events: none; overflow: hidden;
-  display: grid; place-items: center;
-  animation: novaAus 1.9s ease-out both;
-}
-@keyframes novaAus { 0%, 74% { opacity: 1; } 100% { opacity: 0; } }
-
-/* Der erste Blitz: sehr kurz, sehr hell, füllt den ganzen Schirm.
-   Er ist der Knall, alles danach ist das Nachleuchten. */
-.nova-blitz {
-  position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 50%,
-    rgba(255,255,255,.55) 0%, rgba(var(--akzent-rgb),.5) 18%, rgba(var(--akzent-rgb),.10) 38%, transparent 62%);
-  animation: novaBlitz .5s cubic-bezier(.1,.8,.3,1) both;
-}
-@keyframes novaBlitz {
-  0%   { opacity: 0; transform: scale(.3); }
-  12%  { opacity: 1; }
-  100% { opacity: 0; transform: scale(1.5); }
-}
-
-/* Die Hülle: ein Ring, der nach außen läuft und dabei dünner wird —
-   die abgestoßene Sternhülle. Zweimal versetzt, das gibt der Explosion
-   Tiefe statt einer einzelnen Seifenblase. */
-.nova-huelle {
-  position: absolute;
-  width: 22vmax; height: 22vmax; border-radius: 50%;
-  border: 2.5px solid rgba(var(--akzent-rgb),.6);
-  animation: novaHuelle 1.5s cubic-bezier(.15,.75,.3,1) both;
-}
-.nova-huelle.spaet { animation-delay: .22s; border-color: rgba(var(--akzent-rgb),.55); }
-@keyframes novaHuelle {
-  0%   { opacity: 0; transform: scale(.06); border-width: 5px; }
-  10%  { opacity: 1; }
-  100% { opacity: 0; transform: scale(4.6); border-width: .5px; }
-}
-
-/* Auswurfstrahlen, gleicher Aufbau wie beim Warp: Drehpunkt in der
-   Mitte, nach außen geschoben und gestreckt. */
-.nova-strahl {
-  position: absolute; left: 50%; top: 50%;
-  width: 9vmax; height: 2px; margin-top: -1px;
-  transform-origin: 0 50%;
-  background: linear-gradient(90deg, rgba(var(--akzent-rgb),0), rgba(var(--akzent-rgb),.9) 72%, #fff 100%);
-  animation: novaStrahl 1.2s cubic-bezier(.2,.7,.35,1) both;
-}
-@keyframes novaStrahl {
-  0%   { opacity: 0; transform: rotate(var(--na)) translateX(1vmax) scaleX(.2); }
-  14%  { opacity: 1; }
-  62%  { opacity: 1; }
-  100% { opacity: 0; transform: rotate(var(--na)) translateX(var(--nw)) scaleX(2.2); }
-}
-
-/* Die Beschriftung kommt erst, wenn der Blitz vorbei ist — währenddessen
-   wäre sie im Weiß ohnehin nicht zu lesen. */
-.nova-text {
-  position: relative; text-align: center; color: var(--ink);
-  text-shadow: 0 2px 10px rgba(0,0,0,.85);
-  animation: novaText 1.5s cubic-bezier(.22,1,.36,1) .28s both;
-}
-.nova-text b {
-  display: block; font-family: var(--f-display); font-weight: 600;
-  font-size: clamp(26px, 8vw, 40px); letter-spacing: .01em;
-  color: var(--akzent);
-}
-.nova-text span {
-  display: block; margin-top: 6px;
-  font-family: var(--f-mono); font-size: 15px; letter-spacing: .12em; color: var(--ink-2);
-}
-@keyframes novaText {
-  0%   { opacity: 0; transform: scale(.82); }
-  22%  { opacity: 1; transform: scale(1); }
-  76%  { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.04); }
-}
-
-/* ── Quittung beim Abhaken eines Satzes ─────────────────────────
-   Liegt per Portal über allem (siehe SatzQuittung.tsx) und lässt keine
-   Klicks durch — direkt danach wechselt der Gym-Modus auf den Pausen-
-   oder Abschlussbildschirm, dessen Knöpfe erreichbar bleiben müssen. */
-.satzok { position: fixed; inset: 0; z-index: 135; display: grid; place-items: center; pointer-events: none; }
-.satzok-kern { position: relative; display: grid; place-items: center; width: 200px; height: 200px; }
-.satzok-welle {
-  position: absolute; width: 96px; height: 96px; border-radius: 50%;
-  border: 2px solid var(--good); opacity: 0;
-  animation: satzokWelle .72s cubic-bezier(.22,1,.36,1) both;
-}
-.satzok-welle.spaet { animation-delay: .13s; border-color: rgba(var(--good-rgb),.45); }
-@keyframes satzokWelle {
-  0% { transform: scale(.45); opacity: 0; }
-  20% { opacity: .9; }
-  100% { transform: scale(2.4); opacity: 0; }
-}
-.satzok-haken { position: relative; width: 96px; height: 96px; overflow: visible; }
-.satzok-haken path {
-  fill: none; stroke: var(--good); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round;
-  stroke-dasharray: 61; stroke-dashoffset: 61;
-
-  animation: satzokHaken .3s cubic-bezier(.65,0,.35,1) .05s forwards,
-             satzokWeg .22s ease .56s forwards;
-}
-@keyframes satzokHaken { to { stroke-dashoffset: 0; } }
-@keyframes satzokWeg { to { opacity: 0; transform: scale(1.15); } }
-.satzok-funke {
-  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px;
-  border-radius: 50%; background: var(--good);  opacity: 0; animation: satzokFunke .7s cubic-bezier(.22,1,.36,1) both;
-}
-/* Der Zwischenschritt bei 22 % ist nötig, damit der Funke unterwegs seine
-   volle Größe erreicht — ginge die Skalierung direkt von klein auf klein,
-   bliebe er über die ganze Flugbahn ein kaum sichtbarer Punkt. Die
-   Teilstrecke rechnet calc() aus derselben Zielrichtung. */
-@keyframes satzokFunke {
-  0%   { transform: translate(0,0) scale(.35); opacity: 0; }
-  22%  { transform: translate(calc(var(--fx) * .22), calc(var(--fy) * .22)) scale(1); opacity: 1; }
-  100% { transform: translate(var(--fx), var(--fy)) scale(.3); opacity: 0; }
-}
-
 /* Abschluss */
 .gym-fertig { flex: 1; min-height: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px; text-align: center; }
@@ -2684,9 +2534,9 @@ white-space: nowrap;
   animation: gymFRein .55s cubic-bezier(.22,1,.36,1) .5s both; }
 .gym-fzeile { margin-top: 8px; font-size: 15px; color: var(--ink-3); max-width: 34ch;
   animation: gymFRein .55s cubic-bezier(.22,1,.36,1) .62s both; }
-/* Hält fest, was die vorangegangene Supernova schon gefeiert hat — eigene
-   Farbe (neon statt good/grün), damit sie sich vom Haken-Grün des restlichen
-   Bildschirms absetzt und als das Besondere daran erkennbar bleibt. */
+/* Die Rekorde der Einheit — eigene Farbe (neon statt good/grün), damit sie
+   sich vom Haken-Grün des restlichen Bildschirms absetzen und als das
+   Besondere daran erkennbar bleiben. */
 .gym-frekorde {
   margin-top: 14px; padding: 10px 18px; border-radius: var(--r-m); max-width: 34ch;
   border: 1px solid rgba(var(--akzent-rgb),.35); background: rgba(var(--akzent-rgb),.08);

@@ -28,7 +28,7 @@ export function PlanPicker() {
         // Portal statt normalem Kind-Render: PlanPicker sitzt meist in einer
         // <section className="view on frisch"> mit Eintrittsanimation, die
         // (auch nach Ablauf) einen Containing Block für position:fixed-
-        // Nachfahren erzeugt (siehe SessionView.tsx/GymMode-Fix). Ohne Portal
+        // Nachfahren erzeugt (siehe SessionView.tsx, Portal-Fix). Ohne Portal
         // würde der Dialog auf die Section zusammengequetscht statt Vollbild.
         createPortal(<PlanManagerDialog onClose={() => setOffen(false)} />, document.body)}
     </>

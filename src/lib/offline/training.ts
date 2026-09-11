@@ -346,7 +346,7 @@ export function registriereTrainingMutationen(qc: QueryClient) {
     onError: (_err, { dayId, week }, ctx) => rollbackSessions(qc, dayId, week, ctx as SessionsContext | undefined),
     onSuccess: async (_minutes, variables) => {
       einheitenInvalidieren()
-      // Bewusst erst hier, nicht am Aufrufort in SessionView/GymMode: läuft
+      // Bewusst erst hier, nicht am Aufrufort in SessionView/GymModeAP: läuft
       // dadurch garantiert erst, nachdem endSession serverseitig bestätigt
       // ist — auch wenn das erst nach einer Offline-Phase/Reload passiert.
       // Der Abschluss-Check liest frische Serverdaten und ist selbst nicht

@@ -19,8 +19,9 @@ export function bestesE1rm(sets: LoggedSet[], exerciseId: string): number {
 }
 
 /** Mindestvorsprung in kg, damit ein Satz als Rekord zählt. Ohne diese
-    Schwelle löste schon ein Rundungsrest von 0,05 kg eine Supernova aus,
-    und ein Ereignis, das bei jedem zweiten Satz kommt, ist keins mehr. */
+    Schwelle löste schon ein Rundungsrest von 0,05 kg die Rekordanzeige
+    aus, und ein Ereignis, das bei jedem zweiten Satz kommt, ist keins
+    mehr. */
 const SCHWELLE = 0.5
 
 /** Setzt dieser Satz einen neuen Bestwert für die Übung?
