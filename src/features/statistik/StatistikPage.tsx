@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useActivePlan } from '../plans/active-plan-context'
 import { useDays, useAllSetsForExercises, useAllSessionsForDays } from '../training/queries'
 import { satzE1rm, durchschnittsDauerJeUebung } from '../training/calc'
-import { einheitenDaten } from '../cockpit/calc'
 import { PlanPicker } from '../plans/PlanPicker'
 import { formatGewicht } from '../../lib/zahlen'
 import { cssVars } from '../../lib/style'
@@ -12,6 +11,7 @@ import { DruckZugCard } from './DruckZugCard'
 import { TonnageJeEinheit, DauerJeEinheit, DauerJeUebung, LetzteEinheiten } from './EinheitenKarten'
 import {
   belastung,
+  einheitenDaten,
   intensitaetsZonen,
   regression,
   schwerpunkt,
@@ -116,8 +116,8 @@ export function StatistikPage() {
   const last = useMemo(() => belastung(saetze), [saetze])
   const gute = useMemo(() => verwertbar(saetze), [saetze])
 
-  // Grundlage der aus dem Cockpit übernommenen Karten: je Einheit ein
-  // Punkt mit Tonnage, Dauer und Satzstand.
+  // Grundlage der einheitenbezogenen Karten: je Einheit ein Punkt mit
+  // Tonnage, Dauer und Satzstand.
   const punkte = useMemo(() => einheitenDaten(days ?? [], einheiten, saetze), [days, einheiten, saetze])
   const dauerJeUebung = useMemo(
     () => durchschnittsDauerJeUebung(days ?? [], einheiten, saetze),
@@ -202,8 +202,8 @@ export function StatistikPage() {
         <Kachel wert={ganz(s.laengste)} einheit="Wo" label="Längste Serie" hinweis="Aufeinanderfolgende Wochen mit mindestens einer Einheit" />
       </div>
 
-      {/* Aus dem Cockpit übernommen. Beide zeigen dieselbe Woche und
-          rechnen über dieselbe Funktion — sie gehören nebeneinander. */}
+      {/* Beide zeigen dieselbe Woche und rechnen über dieselbe Funktion
+          — sie gehören nebeneinander. */}
       <div className="st-uebernommen" style={cssVars({ '--i': 2 })}>
         <MuskelHeatmap days={days} allSets={saetze} />
       </div>

@@ -21,7 +21,7 @@ export function LoginPage() {
 
   if (!sessionLaedt && user) {
     const from = (location.state as { from?: Location })?.from
-    return <Navigate to={from?.pathname ?? '/cockpit'} replace />
+    return <Navigate to={from?.pathname ?? '/training'} replace />
   }
 
   const absenden = async (e: FormEvent) => {

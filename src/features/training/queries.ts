@@ -102,7 +102,7 @@ export function useSetsForExercises(exerciseIds: string[], week: number, bereich
   })
 }
 
-/** Ungefiltert nach Woche — für Cockpit-Auswertungen wie "Tonnage letztes
+/** Ungefiltert nach Woche — für Auswertungen wie "Tonnage letztes
     Training", die über mehrere Wochen hinweg schauen müssen. */
 export function useAllSetsForExercises(exerciseIds: string[], bereich: string) {
   return useQuery({
@@ -153,7 +153,7 @@ export function useSessionsForDays(dayIds: string[], week: number, bereich: stri
   })
 }
 
-/** Für Cockpit-Kennzahlen (Frequenz, Trainingszeit, letzte Einheiten) —
+/** Für Kennzahlen (Frequenz, Trainingszeit, letzte Einheiten) —
     über alle Wochen hinweg, nicht nur die aktuell angezeigte. */
 export function useAllSessionsForDays(dayIds: string[], bereich: string) {
   return useQuery({
@@ -212,7 +212,7 @@ export function useEndSession() {
 
 /** Löscht eine aufgezeichnete Einheit wieder — samt der geloggten Sätze
     dieses Tages in dieser Woche (sonst blieben verwaiste Sätze übrig, die
-    Kalender/Cockpit weiter mitzählen würden). */
+    Kalender/Statistik weiter mitzählen würden). */
 export function useDeleteSession() {
   return useMutation<void, Error, { sessionId: string; week: number; exerciseIds: string[] }>({
     mutationKey: MUTATION_KEYS.deleteSession,

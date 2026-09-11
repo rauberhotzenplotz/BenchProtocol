@@ -236,7 +236,7 @@ export interface UebungsDauerSchnitt {
 }
 
 /** Durchschnittliche Übungsdauer über alle beendeten Einheiten hinweg,
-    absteigend sortiert — Grundlage für das Balkendiagramm im Cockpit.
+    absteigend sortiert — Grundlage für das Balkendiagramm im Statistik-Tab.
     Übungen ohne einen einzigen erledigten Satz mit Zeitstempel tauchen
     gar nicht auf, statt mit 0 min verzerrend mitgezählt zu werden. */
 export function durchschnittsDauerJeUebung(

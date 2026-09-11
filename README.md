@@ -45,7 +45,7 @@ npm run lint      # ESLint
 
 Umgesetzt: Auth (E-Mail/Passwort + Magic Link), Trainingspläne verwalten,
 Training-Tab (Tage, Übungen, Sätze loggen, Einheiten starten/beenden),
-Cockpit (unterschiedliche Widgets je nach Plan-Typ „Bankfokus“/„Standard“),
+Statistik-Tab (Verläufe, Verteilungen, Belastungssteuerung, Muskel-Heatmap),
 Bank-Tab (Ausgangsdaten, 4-Wochen-Progression, 1RM-Rechner, Ziel), Rekorde,
 Wochenvolumen-Kontrollblatt, PWA-Installierbarkeit, Satzpausen-Timer
 (automatisch + Gym-Modus), Kalender, Anleitung-Tab, Backup-Export/Import,

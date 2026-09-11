@@ -3,7 +3,7 @@
 Diese Datei liegt bewusst **im Repo**: Ein `git clone` genügt, um sie zu haben — man
 braucht keinen Zugriff auf einen Chatverlauf und keine Anhänge.
 
-Stand beim Schreiben: Branch `main`, Commit `c91bffc`, 194 Tests grün,
+Stand beim Schreiben: Branch `main`, Commit `c91bffc`, 269 Tests grün,
 Node 24.19 / npm 11.17.
 
 ## Das Wichtigste zuerst
@@ -99,12 +99,12 @@ npm install
 
 ```bash
 npm run dev     # http://localhost:5173
-npm run test    # 194 Tests
+npm run test    # 269 Tests
 npm run lint
 npm run build
 ```
 
-Sind die 194 Tests grün und der Bau fehlerfrei, steht die Grundlage.
+Sind die 269 Tests grün und der Bau fehlerfrei, steht die Grundlage.
 
 **4. Nur für die Android-App**
 
@@ -171,9 +171,45 @@ Netz `true`. Die gesamte Offline-Schicht in `src/lib/offline/netz.ts` misst desh
 Erreichbarkeit, statt der Angabe zu glauben. Diese Grundannahme bitte nicht
 „vereinfachen".
 
+**Der Persister schreibt alles, auch den Rollback-Schnappschuss.** Jede
+Satz-Mutation legt in `onMutate` den vorherigen Stand aller `sets`-Abfragen als
+Kontext ab, damit `onError` ihn zurückspielen kann. Im Arbeitsspeicher sind das
+Verweise und damit gratis — beim Sichern wird daraus JSON, und jede wartende
+Mutation trägt dann eine volle Kopie der Satzhistorie. Am Gerät gemessen, mit 39
+wartenden Mutationen: **1892 KB und 65 ms pro Schreibvorgang**, bei jeder
+Cache-Änderung. Ohne die Kontexte: **74 KB und 1 ms**. `erzeugePersister` in
+`src/lib/offline/persister.ts` streicht sie deshalb beim Sichern heraus. Wer dort
+etwas ändert: Der Schnappschuss ist nach einem Neustart ohnehin wertlos, und alle
+Rollback-Helfer vertragen einen fehlenden Kontext.
+
+**Ein Context über dem ganzen Baum darf nicht ticken.** Der Satzpausen-Timer hatte
+`secondsLeft` im selben Context wie `start`/`stop`. Der Provider sitzt über
+`<AppShell>`, also rannte bei jeder Sekunde ein Render durch die geöffnete Seite,
+im Gym-Modus durch die ganze Übungstabelle und in der Tagesansicht durch jede
+einzelne Satzzeile (`SetRow` holt sich den Timer, um beim Abhaken die Pause zu
+starten). Getrennt in zwei Contexts: `RestTimerContext` (memoisiert, ändert sich
+nur bei Start/Stopp) und `RestSekundenContext` (die Zahl). Wer nur wissen will, ob
+die Pause noch läuft, nimmt `abgelaufen` — ein Schalter statt einer Zahl, damit
+daraus zwei Änderungen pro Pause werden statt einer pro Sekunde.
+
+**Messen statt vermuten — und den Beobachter selbst mitbringen.** Bildrate und
+lange Aufgaben am Gerät: `PerformanceObserver({ type: 'longtask' })` plus
+`requestAnimationFrame`-Abstände über CDP. Ein Beobachter, der vor einem Reload
+installiert wurde, lebt nicht weiter — er meldet danach stumm „keine langen
+Aufgaben". Echtes Wischen geht über `Input.synthesizeScrollGesture`, nicht über
+`scrollTo`: Letzteres umgeht genau den Weg, auf dem es ruckelt.
+
+**Bewusst verworfen:** `content-visibility: auto` auf den Statistik-Karten. Es
+halbiert zwar den schlimmsten Frame beim Öffnen (91 → 45 ms), macht dafür das
+Scrollen schlechter (34 → 53 ms) und die Seitenhöhe falsch (4943 → 5460 px, weil
+die geschätzte Ersatzhöhe nicht stimmt). Gemessen, nicht geschätzt.
+
 **Werkzeug-Eigenheiten.** Git-Bash verbiegt Pfade wie `/sdcard/…` — `MSYS_NO_PATHCONV=1`
 voranstellen. Android Studio und `adb` streiten sich um den Server; Studio schließen,
-bevor über das Kabel gearbeitet wird. Bildschirmfotos vom Gerät sind 1080 × 2340 und für
+bevor über das Kabel gearbeitet wird. **Nach einem Offline-Test das WLAN am Gerät wieder
+einschalten** (`adb shell svc wifi enable`) — bleibt es aus, sammelt die App still
+Änderungen in der Warteschlange, und man sucht den Fehler später woanders.
+Bildschirmfotos vom Gerät sind 1080 × 2340 und für
 die meisten Werkzeuge zu groß — `Page.captureScreenshot` über das DevTools-Protokoll
 liefert die kleinere CSS-Auflösung.
 
@@ -199,8 +235,6 @@ Auf dem Handy läuft dieser Stand bereits. Die Datenbank ist aktuell: Migration 
 
 ## Offene Punkte
 
-- **Das Cockpit ist voll geworden.** Zwischen Kennzahlen und Sternbild stehen jetzt zwei
-  große Karten. Ob beide dort bleiben sollen, ist noch nicht entschieden.
 - **Bekanntheits-Rangliste hat eine Lücke.** Die Ankerliste für „Brust" kennt nur
   *bench press*, nicht *incline press*. Schräg- und Negativbankdrücken landen beim
   Blättern deshalb weit hinten — auch bestehende Einträge, nicht nur die neuen

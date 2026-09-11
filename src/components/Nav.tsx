@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
-  IconDash,
   IconTrain,
   IconBench,
   IconVolume,
@@ -19,13 +18,12 @@ import { useSchliessenPerZurueck, verlaufUebernommen } from '../lib/backClose'
    sonst wird die Leiste auf dem Handy zu eng (Pendant zu NAV/MEHR aus der
    alten App). */
 const NAV_ITEMS = [
-  { to: '/cockpit', label: 'Cockpit', Icon: IconDash },
   { to: '/training', label: 'Training', Icon: IconTrain },
+  { to: '/statistik', label: 'Statistik', Icon: IconStats },
   { to: '/bank', label: 'Bank', Icon: IconBench },
 ]
 
 const MEHR_ITEMS = [
-  { to: '/statistik', label: 'Statistik', sub: 'Verläufe, Verteilungen, Belastung', Icon: IconStats },
   { to: '/rekorde', label: 'Rekorde', sub: 'Bestleistung je Wiederholungszahl', Icon: IconRecords },
   { to: '/volumen', label: 'Volumen', sub: 'Arbeitssätze je Muskelgruppe', Icon: IconVolume },
   { to: '/bloecke', label: 'Blöcke', sub: 'RPE-basierte Blockprogression je Übung', Icon: IconBlocks },

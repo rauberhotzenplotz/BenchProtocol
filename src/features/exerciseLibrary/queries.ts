@@ -111,7 +111,7 @@ export function useLibrarySearch(suchtext: string, muskelgruppe: string | null =
 export type KatalogEintrag = Pick<
   ExerciseLibraryEntry,
   | 'id' | 'name' | 'name_en' | 'name_de_raw' | 'scheme' | 'rest' | 'bench_slot' | 'muscle_group' | 'equipment' | 'difficulty' | 'popularity'
-  // Seit das Cockpit die Muskelbelastung aus dem Katalog rechnet, gehoeren
+  // Seit die Muskelbelastung aus dem Katalog gerechnet wird, gehoeren
   // die drei Muskelspalten dazu (siehe muskelHitze.ts). Sie kosten kaum
   // Platz: Der Katalog ist mit dem Wechsel auf deutsche Namen von 3245 auf
   // gut 700 Eintraege geschrumpft.
@@ -220,7 +220,7 @@ export function useLibraryKatalog() {
 /** Die Muskelangaben des Katalogs, nachschlagbar über die id — also über
     das, was in exercises.library_id steht.
 
-    Grundlage der Muskelbelastung im Cockpit: Welche Muskeln eine Übung
+    Grundlage der Muskelbelastung: Welche Muskeln eine Übung
     beansprucht, steht seit dem Katalogimport ohnehin fest (Haupt-,
     Sekundär- und Tertiärmuskel) und muss von niemandem gepflegt werden.
     Vorher wertete die Heatmap allein die von Hand gesetzte Muskelgruppe
@@ -246,8 +246,8 @@ export function useKatalogMuskeln(): ReadonlyMap<string, KatalogMuskeln> {
   }, [data])
 }
 
-/** Was das Cockpit von einem Katalogeintrag braucht. Bewusst hier
-    beschrieben und nicht aus dem Cockpit importiert — die Bibliothek soll
+/** Was die Auswertungen von einem Katalogeintrag brauchen. Bewusst hier
+    beschrieben und nicht aus dem Statistik-Tab importiert — die Bibliothek soll
     nichts über die Auswertung wissen. */
 export interface KatalogMuskeln {
   muscle_group: string | null

@@ -26,17 +26,3 @@ export function istSaetzeJeGruppeUndTag(
 export function istGesamt(proTag: Map<string, number> | undefined): number {
   return proTag ? [...proTag.values()].reduce((a, n) => a + n, 0) : 0
 }
-
-/** Summe aller abgehakten Sätze über alle mit einer Muskelgruppe
-    verknüpften Übungen dieser Woche — Grundlage der Wochenvolumen-Kachel
-    im Cockpit. */
-export function gesamtWochenVolumen(days: DayWithExercises[], setsByExercise: Map<string, LoggedSet[]>): number {
-  let summe = 0
-  for (const tag of days) {
-    for (const ex of tag.exercises) {
-      if (!ex.muscle_group) continue
-      summe += (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length
-    }
-  }
-  return summe
-}

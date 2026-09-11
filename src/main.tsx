@@ -3,13 +3,13 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import './styles/global.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { registerOfflineMutationDefaults } from './lib/offlineMutations'
 import { registerNativeBackButton } from './lib/nativeShell'
 import { registriereNetzErkennung, istNetzfehler, netzfehlerMelden } from './lib/offline/netz'
+import { erzeugePersister } from './lib/offline/persister'
 
 // Muss vor dem QueryClient stehen: legt fest, woran TanStack Query
 // "online" festmacht. Ohne das glaubt es navigator.onLine, das auf
@@ -65,7 +65,7 @@ registerNativeBackButton()
 // Persistiert den gesamten Query-Cache inkl. pausierter Mutationen in
 // localStorage — so überlebt ein offline eingetragener Satz auch einen
 // vollständigen Reload/App-Neustart, bevor wieder Internet da ist.
-const persister = createSyncStoragePersister({ storage: window.localStorage, key: 'benchProtocol-query-cache' })
+const persister = erzeugePersister(window.localStorage, 'benchProtocol-query-cache')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

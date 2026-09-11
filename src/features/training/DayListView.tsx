@@ -8,7 +8,7 @@ import { PlanEditor } from '../plans/PlanEditor'
 import { DateStrip } from './DateStrip'
 import { tagFarbe } from './dayColor'
 import { cssVars } from '../../lib/style'
-import { KachelKarte } from '../cockpit/KachelKarte'
+import { KachelKarte } from '../../components/KachelKarte'
 
 interface Props {
   plan: Plan

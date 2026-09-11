@@ -2,9 +2,6 @@
     Optik der Navigation gleich bleibt. Jedes Icon liefert nur den Inhalt
     eines <svg viewBox="0 0 24 24">, der Rahmen kommt vom Aufrufer. */
 
-export function IconDash() {
-  return <path d="M3 13h7V3H3zM14 21h7v-8h-7zM14 9h7V3h-7zM3 21h7v-5H3z" />
-}
 export function IconTrain() {
   return <path d="M5 8v8M19 8v8M2 10v4M22 10v4M5 12h14" />
 }

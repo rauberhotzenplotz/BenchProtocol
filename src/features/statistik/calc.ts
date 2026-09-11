@@ -1,4 +1,7 @@
 import type { LoggedSet, TrainingSession } from '../../types/db'
+import type { DayWithExercises } from '../training/queries'
+import { gruppeSetsByExercise, tagFortschritt } from '../training/calc'
+import { tagFarbe } from '../training/dayColor'
 
 /* Rechenschicht des Statistik-Tabs.
  *
@@ -372,6 +375,51 @@ export function schwerpunkt(anteile: readonly UebungsAnteil[]): number | null {
     if (summe >= 0.5) return i + 1
   }
   return anteile.length
+}
+
+// ── Einheiten ────────────────────────────────────────────────────────
+
+export interface EinheitPunkt {
+  sessionId: string
+  datumLabel: string
+  wochenLabel: string
+  tagName: string
+  minuten: number
+  tonnage: number
+  erledigt: number
+  geplant: number
+  farbe: string
+}
+
+/** Die letzten `max` beendeten Einheiten mit Dauer und Tonnage — Grundlage
+    für die Balkendiagramme "Trainingsdauer"/"Tonnage je Einheit". */
+export function einheitenDaten(
+  days: DayWithExercises[],
+  sessions: TrainingSession[],
+  alleSaetze: LoggedSet[],
+  max = 14,
+): EinheitPunkt[] {
+  const abgeschlossen = sessions
+    .filter(s => s.status === 'completed' && s.minutes != null)
+    .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime())
+    .slice(-max)
+
+  return abgeschlossen.map(s => {
+    const tag = days.find(d => d.id === s.day_id)
+    const saetzeDerWoche = tag ? alleSaetze.filter(x => x.week === s.week && tag.exercises.some(ex => ex.id === x.exercise_id)) : []
+    const f = tag ? tagFortschritt(tag.exercises, gruppeSetsByExercise(saetzeDerWoche)) : { geplant: 0, erledigt: 0, tonnage: 0, anteil: 0, fertig: false }
+    return {
+      sessionId: s.id,
+      datumLabel: new Date(s.started_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+      wochenLabel: `W${s.week}`,
+      tagName: tag?.name ?? '—',
+      minuten: s.minutes ?? 0,
+      tonnage: f.tonnage,
+      erledigt: f.erledigt,
+      geplant: f.geplant,
+      farbe: tagFarbe(days, s.day_id),
+    }
+  })
 }
 
 // ── Darstellung ──────────────────────────────────────────────────────

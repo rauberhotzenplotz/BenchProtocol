@@ -18,7 +18,7 @@ import {
 } from './calc'
 import { istRekord } from './rekord'
 import { pauseSekunden, autoPauseAn } from './pause'
-import { useRestTimer } from './rest-timer-context'
+import { useRestSekunden, useRestTimer } from './rest-timer-context'
 import { useBenchProgression, benchRowsFor } from '../bench/queries'
 import { benchLoad } from '../bench/calc'
 import { ZahlRad } from '../../components/ZahlRad'
@@ -334,7 +334,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
       return neu
     })
 
-  const pauseLaeuft = restTimer.label != null && restTimer.secondsLeft > 0
+  const pauseLaeuft = restTimer.label != null && !restTimer.abgelaufen
 
   if (fertig) {
     const geplant = uebungen.reduce((a, ex) => a + zeilenAnzahlFuer(ex), 0)
@@ -444,7 +444,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
             im Training ist sie die Angabe, auf die man wirklich schaut. */}
         {pauseLaeuft && (
           <div className="ap-pause">
-            <GymRing secondsLeft={restTimer.secondsLeft} totalSeconds={restTimer.totalSeconds} />
+            <PausenRing totalSeconds={restTimer.totalSeconds} />
             <button className="ap-pause-stop" onClick={() => restTimer.stop()}>
               Pause überspringen
             </button>
@@ -592,7 +592,7 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
           }}
         >
           {restTimer.label != null ? (
-            zeitText(restTimer.secondsLeft)
+            <PausenZiffern />
           ) : (
             <svg viewBox="0 0 24 24">
               <circle cx="12" cy="13" r="8" />
@@ -662,4 +662,17 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
       />
     </div>
   )
+}
+
+/* Die beiden einzigen Stellen im Gym-Modus, an denen der Sekundenstand
+   wirklich steht. Als eigene Komponenten abonnieren nur sie den Takt --
+   die Uebungstabelle daneben bleibt zwischen den Sekunden unberuehrt
+   (siehe rest-timer-context.ts). */
+
+function PausenRing({ totalSeconds }: { totalSeconds: number }) {
+  return <GymRing secondsLeft={useRestSekunden()} totalSeconds={totalSeconds} />
+}
+
+function PausenZiffern() {
+  return <>{zeitText(useRestSekunden())}</>
 }

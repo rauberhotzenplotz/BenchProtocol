@@ -124,7 +124,7 @@ export async function advanceBlockIfDue(qc: QueryClient, planId: string) {
   // Wochenzahl sprang auf 1 zurück, und logged_sets/sessions sind allein
   // über sie eindeutig — der neue Block wäre sonst mit dem alten
   // kollidiert. Der Preis war die gesamte Trainingshistorie bei jedem
-  // Blockwechsel: Rekorde, Cockpit-Kennzahlen, Heatmap, "Letzte Einheit".
+  // Blockwechsel: Rekorde, Kennzahlen, Heatmap, "Letzte Einheit".
   // Seit die Wochen durchzählen (siehe blockWoche in training/calc.ts)
   // gibt es keine Kollision mehr, und damit auch keinen Grund zu löschen.
   const patch: Record<string, unknown> = {

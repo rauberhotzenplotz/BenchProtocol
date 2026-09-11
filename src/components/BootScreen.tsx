@@ -2,25 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cssVars } from '../lib/style'
 
-// Etwas länger als vorher (1400): der Schriftzug läuft jetzt Buchstabe für
-// Buchstabe ein und wäre sonst noch mitten in der Bewegung, wenn das Bild
-// schon wieder verschwindet.
-const AUTO_DISMISS = 1600
-const ENTFERNEN_NACH = 460 // muss zur .44s-CSS-Transition von .startbild passen
+// Die ganze Choreografie läuft auf halber Zeit (alle Dauern und
+// Verzögerungen in .startbild/.sb-* sind entsprechend halbiert). Vorher
+// stand die App bei jedem Start gut zwei Sekunden still, bevor sich etwas
+// antippen ließ — die größte einzelne Wartezeit, die sie hatte. Der Wert
+// hier muss zum spätesten Ende dort passen (sb-funke: .48s Dauer plus bis
+// zu .35s Verzögerung), sonst bricht das Bild mitten in der Bewegung ab.
+const AUTO_DISMISS = 850
+const ENTFERNEN_NACH = 260 // muss zur .24s-CSS-Transition von .startbild passen
 
 /** Funken, die im Moment des Zusammensetzens aus dem Zeichen schießen.
     Ungleichmäßig verteilt und in den drei Akzentfarben, damit es nach
     Streuung aussieht und nicht nach Zahnrad. */
 const FUNKEN = [
-  { winkel: -84, weite: 96, spaet: 620, ton: 'neon' },
-  { winkel: -36, weite: 124, spaet: 660, ton: 'violett' },
-  { winkel: 6, weite: 104, spaet: 635, ton: 'neon' },
-  { winkel: 44, weite: 132, spaet: 690, ton: 'magenta' },
-  { winkel: 92, weite: 100, spaet: 645, ton: 'neon' },
-  { winkel: 134, weite: 128, spaet: 700, ton: 'violett' },
-  { winkel: 172, weite: 108, spaet: 655, ton: 'neon' },
-  { winkel: -140, weite: 136, spaet: 675, ton: 'magenta' },
-  { winkel: -108, weite: 92, spaet: 630, ton: 'neon' },
+  { winkel: -84, weite: 96, spaet: 310, ton: 'neon' },
+  { winkel: -36, weite: 124, spaet: 330, ton: 'violett' },
+  { winkel: 6, weite: 104, spaet: 318, ton: 'neon' },
+  { winkel: 44, weite: 132, spaet: 345, ton: 'magenta' },
+  { winkel: 92, weite: 100, spaet: 323, ton: 'neon' },
+  { winkel: 134, weite: 128, spaet: 350, ton: 'violett' },
+  { winkel: 172, weite: 108, spaet: 328, ton: 'neon' },
+  { winkel: -140, weite: 136, spaet: 338, ton: 'magenta' },
+  { winkel: -108, weite: 92, spaet: 315, ton: 'neon' },
 ]
 
 /** Schriftzug buchstabenweise: jeder Buchstabe bekommt seinen Platz in der

@@ -207,13 +207,13 @@ function PlanManagerDialog({ onClose }: { onClose: () => void }) {
             <button className="opt" onClick={() => setNeuerTyp('bench')}>
               <span>
                 <b>Plan mit Bankfokus</b>
-                <small>Eigener Fortschrittsblock, Ziel-Fortschritt, Rekorde und das ausführliche Cockpit</small>
+                <small>Eigener Fortschrittsblock, Ziel-Fortschritt, Rekorde und der Bank-Tab</small>
               </span>
             </button>
             <button className="opt" style={{ marginBottom: 0 }} onClick={() => setNeuerTyp('general')}>
               <span>
                 <b>Standardplan</b>
-                <small>Freie Tage und Übungen, schlankes Cockpit ohne Bankdrücken-Steuerung</small>
+                <small>Freie Tage und Übungen, ohne Bankdrücken-Steuerung</small>
               </span>
             </button>
           </div>

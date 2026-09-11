@@ -86,7 +86,7 @@ export function registrierePlanMutationen(qc: QueryClient) {
 
       // Ohne diesen Seed bleibt useDays(planId) offline für immer im
       // Ladezustand (kein Cache-Eintrag, networkMode 'online' pausiert die
-      // Abfrage) — Cockpit/Training zeigen dann dauerhaft nichts an, obwohl
+      // Abfrage) — Training/Statistik zeigen dann dauerhaft nichts an, obwohl
       // der Plan selbst schon da ist. Ein frischer Plan hat noch keine Tage.
       qc.setQueryData(['days', plan.id], [])
 

@@ -6,11 +6,10 @@ import { LoginPage } from './auth/LoginPage'
 import { RequireAuth } from './auth/RequireAuth'
 import { ActivePlanProvider } from './features/plans/ActivePlanContext'
 import { RestTimerProvider } from './features/training/RestTimerProvider'
-import { CockpitPage } from './features/cockpit/CockpitPage'
 import { TrainingPage } from './features/training/TrainingPage'
 
-// Cockpit und Training bleiben fest im Startbündel: Das eine ist die
-// Startseite, das andere die Seite, auf der die App im Studio steht.
+// Training bleibt fest im Startbündel: Es ist die Startseite und die
+// Seite, auf der die App im Studio steht.
 //
 // Alle übrigen Seiten werden erst beim Aufrufen geladen. Ausschlaggebend
 // war die Import-Seite: Ihr Tabellenleser (read-excel-file) steckte im
@@ -48,8 +47,7 @@ export default function App() {
             </RequireAuth>
           }
         >
-          <Route path="/" element={<Navigate to="/cockpit" replace />} />
-          <Route path="/cockpit" element={<CockpitPage />} />
+          <Route path="/" element={<Navigate to="/training" replace />} />
           <Route path="/training" element={<TrainingPage />} />
           <Route path="/bank" element={<BenchPage />} />
           <Route path="/statistik" element={<StatistikPage />} />
@@ -60,7 +58,10 @@ export default function App() {
           <Route path="/import" element={<ImportPage />} />
           <Route path="/anleitung" element={<GuidePage />} />
           <Route path="/einstellungen" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/cockpit" replace />} />
+          {/* Auch /cockpit landet hier: Der Tab ist weg, aber die Adresse
+              steht noch in Lesezeichen und in der gespeicherten Historie
+              der App. */}
+          <Route path="*" element={<Navigate to="/training" replace />} />
         </Route>
       </Routes>
     </>

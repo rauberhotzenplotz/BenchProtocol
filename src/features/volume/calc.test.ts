@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { istSaetzeJeGruppeUndTag, istGesamt, gesamtWochenVolumen } from './calc'
+import { istSaetzeJeGruppeUndTag, istGesamt } from './calc'
 import type { DayWithExercises } from '../training/queries'
 import type { Exercise, LoggedSet } from '../../types/db'
 
@@ -58,25 +58,3 @@ describe('istGesamt', () => {
   })
 })
 
-describe('gesamtWochenVolumen', () => {
-  it('zählt abgehakte Sätze über alle zugeordneten Übungen und Tage', () => {
-    const days = [
-      tag('d1', [exercise({ id: 'ex1', muscle_group: 'Brust' })]),
-      tag('d2', [exercise({ id: 'ex2', muscle_group: 'Rücken' }), exercise({ id: 'ex3', muscle_group: null })]),
-    ]
-    const setsByExercise = new Map<string, LoggedSet[]>([
-      ['ex1', [satz({ exercise_id: 'ex1', done: true }), satz({ exercise_id: 'ex1', done: true })]],
-      ['ex2', [satz({ exercise_id: 'ex2', done: true })]],
-      ['ex3', [satz({ exercise_id: 'ex3', done: true }), satz({ exercise_id: 'ex3', done: true })]],
-    ])
-
-    expect(gesamtWochenVolumen(days, setsByExercise)).toBe(3)
-  })
-
-  it('liefert 0, wenn keine Übung eine Muskelgruppe hat', () => {
-    const days = [tag('d1', [exercise({ id: 'ex1', muscle_group: null })])]
-    const setsByExercise = new Map<string, LoggedSet[]>([['ex1', [satz({ done: true })]]])
-
-    expect(gesamtWochenVolumen(days, setsByExercise)).toBe(0)
-  })
-})

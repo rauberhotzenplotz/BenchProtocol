@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react'
     die nur window.history.back() aufruft) noch eine Zurück-Geste im
     Browser kennen sie deshalb. Ohne diesen Hook navigiert "Zurück" also
     direkt in der Routen-Historie weiter und wirft z. B. mitten aus dem
-    Gym-Modus bis ins Cockpit, statt nur den Dialog zu schließen.
+    Gym-Modus bis in die Tagesliste, statt nur den Dialog zu schließen.
 
     Der Hook schiebt beim Öffnen einen eigenen history-Eintrag nach und
     trägt sich in einen gemeinsamen Stapel ein. Bei "Zurück" feuert genau
@@ -49,10 +49,10 @@ export function ueberlagerungOffen(): boolean {
     Gebraucht, wenn aus einer Überlagerung heraus navigiert wird — im
     "Mehr"-Menü der Fall. Dort lief es sonst so ab:
 
-      1. Menü auf   → pushState, Historie: [Cockpit, Overlay]
-      2. Eintrag an → Router pusht,        [Cockpit, Overlay, Rekorde]
+      1. Menü auf   → pushState, Historie: [Training, Overlay]
+      2. Eintrag an → Router pusht,        [Training, Overlay, Rekorde]
       3. Menü zu    → Aufräumen ruft history.back()
-      4. dessen popstate trifft ein        → zurück auf Cockpit
+      4. dessen popstate trifft ein        → zurück auf Training
 
     Der Sprung landete also auf der Seite, von der man kam, und keiner
     der Einträge hinter den drei Punkten ließ sich mehr aufrufen. Ein

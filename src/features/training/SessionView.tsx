@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
@@ -48,10 +48,6 @@ interface Props {
   alleSaetzeJemalsBereit?: boolean
   session: TrainingSession | null | undefined
   onBack: () => void
-  /** Kommt man aus dem Cockpit über "Als Nächstes": Session sofort starten
-   *  und direkt in den Gym-Modus springen, ohne Zwischenklick. */
-  autoStartGym?: boolean
-  onAutoStartConsumed?: () => void
 }
 
 export function SessionView({
@@ -62,8 +58,6 @@ export function SessionView({
   alleSaetzeJemals,
   session,
   onBack,
-  autoStartGym,
-  onAutoStartConsumed,
 }: Props) {
   const startSession = useStartSession()
   const endSession = useEndSession()
@@ -71,7 +65,9 @@ export function SessionView({
   const updateExerciseSort = useUpdateExercise()
   const updateDay = useUpdateDay()
   const { data: volumeRows } = useVolumeRows(plan.id)
-  const muskelgruppen = (volumeRows ?? []).map(r => r.muscle_group)
+  // Geht als Prop in jede Uebungskarte — als frisches Array je Render
+  // waere es dort nie derselbe Wert.
+  const muskelgruppen = useMemo(() => (volumeRows ?? []).map(r => r.muscle_group), [volumeRows])
   const restTimer = useRestTimer()
 
   const [nameBearbeiten, setNameBearbeiten] = useState(false)
@@ -143,30 +139,6 @@ export function SessionView({
     setWarpLaeuft(false)
     setGymOffen(true)
   }, [setGymOffen])
-  // Auto-Start aus dem Cockpit: erst die Session anstoßen (falls sie noch
-  // nicht läuft), dann — sobald sie da ist — den Warp-Sprung in den
-  // Gym-Modus auslösen. Zwei Ref-Wächter statt Zustand, damit jeder
-  // Schritt trotz mehrfacher Renders während der Mutation nur einmal
-  // ausgelöst wird.
-  const autoSessionAngestossen = useRef(false)
-  const autoGymAusgeloest = useRef(false)
-  useEffect(() => {
-    if (!autoStartGym || day.exercises.length === 0) return
-    if (!laeuft) {
-      if (!autoSessionAngestossen.current) {
-        autoSessionAngestossen.current = true
-        startSession.mutate({ dayId: day.id, week, startedAt: new Date().toISOString() })
-      }
-      return
-    }
-    if (!autoGymAusgeloest.current) {
-      autoGymAusgeloest.current = true
-      gymStarten()
-      onAutoStartConsumed?.()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- gymStarten/startSession sind pro Render neue Referenzen, sollen die Wächter-Logik hier aber nicht erneut auslösen
-  }, [autoStartGym, laeuft, day.id, day.exercises.length, week])
-
   // Der Gym-Modus (GymModeAP) zeigt die ganze Übung als Tabelle statt einen
   // Satz pro Bildschirm und merkt sich seine Position selbst — die früher
   // hier gehaltene Positionsverfolgung entfällt dadurch. Aufgeklappt wird

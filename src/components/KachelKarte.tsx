@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useSchliessenPerZurueck } from '../../lib/backClose'
+import { useSchliessenPerZurueck } from '../lib/backClose'
 
 interface Props {
   titel: string
@@ -13,10 +13,10 @@ interface Props {
   children?: ReactNode
 }
 
-/** Kompakte Kachel für die Cockpit-Übersicht: Titel, eine Zahl, ein
-    kurzer Hinweis. Erst beim Antippen erscheint die vollständige Grafik im
+/** Kompakte Kachel für Übersichten: Titel, eine Zahl, ein kurzer
+    Hinweis. Erst beim Antippen erscheint der vollständige Inhalt im
     Vollbild — die Übersicht bleibt dadurch kurz und scrollarm, ohne dass
-    Auswertungen verloren gehen. */
+    etwas verloren geht. */
 export function KachelKarte({ titel, wert, einheit, hinweis, children }: Props) {
   const [offen, setOffen] = useState(false)
 

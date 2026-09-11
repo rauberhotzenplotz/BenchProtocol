@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useRestTimer } from '../features/training/rest-timer-context'
+import { useRestSekunden, useRestTimer } from '../features/training/rest-timer-context'
 import { gymAnfordern } from '../features/training/trainingsStand'
 import { GymRing } from './GymRing'
 import { cssVars } from '../lib/style'
@@ -9,7 +9,10 @@ import { cssVars } from '../lib/style'
     registrierten Rückruf, oder, falls man gerade wo anders in der App
     steht, über einen Sprung zum Trainings-Tab. */
 export function RestTimerBar() {
-  const { label, secondsLeft, totalSeconds, stop, addSeconds, gymActive, reopenGym } = useRestTimer()
+  const { label, totalSeconds, stop, addSeconds, gymActive, reopenGym } = useRestTimer()
+  // Die Leiste ist eine der wenigen Stellen, die den Sekundenstand wirklich
+  // anzeigt — sie darf im Takt neu rendern, der Rest der App nicht.
+  const secondsLeft = useRestSekunden()
   const navigate = useNavigate()
   if (label == null || gymActive) return null
 

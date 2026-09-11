@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useMemo, useState } from 'react'
 import { useActivePlan } from '../plans/active-plan-context'
 import { useDays, useSession, useSetsForExercises, useSessionsForDays, useAllSetsForExercises, useAllSessionsForDays } from './queries'
 import { gruppeSetsByExercise } from './calc'
@@ -10,14 +9,7 @@ import { standFuerWoche, standAendern, standSchreiben } from './trainingsStand'
 
 export function TrainingPage() {
   const { activePlan } = useActivePlan()
-  // Kommt man aus dem Cockpit über "Als Nächstes" hierher, steckt die
-  // Zieltag-ID im Navigations-State — einmalig als Startwert übernehmen,
-  // damit ein späteres manuelles Öffnen desselben Tages nicht erneut den
-  // Gym-Modus aufreißt.
-  const location = useLocation()
-  const autoStartDayId = (location.state as { autoStartDayId?: string } | null)?.autoStartDayId
-  const [offenerTag, setOffenerTag] = useState<string | null>(() => autoStartDayId ?? null)
-  const [autoStartGym, setAutoStartGym] = useState(() => !!autoStartDayId)
+  const [offenerTag, setOffenerTag] = useState<string | null>(null)
 
   // Den zuletzt offenen Tag wieder aufmachen. Genau daran fehlte es, wenn
   // Android die WebView im Hintergrund weggeräumt hatte — man stand wieder
@@ -29,7 +21,7 @@ export function TrainingPage() {
   // ersten Render noch nicht zwangsläufig fest. Im Startwert wäre die
   // Prüfung dann gegen Woche 1 gelaufen und die Wiederherstellung still
   // ausgefallen. Genau einmal, danach gehört die Auswahl dem Nutzer.
-  const [wiederhergestellt, setWiederhergestellt] = useState(!!autoStartDayId)
+  const [wiederhergestellt, setWiederhergestellt] = useState(false)
   if (!wiederhergestellt && activePlan) {
     setWiederhergestellt(true)
     const stand = standFuerWoche(activePlan.week)
@@ -48,6 +40,11 @@ export function TrainingPage() {
   const { data: saetzeJemals } = useAllSetsForExercises(alleExerciseIds, bereich)
   const { data: sessions } = useSessionsForDays(alleDayIds, week, bereich)
   const { data: sessionenJemals } = useAllSessionsForDays(alleDayIds, bereich)
+  // Gruppiert, nicht neu gerechnet bei jedem Render: Die Karte geht als
+  // Prop in die Sitzungsansicht und von dort in jede Uebungskarte. Als
+  // frische Karte je Render haetten die Uebungskarten bei jedem Tastendruck
+  // im Tagesnamen neue Satz-Arrays bekommen.
+  const setsByExercise = useMemo(() => gruppeSetsByExercise(alleSaetze ?? []), [alleSaetze])
   const offenerTagDaten = days?.find(d => d.id === offenerTag)
   const { data: session } = useSession(offenerTag ?? undefined, week)
 
@@ -82,13 +79,11 @@ export function TrainingPage() {
         plan={activePlan}
         day={offenerTagDaten}
         week={week}
-        setsByExercise={gruppeSetsByExercise(alleSaetze ?? [])}
+        setsByExercise={setsByExercise}
         alleSaetzeJemals={saetzeJemals ?? []}
         alleSaetzeJemalsBereit={saetzeJemals !== undefined}
         session={session}
         onBack={() => tagOeffnen(null)}
-        autoStartGym={autoStartGym}
-        onAutoStartConsumed={() => setAutoStartGym(false)}
       />
     )
   }

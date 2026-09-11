@@ -1,12 +1,12 @@
 import type { TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import type { EinheitPunkt } from '../cockpit/calc'
 import type { UebungsDauerSchnitt } from '../training/calc'
+import type { EinheitPunkt } from './calc'
 import { tagFarbe } from '../training/dayColor'
 import { ListChart } from './ListChart'
 import { cssVars } from '../../lib/style'
 
-/* Die vier einheitenbezogenen Auswertungen, vormals im Cockpit.
+/* Die vier einheitenbezogenen Auswertungen.
  *
  * Dort steckten sie dreifach verpackt: hinter einem Aufklapper, darin
  * eine Kachel mit nur einer Zahl, und die eigentliche Grafik erst in
