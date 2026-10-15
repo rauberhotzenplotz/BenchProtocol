@@ -3084,6 +3084,49 @@ white-space: nowrap;
 }
 .ap-satzbtn:hover:not(:disabled) { border-color: var(--ink-4); background: rgba(255,255,255,.06); color: var(--ink); }
 .ap-satzbtn:disabled { opacity: .4; cursor: default; }
+.ap-scheibenbtn { margin-left: auto; }
+.ap-scheibenbtn.an { border-color: rgba(var(--akzent-rgb), .5); color: var(--akzent); }
+
+/* Progressionsvorschlag unter der Kopfzeile: eine leise Zeile, die sagt,
+   warum die Werte so vorbelegt sind. Akzentfarbe nur bei einer Steigerung. */
+.ap-progression {
+  margin-top: 10px; display: flex; gap: 8px; align-items: baseline;
+  font-family: var(--f-mono); font-size: 12.5px; letter-spacing: .01em; color: var(--ink-3);
+}
+.ap-progression-pfeil { font-family: var(--f-display); font-size: 15px; color: var(--ink-4); }
+.ap-progression.gewicht, .ap-progression.gewicht .ap-progression-pfeil { color: var(--akzent); }
+.ap-progression.wdh .ap-progression-pfeil { color: var(--ink-2); }
+
+/* Scheibentafel — gleiche Zurückhaltung wie die Aufwärmleiter. */
+.ap-scheiben { margin-top: var(--a-3); }
+.ap-scheiben-kopf {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--ink-4);
+  padding-bottom: var(--a-2); margin-bottom: var(--a-2);
+  border-bottom: 1px solid var(--line);
+}
+.ap-scheiben-stangen { display: flex; gap: 4px; }
+.ap-scheiben-stange {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line);
+  background: transparent; color: var(--ink-3);
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .02em; text-transform: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ap-scheiben-stange.an { border-color: rgba(var(--akzent-rgb), .5); color: var(--akzent); }
+.ap-scheiben-stange:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+.ap-scheiben-zeile {
+  display: grid; grid-template-columns: minmax(0, 128px) auto minmax(0, 1fr); gap: 10px; align-items: baseline;
+  padding: 4px 0;
+}
+.ap-scheiben-text {
+  text-align: right; font-family: var(--f-display); font-variant-numeric: tabular-nums;
+  font-size: 15.5px; color: var(--ink);
+}
+.ap-scheiben-text em {
+  display: block; font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--warn);
+}
 
 /* Große Pausenuhr im Gym-Modus — steht dort, wo vorher die Historie
    dauerhaft klebte. */

@@ -17,6 +17,8 @@ import {
   neueSortierNummern,
 } from './calc'
 import { istRekord } from './rekord'
+import { progressionsVorschlag, vorschlagFuer } from './progression'
+import { beladung, beladungText, STANGEN, gewaehlteStange, setGewaehlteStange } from './scheiben'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestSekunden, useRestTimer } from './rest-timer-context'
 import { useBenchProgression, benchRowsFor } from '../bench/queries'
@@ -177,6 +179,14 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const aktiv = Math.min(aktivRoh ?? ersterOffener, zeilenAnzahl - 1)
 
   const letzteEinheit = letzteEinheitFuerUebung(exercise.id, alleSaetzeJemals, week)
+  // Doppelte Progression (siehe progression.ts) für alles, was nicht an
+  // der Bank-Progression hängt — die rechnet ihre Gewichte selbst. In der
+  // Deload-Woche eines Bankfokus-Plans wird nicht gesteigert.
+  const steigerung = progressionZeile
+    ? null
+    : progressionsVorschlag(letzteEinheit, exercise.scheme, plan.plate ?? 2.5, {
+        deload: plan.typ === 'bench' && blockWoche(week) === 4,
+      })
   // Die letzte Einheit steht nicht mehr dauerhaft unter der Tabelle,
   // sondern nur auf Wunsch — der Platz gehört der Pausenuhr.
   const [historieOffen, setHistorieOffen] = useState(false)
@@ -193,10 +203,16 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
 
   /** Was in einer Zeile steht, bevor etwas eingetragen wurde: erst die
       Bank-Progression dieser Woche (die weiß um Steigerung und Deload),
-      sonst die letzte Einheit, sonst das Schema. */
+      sonst der Progressionsvorschlag aus der letzten Einheit, sonst die
+      letzte Einheit unverändert (Schema ohne Wiederholungsangabe), sonst
+      das Schema. */
   const werteFuer = (position: number) => {
     const satz = sets.find(s => s.position === position) ?? null
-    const vorschlag = letzteEinheit.find(s => s.position === position) ?? letzteEinheit[letzteEinheit.length - 1] ?? null
+    const vorschlag =
+      vorschlagFuer(steigerung, position) ??
+      letzteEinheit.find(s => s.position === position) ??
+      letzteEinheit[letzteEinheit.length - 1] ??
+      null
     const kg = satz?.kg ?? (progressionZeile ? benchLoad(plan, progressionZeile) : vorschlag?.kg) ?? null
     const reps =
       satz?.reps ?? (progressionZeile ? zielWdh(progressionZeile.scheme) : vorschlag?.reps) ?? zielWdh(exercise.scheme)
@@ -334,6 +350,20 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
       return neu
     })
 
+  // Scheibentafel: einmal aufgeklappt, bleibt sie über alle Übungen der
+  // Einheit offen — wer an der Langhantel steht, will sie nicht bei jeder
+  // Übung neu öffnen. Die Stange ist eine Geräteeinstellung.
+  const [scheibenOffen, setScheibenOffen] = useState(false)
+  const [stange, setStange] = useState(gewaehlteStange)
+  const stangeWaehlen = (kg: number) => {
+    setStange(kg)
+    setGewaehlteStange(kg)
+  }
+  const scheibenZeilen = [
+    ...(warmOffen ? warmSaetze.map(s => ({ label: s.label, kg: s.kg as number | null })) : []),
+    { label: `Satz ${aktiv + 1}`, kg: werteFuer(aktiv).kg },
+  ]
+
   const pauseLaeuft = restTimer.label != null && !restTimer.abgelaufen
 
   if (fertig) {
@@ -414,6 +444,17 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
           <span>{zielWdh(progressionZeile ? progressionZeile.scheme : exercise.scheme)} Wdh</span>
           {exercise.rest && <span>Pause {exercise.rest}</span>}
         </div>
+
+        {/* Woher die vorbelegten Werte kommen — ohne diese Zeile sähe ein
+            gesteigertes Gewicht aus wie ein Tippfehler. */}
+        {steigerung && (
+          <div className={'ap-progression ' + steigerung.art}>
+            <span className="ap-progression-pfeil" aria-hidden="true">
+              {steigerung.art === 'halten' ? '→' : '↑'}
+            </span>
+            {steigerung.grund}
+          </div>
+        )}
 
         {warmSaetze.length > 0 &&
           (warmOffen ? (
@@ -538,7 +579,16 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
           <button className="ap-satzbtn" onClick={letzteZeileEntfernen} disabled={zeilenAnzahl <= 1}>
             − Satz
           </button>
+          <button
+            className={'ap-satzbtn ap-scheibenbtn' + (scheibenOffen ? ' an' : '')}
+            onClick={() => setScheibenOffen(o => !o)}
+            aria-expanded={scheibenOffen}
+          >
+            Scheiben
+          </button>
         </div>
+
+        {scheibenOffen && <ScheibenTafel zeilen={scheibenZeilen} stange={stange} onStange={stangeWaehlen} />}
 
         {letzteEinheit.length > 0 && (
           <div className="ap-historie">
@@ -675,4 +725,55 @@ function PausenRing({ totalSeconds }: { totalSeconds: number }) {
 
 function PausenZiffern() {
   return <>{zeitText(useRestSekunden())}</>
+}
+
+/** Was je Seite auf die Stange gehört — für die Aufwärmleiter (solange sie
+    offen ist) und den aktuellen Satz. Geht ein Gewicht mit den üblichen
+    Scheiben nicht genau auf, steht dabei, wie viel fehlt, statt still
+    falsch zu laden. */
+function ScheibenTafel({
+  zeilen,
+  stange,
+  onStange,
+}: {
+  zeilen: { label: string; kg: number | null }[]
+  stange: number
+  onStange: (kg: number) => void
+}) {
+  return (
+    <div className="ap-scheiben">
+      <div className="ap-scheiben-kopf">
+        <span>Scheiben je Seite</span>
+        <div className="ap-scheiben-stangen" role="group" aria-label="Stange">
+          {STANGEN.map(s => (
+            <button
+              key={s}
+              type="button"
+              className={'ap-scheiben-stange' + (s === stange ? ' an' : '')}
+              aria-pressed={s === stange}
+              onClick={() => onStange(s)}
+            >
+              {s} kg
+            </button>
+          ))}
+        </div>
+      </div>
+      {zeilen.map(z => {
+        const b = z.kg != null ? beladung(z.kg, stange) : null
+        return (
+          <div key={z.label} className="ap-scheiben-zeile">
+            <span className="ap-warm-lab">{z.label}</span>
+            <span className="ap-warm-kg">
+              {gewicht(z.kg)}
+              <em>kg</em>
+            </span>
+            <span className="ap-scheiben-text">
+              {b ? beladungText(b) : z.kg == null ? '—' : 'unter Stangengewicht'}
+              {b && b.rest > 0 && <em>{formatGewicht(b.rest)} kg gehen nicht auf</em>}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
