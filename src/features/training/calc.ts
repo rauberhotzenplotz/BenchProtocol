@@ -313,8 +313,25 @@ const LEITER_AB_SCHEIBEN = 4
 
     Stufen oberhalb des Arbeitsgewichts fallen weg, ebenso Stufen, die auf
     dasselbe Gewicht wie ihre Vorgängerin runden — sonst stünden bei
-    kleiner Scheibenstufe zweimal dieselben Kilos untereinander. */
-export function aufwaermPlan(mitStange: boolean, kgRoh: number, plate: number): AufwaermSatz[] {
+    kleiner Scheibenstufe zweimal dieselben Kilos untereinander.
+
+    `vorlauf` sagt, was im Plan dieser Einheit schon davor kam (siehe
+    aufwaermVorlauf). Wer drei Bankdrück-Varianten hintereinander macht,
+    ist bei der dritten längst warm — die volle Leiter mit leerer Stange
+    kostete dort nur Zeit:
+    - Dieselbe Bewegung davor: Es bleiben nur Stufen, die schwerer sind
+      als das dort Bewegte, ohne leere Stange. Liegt das Arbeitsgewicht
+      nicht darüber, gibt es gar keine Aufwärmsätze.
+    - Nur derselbe Muskel davor: Kilos zweier verschiedener Übungen sagen
+      nichts übereinander (12,5 kg Zusatzgewicht beim Klimmzug gegen 45 kg
+      beim Rudern). Der Muskel ist aber warm, also bleibt ein einzelner
+      Satz, um sich an die neue Bewegung zu gewöhnen. */
+export function aufwaermPlan(
+  mitStange: boolean,
+  kgRoh: number,
+  plate: number,
+  vorlauf?: Pick<AufwaermVorlauf, 'kg' | 'gleicheBewegung'> | null,
+): AufwaermSatz[] {
   if (!(kgRoh > 0)) return []
   if (!mitStange && kgRoh <= LEITER_AB_SCHEIBEN * plate) return []
 
@@ -325,6 +342,11 @@ export function aufwaermPlan(mitStange: boolean, kgRoh: number, plate: number): 
   })
 
   const stufen = [auf(0.5, 5, '50 %'), auf(0.65, 3, '65 %'), auf(0.75, 1, '75 %')].filter(s => s.kg < kgRoh)
+  if (vorlauf?.gleicheBewegung) {
+    const uebrig = stufen.filter(s => s.kg > vorlauf.kg)
+    return uebrig.filter((s, i) => i === 0 || s.kg > uebrig[i - 1].kg)
+  }
+  if (vorlauf) return stufen.filter(s => s.label === '65 %')
   const leiter = mitStange
     ? [{ label: 'Leere Stange', kg: AUFWAERM_STANGE, wdh: 10 } as AufwaermSatz].concat(
         stufen.filter(s => s.kg > AUFWAERM_STANGE),
@@ -332,6 +354,67 @@ export function aufwaermPlan(mitStange: boolean, kgRoh: number, plate: number): 
     : stufen
 
   return leiter.filter((s, i) => i === 0 || s.kg > leiter[i - 1].kg)
+}
+
+export interface AufwaermVorlauf {
+  kg: number
+  /** Übung, an der das Gewicht bewegt wurde — für den Hinweis
+      "Schon warm von …". */
+  name: string
+  /** Dieselbe Bewegung (Bankdrücken nach Bankdrücken, dieselbe
+      Katalogübung) — nur dann lassen sich die Kilos vergleichen. */
+  gleicheBewegung: boolean
+}
+
+/** Dieselbe Bewegung? Beide Bankdrücken, oder dieselbe Katalogübung. */
+function gleicheBewegung(a: Exercise, b: Exercise): boolean {
+  if (istBankdruecken(a) && istBankdruecken(b)) return true
+  return a.library_id != null && a.library_id === b.library_id
+}
+
+/** Wärmt die eine Übung für die andere mit auf? Dieselbe Bewegung, oder
+    dieselbe hinterlegte Muskelgruppe. Ohne Muskelgruppe bleibt nur die
+    Bewegung — lieber einmal zu viel aufwärmen, als eine fremde Übung als
+    Aufwärmen zu werten. */
+function waermtMitAuf(a: Exercise, b: Exercise): boolean {
+  if (gleicheBewegung(a, b)) return true
+  return a.muscle_group != null && a.muscle_group === b.muscle_group
+}
+
+/** Was im Plan dieser Einheit vor `exercise` steht und für sie mit
+    aufwärmt. Eine Übung derselben Bewegung schlägt eine, die nur denselben
+    Muskel trifft — nur bei ihr sagen die Kilos etwas; unter mehreren
+    zählt die schwerste. Was "Gewicht" heißt, entscheidet der Aufrufer über
+    `gewichtFuer` — im Gym-Modus das geplante Arbeitsgewicht
+    (Bank-Progression, Progressionsvorschlag, letzte Einheit) oder das
+    tatsächlich abgehakte, je nachdem, was schwerer ist.
+
+    Über den Plan statt nur über abgehakte Sätze: So steht die verkürzte
+    Leiter schon da, wenn man die Einheit öffnet, und jede Übung bekommt
+    ihre Aufwärmsätze aus der Reihenfolge und den Gewichten ihres eigenen
+    Plans. `vorher` ist die Reihenfolge dieser Einheit, also auch nach
+    einem Umsortieren im Gym-Modus das, was wirklich davor kommt.
+
+    null, wenn keine verwandte Übung davor ein Gewicht hat — dann gilt die
+    volle Leiter. */
+export function aufwaermVorlauf(
+  exercise: Exercise,
+  vorher: Exercise[],
+  gewichtFuer: (ex: Exercise) => number | null,
+): AufwaermVorlauf | null {
+  let bester: AufwaermVorlauf | null = null
+  for (const ex of vorher) {
+    if (ex.id === exercise.id || !waermtMitAuf(ex, exercise)) continue
+    const kg = gewichtFuer(ex)
+    if (kg == null) continue
+    const kandidat = { kg, name: ex.name, gleicheBewegung: gleicheBewegung(ex, exercise) }
+    const besser =
+      !bester ||
+      (kandidat.gleicheBewegung && !bester.gleicheBewegung) ||
+      (kandidat.gleicheBewegung === bester.gleicheBewegung && kandidat.kg > bester.kg)
+    if (besser) bester = kandidat
+  }
+  return bester
 }
 
 /** Geschätztes 1RM eines einzelnen Satzes — bevorzugt die RPE-Tabelle

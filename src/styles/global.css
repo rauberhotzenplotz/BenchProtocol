@@ -2975,6 +2975,8 @@ white-space: nowrap;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .ap-warmup:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+/* Derselbe Chip, aber nur Auskunft — nichts zum Antippen. */
+.ap-warm-schon { cursor: default; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Aufgeklappte Aufwärmleiter. Bewusst schmaler und blasser als die
    Satztabelle darunter — sie wird nicht protokolliert und soll den Blick

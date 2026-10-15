@@ -10,6 +10,7 @@ import {
   blockWoche,
   istBankdruecken,
   aufwaermPlan,
+  aufwaermVorlauf,
   anzeigeName,
   schemaMitSaetzen,
   umsortieren,
@@ -340,7 +341,34 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   // "1 Warmup Satz", der nichts anzeigte und nichts konnte. Das
   // Arbeitsgewicht kommt aus Zeile 1, also aus derselben Quelle wie die
   // Tabelle darunter (Bank-Progression, sonst letzte Einheit).
-  const warmSaetze = aufwaermPlan(istBankdruecken(exercise), werteFuer(0).kg ?? 0, plate)
+  /** Geplantes Arbeitsgewicht einer beliebigen Übung dieser Einheit — aus
+      denselben Quellen wie die Vorbelegung der Tabelle (werteFuer), nur
+      für jede Übung statt nur für die offene: Bank-Progression, sonst
+      Progressionsvorschlag, sonst die letzte Einheit unverändert. */
+  const geplantesGewicht = (ex: Exercise): number | null => {
+    const zeile = progressionZeileFuer(ex)
+    if (zeile) return benchLoad(plan, zeile)
+    const letzte = letzteEinheitFuerUebung(ex.id, alleSaetzeJemals, week)
+    const vorschlag = progressionsVorschlag(letzte, ex.scheme, plan.plate ?? 2.5, {
+      deload: plan.typ === 'bench' && blockWoche(week) === 4,
+    })
+    const kandidaten = (vorschlag?.saetze ?? letzte).map(s => s.kg).filter((kg): kg is number => kg != null)
+    return kandidaten.length ? Math.max(...kandidaten) : null
+  }
+  /** Was eine Übung heute bewegt — geplant oder schon abgehakt, je
+      nachdem, was schwerer ist: Wer im Studio mehr aufgelegt hat als
+      geplant, ist für die nächste Übung entsprechend wärmer. */
+  const gewichtHeute = (ex: Exercise): number | null => {
+    const abgehakt = (setsByExercise.get(ex.id) ?? []).filter(s => s.done && s.kg != null).map(s => s.kg as number)
+    const geplant = geplantesGewicht(ex)
+    const alle = geplant != null ? [...abgehakt, geplant] : abgehakt
+    return alle.length ? Math.max(...alle) : null
+  }
+  // Was im Plan dieser Einheit davor steht, wärmt mit auf: Die dritte
+  // Bankdrück-Übung braucht keine volle Leiter mehr, der Butterfly nach dem
+  // Bankdrücken auch nicht (siehe aufwaermVorlauf in calc.ts).
+  const vorlauf = aufwaermVorlauf(exercise, uebungen.slice(0, uebungen.indexOf(exercise)), gewichtHeute)
+  const warmSaetze = aufwaermPlan(istBankdruecken(exercise), werteFuer(0).kg ?? 0, plate, vorlauf)
   // Je Übung einmal weggeklickt. Bewusst nur im Gedächtnis dieser
   // Einheit: Aufwärmen ist nichts, was man protokolliert.
   const [aufgewaermt, setAufgewaermt] = useState<ReadonlySet<string>>(new Set())
@@ -476,7 +504,13 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
         {warmSaetze.length > 0 &&
           (warmOffen ? (
             <div className="ap-warm">
-              <div className="ap-warm-kopf">Aufwärmen · vor dem ersten Arbeitssatz</div>
+              <div className="ap-warm-kopf">
+                {!vorlauf
+                  ? 'Aufwärmen · vor dem ersten Arbeitssatz'
+                  : vorlauf.gleicheBewegung
+                    ? `Aufwärmen · verkürzt, warm von ${vorlauf.name}`
+                    : `Aufwärmen · ein Satz, Muskel warm von ${vorlauf.name}`}
+              </div>
               {warmSaetze.map((s, i) => (
                 <div key={s.label} className="ap-warm-zeile">
                   <span className="ap-nr">{i + 1}</span>
@@ -497,6 +531,14 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
               Aufgewärmt ✓ · Leiter zeigen
             </button>
           ))}
+
+        {/* Ohne diesen Hinweis sähe die fehlende Leiter aus wie ein Fehler —
+            bei derselben Übung stand sie gestern noch da. */}
+        {warmSaetze.length === 0 && vorlauf && (
+          <div className="ap-warmup ap-warm-schon">
+            Schon warm von {vorlauf.name} · {gewicht(vorlauf.kg)} kg
+          </div>
+        )}
 
         {/* Die große Pausenuhr steht dort, wo früher die Historie klebte —
             im Training ist sie die Angabe, auf die man wirklich schaut. */}

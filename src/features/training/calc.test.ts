@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { blockWoche, wochenLabel, einheitMinuten, startNachPause, aufwaermPlan, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen, naechsteSortierung, umsortieren, neueSortierNummern } from './calc'
+import { blockWoche, wochenLabel, einheitMinuten, startNachPause, aufwaermPlan, aufwaermVorlauf, istBankdruecken, satzE1rm, letzteEinheitFuerUebung, muskelgruppenDesTags, wocheErledigt, anzeigeName, schemaMitSaetzen, naechsteSortierung, umsortieren, neueSortierNummern } from './calc'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 
 function einheit(patch: Partial<TrainingSession>): TrainingSession {
@@ -380,5 +380,59 @@ describe('neueSortierNummern', () => {
       { id: 'a', sort_order: 0 },
       { id: 'b', sort_order: 1 },
     ])
+  })
+})
+
+describe('aufwaermPlan mit Vorlauf', () => {
+  const gleich = (kg: number) => ({ kg, gleicheBewegung: true })
+  it('lässt bei derselben Bewegung nur schwerere Stufen und keine leere Stange', () => {
+    // 100 kg: 50 / 65 / 75 kg — nach 62,5 kg bleiben 65 und 75.
+    expect(aufwaermPlan(true, 100, 2.5, gleich(62.5)).map(s => s.kg)).toEqual([65, 75])
+  })
+  it('gibt bei derselben Bewegung nichts, wenn das Arbeitsgewicht nicht darüber liegt', () => {
+    expect(aufwaermPlan(true, 50, 2.5, gleich(62.5))).toEqual([])
+    expect(aufwaermPlan(true, 80, 2.5, gleich(62.5))).toEqual([])
+  })
+  it('gibt bei nur demselben Muskel einen einzelnen Gewöhnungssatz', () => {
+    expect(aufwaermPlan(false, 45, 2.5, { kg: 12.5, gleicheBewegung: false })).toEqual([{ label: '65 %', kg: 30, wdh: 3 }])
+  })
+  it('bleibt unter der Leiter-Schwelle auch mit Vorlauf leer', () => {
+    expect(aufwaermPlan(false, 7.5, 2.5, { kg: 60, gleicheBewegung: false })).toEqual([])
+  })
+  it('verhält sich ohne Vorlauf wie bisher', () => {
+    expect(aufwaermPlan(true, 100, 2.5, null).map(s => s.label)).toEqual(['Leere Stange', '50 %', '65 %', '75 %'])
+  })
+})
+
+describe('aufwaermVorlauf', () => {
+  const bank1 = exercise({ id: 'b1', name: 'Bankdrücken', muscle_group: 'Brust' })
+  const bank2 = exercise({ id: 'b2', name: 'Schrägbankdrücken', muscle_group: 'Brust' })
+  const fly = exercise({ id: 'f1', name: 'Butterfly', muscle_group: 'Brust' })
+  const klimm = exercise({ id: 'k1', name: 'Klimmzüge', muscle_group: 'Rücken' })
+  const rudern = exercise({ id: 'r1', name: 'T-Bar Rudern', muscle_group: 'Rücken' })
+  const gewichte = (m: Record<string, number | null>) => (ex: Exercise) => m[ex.id] ?? null
+
+  it('erkennt dieselbe Bewegung und nimmt deren Gewicht', () => {
+    expect(aufwaermVorlauf(bank2, [bank1], gewichte({ b1: 62.5 }))).toEqual({ kg: 62.5, name: 'Bankdrücken', gleicheBewegung: true })
+  })
+  it('erkennt dieselbe Katalogübung als gleiche Bewegung', () => {
+    const a = exercise({ id: 'a', name: 'Rudern A', muscle_group: 'Rücken', library_id: 'L1' })
+    const b = exercise({ id: 'b', name: 'Rudern B', muscle_group: 'Rücken', library_id: 'L1' })
+    expect(aufwaermVorlauf(b, [a], gewichte({ a: 50 }))?.gleicheBewegung).toBe(true)
+  })
+  it('zählt nur denselben Muskel als andere Bewegung', () => {
+    expect(aufwaermVorlauf(rudern, [klimm], gewichte({ k1: 12.5 }))).toEqual({ kg: 12.5, name: 'Klimmzüge', gleicheBewegung: false })
+  })
+  it('zieht dieselbe Bewegung einem schwereren Muskel-Nachbarn vor', () => {
+    expect(aufwaermVorlauf(bank2, [fly, bank1], gewichte({ f1: 90, b1: 60 }))?.name).toBe('Bankdrücken')
+  })
+  it('wählt unter gleichwertigen die schwerste', () => {
+    expect(aufwaermVorlauf(fly, [bank1, bank2], gewichte({ b1: 85, b2: 34 }))?.kg).toBe(85)
+  })
+  it('ignoriert fremde Muskeln, Übungen ohne Gewicht und die Übung selbst', () => {
+    expect(aufwaermVorlauf(bank2, [klimm, bank1, bank2], gewichte({ k1: 20, b1: null, b2: 80 }))).toBeNull()
+  })
+  it('gibt null ohne Übungen davor', () => {
+    expect(aufwaermVorlauf(bank1, [], gewichte({}))).toBeNull()
   })
 })
