@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Exercise, LoggedSet, Plan, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from './queries'
-import { useUpsertSet, useDeleteSet, useEndSession, useUpdateExercise } from './queries'
+import { useUpsertSet, useDeleteSet, useEndSession, useUpdateExercise, useAlleEinheitenJemals } from './queries'
 import {
   setsOf,
-  tonnageOf,
   letzteEinheitFuerUebung,
   satzE1rm,
   wochenLabel,
@@ -15,7 +14,9 @@ import {
   schemaMitSaetzen,
   umsortieren,
   neueSortierNummern,
+  einheitMinuten,
 } from './calc'
+import { steigerungen, workoutNummer, wochenSerie, anzeigeDauer } from './abschluss'
 import { istRekord } from './rekord'
 import { progressionsVorschlag, vorschlagFuer } from './progression'
 import { beladung, beladungText, STANGEN, gewaehlteStange, setGewaehlteStange } from './scheiben'
@@ -86,6 +87,8 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const endSession = useEndSession()
   const restTimer = useRestTimer()
   const { data: progression } = useBenchProgression(plan.id)
+  // Nur für den Abschluss ("547. Workout", Wochenserie) — über alle Pläne.
+  const { data: alleEinheiten } = useAlleEinheitenJemals()
 
   // Solange der Gym-Modus gemountet ist, gilt er als "offen" — er wird
   // nur bedingt gerendert (kein offen-Prop wie bei den Dialogen), das
@@ -367,15 +370,29 @@ export function GymModeAP({ plan, day, week, setsByExercise, alleSaetzeJemals, s
   const pauseLaeuft = restTimer.label != null && !restTimer.abgelaufen
 
   if (fertig) {
-    const geplant = uebungen.reduce((a, ex) => a + zeilenAnzahlFuer(ex), 0)
-    const abgehakt = uebungen.reduce((a, ex) => a + (setsByExercise.get(ex.id) ?? []).filter(s => s.done).length, 0)
-    const tonnage = uebungen.reduce((a, ex) => a + tonnageOf(setsByExercise.get(ex.id) ?? []), 0)
+    // Nur Übungen mit mindestens einem abgehakten Satz — eine ausgelassene
+    // Übung gehört nicht in die Liste dessen, was man heute gemacht hat.
+    const abschlussUebungen = uebungen.flatMap(ex => {
+      const heute = setsByExercise.get(ex.id) ?? []
+      const saetze = heute.filter(s => s.done).length
+      if (!saetze) return []
+      return [{
+        id: ex.id,
+        name: anzeigeName(ex, plan, week),
+        meta: ex.muscle_group,
+        saetze,
+        plus: steigerungen(heute, letzteEinheitFuerUebung(ex.id, alleSaetzeJemals, week)),
+      }]
+    })
+    const jetzt = new Date()
     return (
       <div className="ap">
         <GymFertig
-          geplant={geplant}
-          erledigt={abgehakt}
-          tonnage={tonnage}
+          titel={day.name}
+          uebungen={abschlussUebungen}
+          workoutNummer={alleEinheiten ? workoutNummer(alleEinheiten, session?.id) : null}
+          dauerMinuten={session ? anzeigeDauer(einheitMinuten(session.started_at, jetzt.toISOString())) : null}
+          serieWochen={alleEinheiten ? wochenSerie(alleEinheiten, jetzt) : null}
           rekorde={erzielteRekorde}
           onPruefen={() => setFertig(false)}
           onBeenden={einheitBeenden}

@@ -172,6 +172,24 @@ export function useAllSessionsForDays(dayIds: string[], bereich: string) {
   })
 }
 
+/** Alle beendeten Einheiten über alle Pläne — RLS grenzt auf den
+    angemeldeten Nutzer ein. Für den Abschlussbildschirm: "547. Workout"
+    und die Wochenserie zählen das ganze Training, nicht nur den aktiven
+    Plan. Nur die Spalten, die dafür nötig sind. */
+export function useAlleEinheitenJemals() {
+  return useQuery({
+    queryKey: ['sessions-gesamt'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('id, day_id, week, started_at, ended_at, status')
+        .not('ended_at', 'is', null)
+      if (error) throw error
+      return data as Pick<TrainingSession, 'id' | 'day_id' | 'week' | 'started_at' | 'ended_at' | 'status'>[]
+    },
+  })
+}
+
 export function useSession(dayId: string | undefined, week: number) {
   return useQuery({
     queryKey: ['session', dayId, week],
