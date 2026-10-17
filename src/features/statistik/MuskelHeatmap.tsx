@@ -1,9 +1,14 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import type { LoggedSet } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
 import { MODELL_VIEWBOX, VORDERSEITE, RUECKSEITE } from './koerperModell'
 import { useKatalogMuskeln } from '../exerciseLibrary/queries'
 import { muskelHitze, frischeVon, hitzeFarbe, hitzeFarbeBlass, type FlaechenHitze } from './muskelHitze'
+
+/** Das 3D-Modell bringt three.js mit — rund 150 kB, die erst geladen
+    werden, wenn diese Karte wirklich erscheint, nicht schon beim
+    App-Start. */
+const Koerper3D = lazy(() => import('./Koerper3D'))
 
 /** Flächen ohne eigene Daten — Kopf, Hals, Knie. Sie bleiben als blasse
     Kontur stehen, damit die Figur vollständig ist, statt Löcher zu haben. */
@@ -50,12 +55,43 @@ function Koerper({ seite, flaechen }: { seite: 'vorn' | 'hinten'; flaechen: Map<
   )
 }
 
+/** Das bisherige flache Modell mit Vorder- und Rückseite — Ersatz, wenn
+    WebGL fehlt, und Platzhalter, solange das 3D-Modell lädt. */
+function FlachesModell({
+  seite,
+  setSeite,
+  flaechen,
+}: {
+  seite: 'vorn' | 'hinten'
+  setSeite: (s: 'vorn' | 'hinten') => void
+  flaechen: Map<string, FlaechenHitze>
+}) {
+  return (
+    <div className="mh-buehne">
+      <span className="mh-seite">{seite === 'vorn' ? 'Vorderseite' : 'Rückseite'}</span>
+      <Koerper seite={seite} flaechen={flaechen} />
+      <button type="button" className="mh-drehen" onClick={() => setSeite(seite === 'vorn' ? 'hinten' : 'vorn')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+        Drehen
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 /** Belastung und Erholung als eingefärbtes Körpermodell.
 
     Beide Größen stehen in den Daten, nichts ist geschätzt: Die Last sind
     die abgehakten Sätze der letzten Woche, die Erholung ist die Zeit seit
     dem letzten Haken. Frisch Gereiztes leuchtet magenta und kühlt über
     Violett zu einem hellen Blau aus.
+
+    Gezeigt als drehbares 3D-Modell (Koerper3D.tsx); das flache Modell
+    springt ein, wenn das Gerät kein WebGL kann.
 
     Das Modell selbst stammt aus react-body-highlighter (MIT, © 2020
     GV79) — siehe koerperModell.ts. */
@@ -67,6 +103,9 @@ export function MuskelHeatmap({
   allSets: LoggedSet[]
 }) {
   const [seite, setSeite] = useState<'vorn' | 'hinten'>('vorn')
+  // Ohne WebGL (sehr alte Geräte, abgeschaltete Grafikbeschleunigung)
+  // bleibt es beim flachen Modell.
+  const [ohne3d, setOhne3d] = useState(false)
   // Gemerkt, weil dafür alle je geloggten Sätze durchlaufen werden.
   const katalog = useKatalogMuskeln()
   const hitze = useMemo(() => muskelHitze(days, allSets, katalog), [days, allSets, katalog])
@@ -94,23 +133,15 @@ export function MuskelHeatmap({
         <span className="dz-fenster">Letzte 7 Tage</span>
       </h3>
 
-      <div className="mh-buehne">
-        <span className="mh-seite">{seite === 'vorn' ? 'Vorderseite' : 'Rückseite'}</span>
-        <Koerper seite={seite} flaechen={hitze.flaechen} />
-        <button
-          type="button"
-          className="mh-drehen"
-          onClick={() => setSeite(s => (s === 'vorn' ? 'hinten' : 'vorn'))}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M15 6l-6 6 6 6" />
-          </svg>
-          Drehen
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 6l6 6-6 6" />
-          </svg>
-        </button>
-      </div>
+      {ohne3d ? (
+        <FlachesModell seite={seite} setSeite={setSeite} flaechen={hitze.flaechen} />
+      ) : (
+        // Während three.js lädt, steht das flache Modell da — kein leerer
+        // Kasten, der erst nach einem Moment etwas zeigt.
+        <Suspense fallback={<FlachesModell seite={seite} setSeite={setSeite} flaechen={hitze.flaechen} />}>
+          <Koerper3D flaechen={hitze.flaechen} onFehler={() => setOhne3d(true)} />
+        </Suspense>
+      )}
 
       <div className="mh-legende">
         <div className="mh-balken" />

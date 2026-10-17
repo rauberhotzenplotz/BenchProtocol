@@ -5,22 +5,23 @@ import { satzE1rm, durchschnittsDauerJeUebung } from '../training/calc'
 import { PlanPicker } from '../plans/PlanPicker'
 import { formatGewicht } from '../../lib/zahlen'
 import { cssVars } from '../../lib/style'
-import { Liniendiagramm, Verteilung, Balkenreihe } from './Diagramme'
+import { Liniendiagramm, Balkenreihe, VerteilungsKurve } from './Diagramme'
 import { MuskelHeatmap } from './MuskelHeatmap'
-import { DruckZugCard } from './DruckZugCard'
-import { TonnageJeEinheit, DauerJeEinheit, DauerJeUebung, LetzteEinheiten } from './EinheitenKarten'
+import { WiederholungsSpektrum } from './WiederholungsSpektrum'
+import { TonnageJeEinheit, DauerJeEinheit, DauerJeUebung } from './EinheitenKarten'
 import {
-  belastung,
   einheitenDaten,
-  intensitaetsZonen,
+  intensitaetsKurve,
+  wiederholungsKurve,
+  INTENSITAETS_BAENDER,
+  glaetten,
+  type IntensitaetsArt,
   regression,
-  schwerpunkt,
   serien,
   streuung,
   tonnage,
   uebungsAnteile,
   verwertbar,
-  wiederholungsVerteilung,
   wochenReihe,
   wochentagsMuster,
 } from './calc'
@@ -112,8 +113,13 @@ export function StatistikPage() {
   }, [saetze])
 
   const reihe = useMemo(() => wochenReihe(saetze, einheiten), [saetze, einheiten])
+  // Last oder Anstrengung — siehe intensitaetsKurve in calc.ts.
+  const [intensitaetsArt, setIntensitaetsArt] = useState<IntensitaetsArt>('last')
+  const kurve = useMemo(() => intensitaetsKurve(saetze, besteE1rm, intensitaetsArt), [saetze, besteE1rm, intensitaetsArt])
+  // Kein Satz liegt über der eigenen Bestleistung — Obergrenze 100 %.
+  const kurveGlatt = useMemo(() => glaetten(kurve, 2, 100), [kurve])
+  const wdhKurve = useMemo(() => wiederholungsKurve(saetze), [saetze])
   const anteile = useMemo(() => uebungsAnteile(saetze, namen), [saetze, namen])
-  const last = useMemo(() => belastung(saetze), [saetze])
   const gute = useMemo(() => verwertbar(saetze), [saetze])
 
   // Grundlage der einheitenbezogenen Karten: je Einheit ein Punkt mit
@@ -169,7 +175,6 @@ export function StatistikPage() {
   const beendete = einheiten.filter(s => s.status === 'completed' && s.ended_at).length
   const s = serien(einheiten)
   const tt = tonnageText(gesamtTonnage)
-  const schwer = schwerpunkt(anteile)
   const aktiveUebung = gewaehlteUebung ?? anteile[0]?.id ?? null
 
   if (!gute.length) {
@@ -202,13 +207,8 @@ export function StatistikPage() {
         <Kachel wert={ganz(s.laengste)} einheit="Wo" label="Längste Serie" hinweis="Aufeinanderfolgende Wochen mit mindestens einer Einheit" />
       </div>
 
-      {/* Beide zeigen dieselbe Woche und rechnen über dieselbe Funktion
-          — sie gehören nebeneinander. */}
       <div className="st-uebernommen" style={cssVars({ '--i': 2 })}>
         <MuskelHeatmap days={days} allSets={saetze} />
-      </div>
-      <div className="st-uebernommen" style={cssVars({ '--i': 2 })}>
-        <DruckZugCard days={days} allSets={saetze} />
       </div>
 
       <Karte
@@ -249,47 +249,6 @@ export function StatistikPage() {
                   Streuung
                   <b>{wochenStreuung?.vk != null ? `${(wochenStreuung.vk * 100).toFixed(0)} %` : '—'}</b>
                 </span>
-              </div>
-            )}
-          </>
-        }
-      />
-
-      <Karte
-        i={3}
-        titel="Belastungssteuerung"
-        unterzeile="7 gegen 28 Tage"
-        kinder={
-          <>
-            <div className="st-kpi eng">
-              <Kachel wert={tonnageText(last.akut).wert} einheit={tonnageText(last.akut).einheit} label="Akut" />
-              <Kachel
-                wert={tonnageText(last.chronisch).wert}
-                einheit={tonnageText(last.chronisch).einheit}
-                label="Chronisch"
-              />
-              <Kachel
-                wert={last.verhaeltnis != null ? last.verhaeltnis.toFixed(2).replace('.', ',') : '—'}
-                label="Verhältnis"
-                hinweis="Akut geteilt durch chronisch"
-              />
-              <Kachel
-                wert={last.monotonie != null ? last.monotonie.toFixed(2).replace('.', ',') : '—'}
-                label="Monotonie"
-                hinweis="Mittlere Tageslast geteilt durch ihre Streuung"
-              />
-            </div>
-            {last.verhaeltnis != null && (
-              <div className="st-band" role="img" aria-label={`Verhältnis ${last.verhaeltnis.toFixed(2)}`}>
-                <span className="st-band-zone niedrig" />
-                <span className="st-band-zone gut" />
-                <span className="st-band-zone hoch" />
-                <i
-                  className="st-band-marke"
-                  style={{ left: `${Math.min(100, Math.max(0, (last.verhaeltnis / 2) * 100)).toFixed(1)}%` }}
-                />
-                <span className="st-band-lab links">0,8</span>
-                <span className="st-band-lab rechts">1,3</span>
               </div>
             )}
           </>
@@ -353,33 +312,74 @@ export function StatistikPage() {
       <Karte
         i={5}
         titel="Intensitätszonen"
+        unterzeile={intensitaetsArt === 'last' ? '% vom besten 1RM' : '% vom Bestwert'}
         kinder={
-          <Verteilung
-            faecher={intensitaetsZonen(saetze, besteE1rm).map(f => ({
-              name: f.name,
-              anteil: f.anteil,
-              zusatz: `${f.saetze} Sätze`,
-            }))}
-            ariaLabel="Verteilung der Sätze auf Intensitätszonen"
-          />
+          <>
+            <div className="st-wahl">
+              {(['last', 'anstrengung'] as const).map(art => (
+                <button
+                  key={art}
+                  type="button"
+                  className={'chip' + (art === intensitaetsArt ? ' neon' : ' mute')}
+                  aria-pressed={art === intensitaetsArt}
+                  onClick={() => setIntensitaetsArt(art)}
+                >
+                  {art === 'last' ? 'Last' : 'Anstrengung'}
+                </button>
+              ))}
+            </div>
+            <p className="muted tiny st-art-hinweis">
+              {intensitaetsArt === 'last'
+                ? 'Gewicht im Verhältnis zum besten 1RM der Übung — ohne Rücksicht auf die Wiederholungen.'
+                : 'Wie nah der Satz an die Bestleistung kam — Gewicht und Wiederholungen zusammen. 10 Wdh. bis zum Versagen zählen hier fast 100 %.'}
+            </p>
+            <VerteilungsKurve
+              punkte={kurve.map(p => ({ x: p.prozent, saetze: p.saetze }))}
+              glatt={kurveGlatt.map(p => ({ x: p.prozent, wert: p.wert }))}
+              baender={INTENSITAETS_BAENDER}
+              xSchritt={10}
+              xText={v => `${v} %`}
+              tipTitel={v => `${v} % vom Bestwert`}
+              ariaLabel={
+                intensitaetsArt === 'last'
+                  ? 'Anzahl der Sätze je Prozent vom besten geschätzten 1RM'
+                  : 'Anzahl der Sätze je Prozent Anstrengung, gemessen am besten geschätzten 1RM'
+              }
+            />
+            {/* Was die Kurve zeigt, in drei Zahlen — immer im gewählten Maß. */}
+            {kurve.length > 0 && (
+              <div className="st-zahlen">
+                <span>
+                  Schwerpunkt
+                  <b>{kurveGlatt.reduce((a, p) => (p.wert > a.wert ? p : a), kurveGlatt[0]).prozent} %</b>
+                </span>
+                <span>
+                  Durchschnitt
+                  <b>
+                    {Math.round(
+                      kurve.reduce((a, p) => a + p.prozent * p.saetze, 0) / kurve.reduce((a, p) => a + p.saetze, 0),
+                    )}{' '}
+                    %
+                  </b>
+                </span>
+                <span>
+                  80 %+
+                  <b>
+                    {Math.round(
+                      (kurve.filter(p => p.prozent >= 80).reduce((a, p) => a + p.saetze, 0) /
+                        kurve.reduce((a, p) => a + p.saetze, 0)) *
+                        100,
+                    )}{' '}
+                    %
+                  </b>
+                </span>
+              </div>
+            )}
+          </>
         }
       />
 
-      <Karte
-        i={6}
-        titel="Wiederholungsbereiche"
-        kinder={
-          <Verteilung
-            faecher={wiederholungsVerteilung(saetze).map(f => ({
-              name: f.name,
-              anteil: f.anteil,
-              zusatz: `${f.saetze} Sätze`,
-            }))}
-            farbe="var(--ton-c)"
-            ariaLabel="Verteilung der Sätze auf Wiederholungsbereiche"
-          />
-        }
-      />
+      <Karte i={6} titel="Wiederholungsbereiche" kinder={<WiederholungsSpektrum kurve={wdhKurve} />} />
 
       <Karte
         i={7}
@@ -393,23 +393,6 @@ export function StatistikPage() {
             }))}
             farbe="var(--ton-b)"
             ariaLabel="Einheiten je Wochentag"
-          />
-        }
-      />
-
-      <Karte
-        i={8}
-        titel="Wo die Arbeit hingeht"
-        unterzeile={schwer != null ? `${schwer} Übungen tragen die Hälfte` : undefined}
-        kinder={
-          <Verteilung
-            faecher={anteile.slice(0, 8).map(a => ({
-              name: a.name,
-              anteil: a.anteil,
-              zusatz: `${ganz(a.tonnage)} kg`,
-            }))}
-            farbe="var(--good)"
-            ariaLabel="Volumenanteil je Übung"
           />
         }
       />
@@ -430,12 +413,6 @@ export function StatistikPage() {
         i={12}
         titel="Dauer je Übung"
         kinder={<DauerJeUebung eintraege={dauerJeUebung} />}
-      />
-
-      <Karte
-        i={13}
-        titel="Letzte Einheiten"
-        kinder={<LetzteEinheiten sessions={einheiten} days={days} />}
       />
     </section>
   )

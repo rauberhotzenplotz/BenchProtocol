@@ -21,7 +21,6 @@ import { SessionMenu } from './SessionMenu'
 import { pauseSekunden, autoPauseAn } from './pause'
 import { useRestTimer } from './rest-timer-context'
 import { GymModeAP } from './GymModeAP'
-import { Warp } from './Warp'
 import { DeloadBanner } from './DeloadBanner'
 import { useVolumeRows } from '../volume/queries'
 import { UebungAuswahl } from './UebungAuswahl'
@@ -109,9 +108,9 @@ export function SessionView({
       findet die schwebende Pausenuhr nach einem Tab-Wechsel wieder
       hierher zurück. */
   // useCallback und nicht einfach eine Funktion pro Render: Der Rückruf
-  // steckt unten in warpFertig und im setReopenGym-Effekt. Als frische
-  // Funktion je Render würden die beiden die Fassung des ersten Renders
-  // festhalten und den Stand später für den falschen Tag schreiben.
+  // steckt unten im setReopenGym-Effekt. Als frische Funktion je Render
+  // hielte der die Fassung des ersten Renders fest und schriebe den Stand
+  // später für den falschen Tag.
   const setGymOffen = useCallback(
     (offen: boolean) => {
       setGymOffenRoh(offen)
@@ -119,26 +118,10 @@ export function SessionView({
     },
     [day.id, week],
   )
-  const [warpLaeuft, setWarpLaeuft] = useState(false)
-
-  // Der Sprung läuft vor dem Gym-Modus, nicht darüber: er deckt die
-  // Einheit ab und gibt am Ende die fertige Trainingskonsole frei.
-  const gymStarten = () => {
-    // Steht der Bewegungsschalter auf aus, entsteht der Sprung gar nicht
-    // erst — sonst bliebe eine knappe Sekunde schwarzer Bildschirm ohne
-    // erkennbaren Grund, weil die globale Regel nur die Dauer staucht.
-    if (document.documentElement.dataset.motion === 'off') setGymOffen(true)
-    else setWarpLaeuft(true)
-  }
-
-  // Beide Zustände im selben Handler: React fasst sie zu einem Commit
-  // zusammen, der Sprung verschwindet also in genau dem Bild, in dem der
-  // Gym-Modus erscheint. Nacheinander gäbe es ein Bild dazwischen, in dem
-  // die Einheit wieder durchblitzt.
-  const warpFertig = useCallback(() => {
-    setWarpLaeuft(false)
-    setGymOffen(true)
-  }, [setGymOffen])
+  // Direkt in den Gym-Modus. Früher lief davor eine knappe Sekunde lang
+  // ein Sprung mit Strahlen (Warp) — auf Wunsch entfernt: Wer "Gym"
+  // drückt, will trainieren, nicht zuschauen.
+  const gymStarten = () => setGymOffen(true)
   // Der Gym-Modus (GymModeAP) zeigt die ganze Übung als Tabelle statt einen
   // Satz pro Bildschirm und merkt sich seine Position selbst — die früher
   // hier gehaltene Positionsverfolgung entfällt dadurch. Aufgeklappt wird
@@ -350,8 +333,6 @@ export function SessionView({
           </button>
         )}
       </div>
-
-      {warpLaeuft && <Warp onEnde={warpFertig} />}
 
       {gymOffenRoh &&
         laeuft &&

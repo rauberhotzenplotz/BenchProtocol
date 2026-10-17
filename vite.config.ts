@@ -31,7 +31,9 @@ export default defineConfig({
       workbox: {
         // App-Shell zuerst aus dem Cache, API-Aufrufe an Supabase bleiben
         // unangetastet (andere Origin, Workbox greift ohnehin nur same-origin).
-        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
+        // .bin: das vorberechnete Netz des 3D-Körpermodells (public/modelle),
+        // damit die Statistik auch im Studio ohne Empfang vollständig ist.
+        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest,bin}'],
         navigateFallback: '/index.html',
       },
       devOptions: {

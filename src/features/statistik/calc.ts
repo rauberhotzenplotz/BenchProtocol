@@ -1,6 +1,6 @@
 import type { LoggedSet, TrainingSession } from '../../types/db'
 import type { DayWithExercises } from '../training/queries'
-import { gruppeSetsByExercise, tagFortschritt } from '../training/calc'
+import { gruppeSetsByExercise, tagFortschritt, satzE1rm } from '../training/calc'
 import { tagFarbe } from '../training/dayColor'
 
 /* Rechenschicht des Statistik-Tabs.
@@ -14,8 +14,6 @@ import { tagFarbe } from '../training/dayColor'
  * lässt, wird nicht geschätzt, sondern gibt null zurück. Eine leere
  * Stelle ist ehrlich, eine erfundene Zahl im Gewand einer Messung nicht.
  */
-
-const TAG_MS = 24 * 60 * 60 * 1000
 
 // ── Grundlagen ───────────────────────────────────────────────────────
 
@@ -143,138 +141,154 @@ export function wochenReihe(saetze: readonly LoggedSet[], sessions: readonly Tra
   return reihe
 }
 
-// ── Belastungssteuerung ──────────────────────────────────────────────
-
-export interface Belastung {
-  /** Tonnage der letzten 7 Tage. */
-  akut: number
-  /** Mittlere Wochentonnage der letzten 28 Tage. */
-  chronisch: number
-  /** Akut geteilt durch chronisch. Über 1,5 heißt: Die Woche fällt weit
-      aus dem gewohnten Rahmen. null, solange keine 28 Tage Vorlauf da
-      sind — vorher ist der Nenner keine Gewöhnung, sondern Zufall. */
-  verhaeltnis: number | null
-  /** Monotonie nach Foster: mittlere Tageslast geteilt durch ihre
-      Streuung über sieben Tage. Hohe Werte heißen "jeden Tag dasselbe" —
-      gleichförmige Belastung gilt als schlechter verkraftbar als eine mit
-      schweren und leichten Tagen. */
-  monotonie: number | null
-  /** Wochenlast mal Monotonie. Fasst beides zu einer Zahl zusammen. */
-  strain: number | null
-  /** Auf wie vielen Tagen mit Training die Rechnung beruht. */
-  tageMitTraining: number
-}
-
-/** Belastungskennzahlen aus den Satzprotokollen.
-
-    Als Last dient die Tonnage, nicht das übliche sRPE (Dauer mal
-    Anstrengung): Ein RPE tragen hier nur Bankdrücken-Sätze, und eine
-    Kennzahl, die je nach Übungsauswahl auf einem anderen Fundament steht,
-    wäre schlimmer als eine gröbere. Die Tonnage liegt für jeden
-    abgehakten Satz vor.
-
-    Die Verhältniszahl stammt aus der Sportwissenschaft (acute:chronic
-    workload ratio) und ist dort umstritten — sie sagt nichts über
-    Verletzungen voraus. Als Beschreibung taugt sie trotzdem: Sie zeigt,
-    wie weit die laufende Woche von dem abweicht, was der Körper gewohnt
-    ist. */
-export function belastung(saetze: readonly LoggedSet[], jetzt: number = Date.now()): Belastung {
-  const gute = verwertbar(saetze).filter(s => s.done_at)
-  const last = (abTagen: number, bisTagen: number) =>
-    tonnage(
-      gute.filter(s => {
-        const alter = (jetzt - Date.parse(s.done_at!)) / TAG_MS
-        return alter >= abTagen && alter < bisTagen
-      }),
-    )
-
-  const akut = last(0, 7)
-  const chronischGesamt = last(0, 28)
-  const chronisch = chronischGesamt / 4
-
-  // Tageslast der letzten sieben Tage, Ruhetage als Null. Ohne die Nullen
-  // wäre die Monotonie nur ein Vergleich der Trainingstage untereinander
-  // — gerade die Ruhetage machen aber den Unterschied.
-  const jeTag: number[] = []
-  for (let d = 0; d < 7; d++) jeTag.push(last(d, d + 1))
-  const s = streuung(jeTag)
-  const monotonie = s && s.sd > 0 ? s.mittel / s.sd : null
-  const wochenlast = jeTag.reduce((a, w) => a + w, 0)
-
-  // 28 Tage Vorlauf verlangen: Ohne sie ist der Nenner kein
-  // Gewöhnungswert. Geprüft wird am ältesten Satz überhaupt.
-  const aeltester = gute.reduce<number | null>((a, x) => {
-    const t = Date.parse(x.done_at!)
-    return a == null || t < a ? t : a
-  }, null)
-  const genugVorlauf = aeltester != null && jetzt - aeltester >= 28 * TAG_MS
-
-  return {
-    akut,
-    chronisch,
-    verhaeltnis: genugVorlauf && chronisch > 0 ? akut / chronisch : null,
-    monotonie,
-    strain: monotonie != null ? wochenlast * monotonie : null,
-    tageMitTraining: jeTag.filter(w => w > 0).length,
-  }
-}
-
 // ── Verteilungen ─────────────────────────────────────────────────────
 
-export interface Fach {
+/** Hintergrundband einer Verteilungskurve, von–bis in Einheiten der
+    x-Achse (halboffen: von einschließlich, bis ausschließlich). */
+export interface Band {
+  von: number
+  bis: number
   name: string
-  saetze: number
-  anteil: number
+  /** Steht, wenn das Band für den Namen zu schmal ist. */
+  kurz: string
 }
 
-/** Grenzen der Wiederholungsbereiche, wie sie im Krafttraining üblich
-    beschrieben werden. Die Namen sind bewusst die geläufigen Etiketten —
-    sie sind eine Einordnung, keine Naturgesetze. */
-const WDH_FAECHER: ReadonlyArray<{ name: string; bis: number }> = [
-  { name: '1–3 · Maximalkraft', bis: 3 },
-  { name: '4–6 · Kraft', bis: 6 },
-  { name: '7–12 · Hypertrophie', bis: 12 },
-  { name: '13–20 · Kraftausdauer', bis: 20 },
-  { name: '21+ · Ausdauer', bis: Infinity },
+/** Die Wiederholungsbereiche als Bänder. Grenzen auf halben Zahlen, damit
+    jede ganze Wiederholungszahl mittig in ihrem Band liegt — 3 Wdh. stehen
+    bei 3, das Band "Maximalkraft" reicht von 0,5 bis 3,5. */
+export const WDH_BAENDER: readonly Band[] = [
+  { von: 0.5, bis: 3.5, name: 'Maximalkraft', kurz: 'Max.' },
+  { von: 3.5, bis: 6.5, name: 'Kraft', kurz: 'Kraft' },
+  { von: 6.5, bis: 12.5, name: 'Hypertrophie', kurz: 'Hypertr.' },
+  { von: 12.5, bis: 20.5, name: 'Kraftausdauer', kurz: 'K-Ausd.' },
+  { von: 20.5, bis: 1000, name: 'Ausdauer', kurz: 'Ausd.' },
 ]
 
-export function wiederholungsVerteilung(saetze: readonly LoggedSet[]): Fach[] {
-  const gute = verwertbar(saetze)
-  const gesamt = gute.length
-  return WDH_FAECHER.map((f, i) => {
-    const von = i === 0 ? 1 : WDH_FAECHER[i - 1].bis + 1
-    const anzahl = gute.filter(s => (s.reps ?? 0) >= von && (s.reps ?? 0) <= f.bis).length
-    return { name: f.name, saetze: anzahl, anteil: gesamt ? anzahl / gesamt : 0 }
-  })
+/** Die klassischen Intensitätszonen in Prozent, nur als Hintergrund der
+    Intensitätskurve. Bewusst ohne Begriffe wie "Hypertrophie": Die
+    Prozente beziehen sich auf das beste e1RM, ein lockerer Satz mit
+    8 Wiederholungen landete so bei 62 % und hiesse "Kraftausdauer". Das
+    Trainingsziel zeigen die Wiederholungsbereiche. */
+export const INTENSITAETS_BAENDER: readonly Band[] = [
+  { von: 0, bis: 60, name: '<60', kurz: '<60' },
+  { von: 60, bis: 70, name: '60–70', kurz: '60–70' },
+  { von: 70, bis: 80, name: '70–80', kurz: '70–80' },
+  { von: 80, bis: 90, name: '80–90', kurz: '80–90' },
+  { von: 90, bis: 1000, name: '90+', kurz: '90+' },
+]
+
+/** Wie viele Sätze mit wie vielen Wiederholungen liefen — ein Punkt je
+    Wiederholungszahl, die überhaupt vorkam, aufsteigend. Wie bei der
+    Intensitätskurve keine Nullen dazwischen: 11 Wdh. nie gemacht ist eine
+    Lücke, keine Messung. */
+export function wiederholungsKurve(saetze: readonly LoggedSet[]): { wdh: number; saetze: number }[] {
+  const zaehler = new Map<number, number>()
+  for (const s of verwertbar(saetze)) {
+    if (!s.reps || s.reps < 1) continue
+    zaehler.set(s.reps, (zaehler.get(s.reps) ?? 0) + 1)
+  }
+  return [...zaehler.entries()].sort((a, b) => a[0] - b[0]).map(([wdh, anzahl]) => ({ wdh, saetze: anzahl }))
 }
 
-/** Intensitätszonen als Anteil am besten geschätzten 1RM der jeweiligen
-    Übung.
+export interface IntensitaetsPunkt {
+  /** Ganze Prozent vom besten e1RM der Übung. */
+  prozent: number
+  saetze: number
+}
 
-    Bezugspunkt ist das beste e1RM, das für diese Übung je erreicht wurde,
-    nicht ein tagesaktuelles: Ein Satz von vor einem halben Jahr soll an
-    dem gemessen werden, was damals wie heute die Bestmarke ist. Sonst
-    verschöbe jede neue Bestleistung rückwirkend die ganze Geschichte.
+/** Wie viele Sätze bei welcher Intensität liefen — je ganzem Prozent vom
+    besten e1RM ein Punkt. Bezugswert ist das beste e1RM, das für die
+    Übung je erreicht wurde — nicht ein tagesaktuelles, sonst verschöbe jede
+    neue Bestleistung rückwirkend die ganze Geschichte. Fein statt in fünf
+    Zonen gebündelt: Die Kurve zeigt, wo das Training wirklich liegt.
 
-    Übungen ohne brauchbaren Bezugswert bleiben außen vor. */
-export function intensitaetsZonen(saetze: readonly LoggedSet[], besteE1rm: ReadonlyMap<string, number>): Fach[] {
-  const gute = verwertbar(saetze).filter(s => (besteE1rm.get(s.exercise_id) ?? 0) > 0)
-  const gesamt = gute.length
-  const grenzen = [
-    { name: 'unter 60 %', bis: 0.6 },
-    { name: '60–70 %', bis: 0.7 },
-    { name: '70–80 %', bis: 0.8 },
-    { name: '80–90 %', bis: 0.9 },
-    { name: '90 %+', bis: Infinity },
-  ]
-  return grenzen.map((g, i) => {
-    const vonAnteil = i === 0 ? 0 : grenzen[i - 1].bis
-    const anzahl = gute.filter(s => {
-      const anteil = (s.kg ?? 0) / besteE1rm.get(s.exercise_id)!
-      return anteil >= vonAnteil && anteil < g.bis
-    }).length
-    return { name: g.name, saetze: anzahl, anteil: gesamt ? anzahl / gesamt : 0 }
-  })
+    Zwei Maße zur Wahl:
+    - `last`: Gewicht geteilt durch das beste e1RM — wie schwer die Hantel
+      war, ohne Rücksicht auf die Wiederholungen.
+    - `anstrengung`: das geschätzte 1RM des Satzes selbst geteilt durch
+      das beste — wie nah der Satz an die Bestleistung kam. 10 Wdh. mit
+      75 % bis zum Versagen sind hier fast 100 %, unter `last` nur 75 %.
+
+    Nur Prozente, bei denen tatsächlich Sätze liefen, aufsteigend. Ein
+    Prozent ohne Satz ist keine Messung von null, sondern eine Lücke: Mit
+    Nullen dazwischen fiel die Kurve bei jeder Lücke auf den Boden und sah
+    aus wie ein Kamm, obwohl die Gewichte nur in Scheibenstufen springen. */
+export type IntensitaetsArt = 'last' | 'anstrengung'
+
+export function intensitaetsKurve(
+  saetze: readonly LoggedSet[],
+  besteE1rm: ReadonlyMap<string, number>,
+  art: IntensitaetsArt = 'last',
+): IntensitaetsPunkt[] {
+  const zaehler = new Map<number, number>()
+  for (const s of verwertbar(saetze)) {
+    const bezug = besteE1rm.get(s.exercise_id) ?? 0
+    if (!(bezug > 0) || !s.kg) continue
+    const zaehlwert = art === 'last' ? s.kg : satzE1rm(s.kg, s.reps, s.rpe)
+    if (zaehlwert == null) continue
+    const p = Math.round((zaehlwert / bezug) * 100)
+    zaehler.set(p, (zaehler.get(p) ?? 0) + 1)
+  }
+  return [...zaehler.entries()].sort((a, b) => a[0] - b[0]).map(([prozent, anzahl]) => ({ prozent, saetze: anzahl }))
+}
+
+export interface GeglaetteterPunkt {
+  prozent: number
+  /** Geglättete Satzzahl an dieser Stelle — kein ganzer Satz mehr,
+      sondern wie viele Sätze hier "im Schnitt der Nachbarschaft" liegen. */
+  wert: number
+}
+
+/** Glättet die Intensitätskurve mit einem Gauß-Kern: Jeder Prozentpunkt
+    verteilt seine Sätze glockenförmig auf die Nachbarn, `bandbreite` ist
+    die Standardabweichung in Prozentpunkten.
+
+    Warum überhaupt: Die Gewichte springen in Scheibenstufen — 2,5 kg auf
+    85 kg sind rund 3 % —, also können manche Prozente kaum vorkommen,
+    und die rohe Kurve wird zum Kamm. Geglättet zeigt sie, wo das Training
+    liegt und wie breit es streut.
+
+    Die Summe bleibt erhalten: Zusammengezählt ergeben die geglätteten
+    Werte so viele Sätze wie die rohen. Ausgewertet wird lückenlos je
+    ganzem Prozent, von zwei Bandbreiten unter dem kleinsten bis zwei über
+    dem größten belegten Wert — dort ist der Kern praktisch abgeklungen. */
+export function glaetten(
+  punkte: readonly IntensitaetsPunkt[],
+  bandbreite = 2,
+  /** Obergrenze, über die nichts hinausgehen kann — bei der Intensität
+      100 %, denn kein Satz liegt über der eigenen Bestleistung. Was der
+      Kern darüber hinaus verteilen würde, wird an der Grenze gespiegelt
+      statt abgeschnitten: So bleiben alle Sätze erhalten, und eine Spitze
+      genau bei 100 % rutscht nicht künstlich nach links. */
+  grenze?: number,
+): GeglaetteterPunkt[] {
+  if (!punkte.length) return []
+  const reichweite = Math.ceil(bandbreite * 3)
+  // Kern über ganze Prozente auf Summe 1 normiert, damit die Glättung
+  // keine Sätze erfindet oder verliert.
+  const kern: number[] = []
+  for (let d = -reichweite; d <= reichweite; d++) kern.push(Math.exp(-(d * d) / (2 * bandbreite * bandbreite)))
+  const summe = kern.reduce((a, k) => a + k, 0)
+  const gewicht = (d: number) => (Math.abs(d) > reichweite ? 0 : kern[d + reichweite] / summe)
+
+  const von = Math.max(0, punkte[0].prozent - Math.ceil(bandbreite * 2))
+  const ohneGrenze = punkte[punkte.length - 1].prozent + Math.ceil(bandbreite * 2)
+  const bis = grenze != null ? Math.min(grenze, ohneGrenze) : ohneGrenze
+  const ergebnis: GeglaetteterPunkt[] = []
+  for (let p = von; p <= bis; p++) {
+    const wert = punkte.reduce((a, q) => {
+      // Gespiegelter Anteil: der Teil der Glocke, der jenseits der Grenze
+      // läge, fällt diesseits wieder an. Gespiegelt wird zwischen den
+      // ganzen Prozenten — die Grenze selbst gehört noch dazu, 101 landet
+      // auf 100, 102 auf 99. Um die Grenze statt dazwischen gespiegelt,
+      // würde die Grenzstelle doppelt gezählt und die Spitze nach links
+      // geschoben.
+      const spiegel = grenze != null ? gewicht(p - (2 * grenze + 1 - q.prozent)) : 0
+      return a + q.saetze * (gewicht(p - q.prozent) + spiegel)
+    }, 0)
+    ergebnis.push({ prozent: p, wert })
+  }
+  return ergebnis
 }
 
 // ── Rhythmus ─────────────────────────────────────────────────────────
@@ -360,21 +374,6 @@ export function uebungsAnteile(
       anteil: gesamt > 0 ? w.tonnage / gesamt : 0,
     }))
     .sort((a, b) => b.tonnage - a.tonnage)
-}
-
-/** Wie viele Übungen die Hälfte des Gesamtvolumens ausmachen.
-
-    Eine kleine Zahl heißt: Das Training hängt an wenigen Übungen. Das ist
-    weder gut noch schlecht — nur etwas, das man wissen sollte, bevor eine
-    davon wegfällt. */
-export function schwerpunkt(anteile: readonly UebungsAnteil[]): number | null {
-  if (!anteile.length) return null
-  let summe = 0
-  for (let i = 0; i < anteile.length; i++) {
-    summe += anteile[i].anteil
-    if (summe >= 0.5) return i + 1
-  }
-  return anteile.length
 }
 
 // ── Einheiten ────────────────────────────────────────────────────────

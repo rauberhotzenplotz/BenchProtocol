@@ -1,12 +1,10 @@
-import type { TrainingSession } from '../../types/db'
-import type { DayWithExercises } from '../training/queries'
 import type { UebungsDauerSchnitt } from '../training/calc'
 import type { EinheitPunkt } from './calc'
-import { tagFarbe } from '../training/dayColor'
 import { ListChart } from './ListChart'
-import { cssVars } from '../../lib/style'
+import { Saeulendiagramm } from './Diagramme'
+import { anzeigeDauer } from '../training/abschluss'
 
-/* Die vier einheitenbezogenen Auswertungen.
+/* Die drei einheitenbezogenen Auswertungen.
  *
  * Dort steckten sie dreifach verpackt: hinter einem Aufklapper, darin
  * eine Kachel mit nur einer Zahl, und die eigentliche Grafik erst in
@@ -31,30 +29,28 @@ export function TonnageJeEinheit({ punkte }: { punkte: EinheitPunkt[] }) {
   const gesamt = punkte.reduce((a, p) => a + p.tonnage, 0)
   const erledigtGesamt = punkte.reduce((a, p) => a + p.erledigt, 0)
   const geplantGesamt = punkte.reduce((a, p) => a + p.geplant, 0)
-  // Neueste Einheit oben — sie ist die, nach der man zuerst sieht.
-  const neuesteZuerst = [...punkte].reverse()
 
   return (
     <>
-      <ListChart
-        ariaLabel="Bewegte Last je Einheit, neueste zuerst"
-        zeilen={neuesteZuerst.map(p => ({
+      <Saeulendiagramm
+        ariaLabel="Bewegte Last je Einheit, älteste links"
+        einheit="kg"
+        achsenFormat={v => (v >= 1000 ? `${(v / 1000).toLocaleString('de-DE')} t` : String(v))}
+        saeulen={punkte.map(p => ({
           id: p.sessionId,
-          name: p.tagName,
-          neben: `${p.datumLabel} · ${p.erledigt}/${p.geplant} Sätze`,
+          label: p.datumLabel,
           wert: p.tonnage,
-          wertText: `${Math.round(p.tonnage)} kg`,
-          farbe: p.farbe,
+          details: [`${p.tagName} · ${p.datumLabel}`, `${Math.round(p.tonnage).toLocaleString('de-DE')} kg`, `${p.erledigt}/${p.geplant} Sätze`],
         }))}
       />
       <div className="st-zahlen">
         <span>
           Ø je Einheit
-          <b>{Math.round(gesamt / punkte.length)} kg</b>
+          <b>{Math.round(gesamt / punkte.length).toLocaleString('de-DE')} kg</b>
         </span>
         <span>
           Höchste
-          <b>{Math.round(Math.max(...punkte.map(p => p.tonnage)))} kg</b>
+          <b>{Math.round(Math.max(...punkte.map(p => p.tonnage))).toLocaleString('de-DE')} kg</b>
         </span>
         <span>
           Sätze abgehakt
@@ -68,25 +64,29 @@ export function TonnageJeEinheit({ punkte }: { punkte: EinheitPunkt[] }) {
 }
 
 export function DauerJeEinheit({ punkte }: { punkte: EinheitPunkt[] }) {
-  const mitDauer = punkte.filter(p => p.minuten > 0)
+  // Vergessene Einheiten (gestartet, tagelang nicht beendet) fallen raus —
+  // dieselbe 12-Stunden-Grenze wie auf dem Abschlussbildschirm. Eine
+  // einzige mit 6174 min drückte in den echten Daten alle anderen Säulen
+  // zu Strichen zusammen.
+  const mitDauer = punkte.filter(p => p.minuten > 0 && anzeigeDauer(p.minuten) != null)
+  const vergessen = punkte.filter(p => p.minuten > 0 && anzeigeDauer(p.minuten) == null).length
   if (mitDauer.length < 2) {
     return <Leer text="Ab der zweiten Einheit mit aufgezeichneter Dauer." />
   }
 
   const gesamt = mitDauer.reduce((a, p) => a + p.minuten, 0)
-  const neuesteZuerst = [...mitDauer].reverse()
 
   return (
     <>
-      <ListChart
-        ariaLabel="Dauer je Einheit, neueste zuerst"
-        zeilen={neuesteZuerst.map(p => ({
+      <Saeulendiagramm
+        ariaLabel="Dauer je Einheit, älteste links"
+        einheit="min"
+        farbe="var(--ton-b)"
+        saeulen={mitDauer.map(p => ({
           id: p.sessionId,
-          name: p.tagName,
-          neben: `${p.datumLabel} · ${p.erledigt} Sätze`,
+          label: p.datumLabel,
           wert: p.minuten,
-          wertText: `${p.minuten} min`,
-          farbe: p.farbe,
+          details: [`${p.tagName} · ${p.datumLabel}`, `${p.minuten} min`, `${p.erledigt} Sätze`],
         }))}
       />
       <div className="st-zahlen">
@@ -103,6 +103,11 @@ export function DauerJeEinheit({ punkte }: { punkte: EinheitPunkt[] }) {
           <b>{Math.min(...mitDauer.map(p => p.minuten))} min</b>
         </span>
       </div>
+      {vergessen > 0 && (
+        <p className="muted tiny" style={{ margin: '8px 0 0' }}>
+          {vergessen === 1 ? '1 Einheit' : `${vergessen} Einheiten`} über 12 Stunden ausgeblendet — vermutlich nicht beendet.
+        </p>
+      )}
     </>
   )
 }
@@ -124,25 +129,5 @@ export function DauerJeUebung({ eintraege }: { eintraege: UebungsDauerSchnitt[] 
         farbe: 'var(--ton-b)',
       }))}
     />
-  )
-}
-
-export function LetzteEinheiten({ sessions, days }: { sessions: TrainingSession[]; days: DayWithExercises[] }) {
-  // useAllSessionsForDays sortiert bereits absteigend nach Startzeit —
-  // die jüngste Einheit steht dadurch oben.
-  const liste = sessions.filter(s => s.status === 'completed').slice(0, 10)
-  if (!liste.length) return <Leer text="Noch keine Einheit beendet." />
-
-  return (
-    <div className="st-liste">
-      {liste.map((s, i) => (
-        <div key={s.id} style={cssVars({ '--i': i })}>
-          <i style={{ background: tagFarbe(days, s.day_id) }} />
-          <span className="st-liste-name">{days.find(d => d.id === s.day_id)?.name ?? '—'}</span>
-          <span className="st-liste-dat">{new Date(s.started_at).toLocaleDateString('de-DE')}</span>
-          <span className="st-liste-dau">{s.minutes} min</span>
-        </div>
-      ))}
-    </div>
   )
 }

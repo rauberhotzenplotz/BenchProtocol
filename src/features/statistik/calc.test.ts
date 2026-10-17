@@ -3,20 +3,19 @@ import {
   regression,
   streuung,
   wochenReihe,
-  belastung,
-  wiederholungsVerteilung,
-  intensitaetsZonen,
+  intensitaetsKurve,
+  wiederholungsKurve,
+  WDH_BAENDER,
+  glaetten,
   wochentagsMuster,
   serien,
   uebungsAnteile,
-  schwerpunkt,
   verwertbar,
   tonnage,
   achsenTeilung,
 } from './calc'
 import type { LoggedSet, TrainingSession } from '../../types/db'
 
-const TAG = 24 * 60 * 60 * 1000
 const JETZT = Date.parse('2026-09-08T12:00:00Z')
 
 function satz(w: Partial<LoggedSet> & { exercise_id?: string }): LoggedSet {
@@ -165,95 +164,119 @@ describe('wochenReihe', () => {
   })
 })
 
-describe('belastung', () => {
-  /** n Saetze, alle `vorTagen` Tage alt. */
-  const alt = (vorTagen: number, anzahl: number, kg = 100) =>
-    Array.from({ length: anzahl }, () =>
-      satz({ kg, reps: 10, done_at: new Date(JETZT - vorTagen * TAG).toISOString() }),
-    )
-
-  it('zaehlt die akute Last der letzten sieben Tage', () => {
-    const b = belastung([...alt(1, 1), ...alt(3, 1), ...alt(10, 1)], JETZT)
-    expect(b.akut).toBe(2000)
-  })
-
-  it('mittelt die chronische Last ueber vier Wochen', () => {
-    // Vier Wochen mit je 1000 kg -> chronisch 1000. Der Satz von vor 40
-    // Tagen liegt ausserhalb des Fensters und zaehlt nicht mit; er ist
-    // nur da, damit der geforderte Vorlauf erfuellt ist.
-    const b = belastung([...alt(40, 1), ...alt(1, 1), ...alt(8, 1), ...alt(15, 1), ...alt(22, 1)], JETZT)
-    expect(b.chronisch).toBe(1000)
-    expect(b.verhaeltnis).toBe(1)
-  })
-
-  // Ohne 28 Tage Vorlauf ist der Nenner kein Gewoehnungswert, sondern
-  // Zufall -- dann lieber gar keine Zahl.
-  it('nennt kein Verhaeltnis ohne vier Wochen Vorlauf', () => {
-    expect(belastung(alt(3, 5), JETZT).verhaeltnis).toBeNull()
-  })
-
-  it('erkennt eine Woche, die aus dem Rahmen faellt', () => {
-    const b = belastung([...alt(40, 1), ...alt(1, 3), ...alt(8, 1), ...alt(15, 1), ...alt(22, 1)], JETZT)
-    expect(b.verhaeltnis).toBeGreaterThan(1.5)
-  })
-
-  it('nennt gleichfoermige Belastung monoton', () => {
-    // Jeden der sieben Tage dieselbe Last -> Streuung 0 -> keine Zahl,
-    // weil durch 0 geteilt wuerde.
-    const jedenTag = [0, 1, 2, 3, 4, 5, 6].flatMap(d => alt(d, 1))
-    expect(belastung(jedenTag, JETZT).monotonie).toBeNull()
-
-    // Sechs gleiche Tage und ein schwerer -> hohe, aber endliche Monotonie.
-    const fastGleich = [...[0, 1, 2, 3, 4, 5].flatMap(d => alt(d, 1)), ...alt(6, 1, 110)]
-    const m = belastung(fastGleich, JETZT).monotonie!
-    expect(m).toBeGreaterThan(5)
-  })
-
-  it('zaehlt die Tage mit Training', () => {
-    expect(belastung([...alt(0, 1), ...alt(2, 1), ...alt(5, 1)], JETZT).tageMitTraining).toBe(3)
-  })
-
-  it('kommt ohne Saetze klar', () => {
-    const b = belastung([], JETZT)
-    expect(b.akut).toBe(0)
-    expect(b.verhaeltnis).toBeNull()
-    expect(b.strain).toBeNull()
-  })
-})
-
-describe('wiederholungsVerteilung', () => {
-  it('sortiert in die ueblichen Bereiche', () => {
-    const v = wiederholungsVerteilung([
-      satz({ reps: 2 }),
-      satz({ reps: 5 }),
-      satz({ reps: 10 }),
-      satz({ reps: 10 }),
-      satz({ reps: 15 }),
-      satz({ reps: 25 }),
+describe('wiederholungsKurve', () => {
+  it('zählt Sätze je Wiederholungszahl, ohne Lücken aufzufüllen', () => {
+    const k = wiederholungsKurve([satz({ reps: 8 }), satz({ reps: 8 }), satz({ reps: 10 })])
+    expect(k).toEqual([
+      { wdh: 8, saetze: 2 },
+      { wdh: 10, saetze: 1 },
     ])
-    expect(v.map(f => f.saetze)).toEqual([1, 1, 2, 1, 1])
-    expect(v[2].anteil).toBeCloseTo(2 / 6, 5)
   })
 
-  it('bleibt ohne Saetze bei lauter Nullen', () => {
-    expect(wiederholungsVerteilung([]).every(f => f.saetze === 0 && f.anteil === 0)).toBe(true)
+  it('lässt nicht abgehakte Sätze und Sätze ohne Wiederholungen weg', () => {
+    expect(wiederholungsKurve([satz({ reps: 5, done: false }), satz({ reps: null })])).toEqual([])
   })
 })
 
-describe('intensitaetsZonen', () => {
+describe('WDH_BAENDER', () => {
+  it('ordnet jede ganze Wiederholungszahl genau einem Band zu, passend zu den Bereichen', () => {
+    const band = (wdh: number) => WDH_BAENDER.filter(b => wdh >= b.von && wdh < b.bis).map(b => b.name)
+    expect(band(3)).toEqual(['Maximalkraft'])
+    expect(band(4)).toEqual(['Kraft'])
+    expect(band(12)).toEqual(['Hypertrophie'])
+    expect(band(13)).toEqual(['Kraftausdauer'])
+    expect(band(21)).toEqual(['Ausdauer'])
+  })
+})
+
+describe('intensitaetsKurve', () => {
   const basis = new Map([['ex1', 100]])
 
-  it('ordnet nach Anteil am besten 1RM ein', () => {
-    const z = intensitaetsZonen(
-      [satz({ kg: 50 }), satz({ kg: 65 }), satz({ kg: 75 }), satz({ kg: 85 }), satz({ kg: 95 })],
-      basis,
-    )
-    expect(z.map(f => f.saetze)).toEqual([1, 1, 1, 1, 1])
+  it('zählt Sätze je ganzem Prozent und lässt Prozente ohne Satz weg', () => {
+    const k = intensitaetsKurve([satz({ kg: 70 }), satz({ kg: 70 }), satz({ kg: 72 })], basis)
+    expect(k).toEqual([
+      { prozent: 70, saetze: 2 },
+      { prozent: 72, saetze: 1 },
+    ])
   })
 
-  it('laesst Uebungen ohne Bezugswert aus', () => {
-    const z = intensitaetsZonen([satz({ exercise_id: 'ohne', kg: 80 })], basis)
-    expect(z.every(f => f.saetze === 0)).toBe(true)
+  it('rundet auf ganze Prozent', () => {
+    expect(intensitaetsKurve([satz({ kg: 72.6 })], basis)).toEqual([{ prozent: 73, saetze: 1 }])
+  })
+
+  it('misst jede Übung an ihrem eigenen Bestwert', () => {
+    const k = intensitaetsKurve([satz({ kg: 40 }), satz({ exercise_id: 'ex2', kg: 20 })], new Map([['ex1', 50], ['ex2', 25]]))
+    expect(k).toEqual([{ prozent: 80, saetze: 2 }])
+  })
+
+  it('lässt Übungen ohne Bezugswert aus und bleibt ohne Daten leer', () => {
+    expect(intensitaetsKurve([satz({ exercise_id: 'ohne', kg: 80 })], basis)).toEqual([])
+    expect(intensitaetsKurve([], basis)).toEqual([])
+  })
+})
+
+describe('intensitaetsKurve als Anstrengung', () => {
+  it('rechnet mit dem geschätzten 1RM des Satzes statt mit dem Gewicht', () => {
+    // 75 kg × 10 ergibt nach Epley 100 kg — bei Bestwert 100 also 100 %.
+    const basis = new Map([['ex1', 100]])
+    expect(intensitaetsKurve([satz({ kg: 75, reps: 10 })], basis, 'last')).toEqual([{ prozent: 75, saetze: 1 }])
+    expect(intensitaetsKurve([satz({ kg: 75, reps: 10 })], basis, 'anstrengung')).toEqual([{ prozent: 100, saetze: 1 }])
+  })
+
+  it('setzt einen leichten Satz mit wenigen Wiederholungen niedrig an', () => {
+    // 60 kg × 3 → e1RM 66 kg → 66 %.
+    expect(intensitaetsKurve([satz({ kg: 60, reps: 3 })], new Map([['ex1', 100]]), 'anstrengung')).toEqual([
+      { prozent: 66, saetze: 1 },
+    ])
+  })
+})
+
+describe('glaetten', () => {
+  it('verteilt einen Punkt symmetrisch um seine Stelle', () => {
+    const g = glaetten([{ prozent: 70, saetze: 10 }], 2)
+    const bei = (p: number) => g.find(x => x.prozent === p)!.wert
+    expect(bei(69)).toBeCloseTo(bei(71), 10)
+    expect(bei(70)).toBeGreaterThan(bei(71))
+    expect(bei(70)).toBeLessThan(10)
+  })
+
+  it('erhält die Gesamtzahl der Sätze (bis auf die abgeschnittenen Ränder)', () => {
+    const roh = [{ prozent: 60, saetze: 3 }, { prozent: 72, saetze: 7 }, { prozent: 73, saetze: 5 }]
+    const summe = glaetten(roh, 2).reduce((a, x) => a + x.wert, 0)
+    expect(summe).toBeGreaterThan(14.5)
+    expect(summe).toBeLessThanOrEqual(15 + 1e-9)
+  })
+
+  it('füllt Lücken zwischen benachbarten Spitzen', () => {
+    const g = glaetten([{ prozent: 70, saetze: 5 }, { prozent: 73, saetze: 5 }], 2)
+    expect(g.find(x => x.prozent === 71)!.wert).toBeGreaterThan(1)
+  })
+
+  it('reicht zwei Bandbreiten über die Daten hinaus, nicht unter 0', () => {
+    const g = glaetten([{ prozent: 2, saetze: 1 }, { prozent: 50, saetze: 1 }], 2)
+    expect(g[0].prozent).toBe(0)
+    expect(g[g.length - 1].prozent).toBe(54)
+  })
+
+  it('geht mit Grenze nicht darüber hinaus und erfindet dabei keine Sätze', () => {
+    const roh = [{ prozent: 98, saetze: 4 }, { prozent: 100, saetze: 10 }]
+    const g = glaetten(roh, 2, 100)
+    expect(g[g.length - 1].prozent).toBe(100)
+    // Unten wird bei zwei Bandbreiten abgeschnitten, dort fehlt ein Rest;
+    // oben darf durch das Spiegeln nichts dazukommen.
+    const summe = g.reduce((a, x) => a + x.wert, 0)
+    expect(summe).toBeGreaterThan(13.9)
+    expect(summe).toBeLessThanOrEqual(14 + 1e-9)
+  })
+
+  it('lässt die Spitze an der Grenze an der Grenze', () => {
+    const g = glaetten([{ prozent: 100, saetze: 10 }], 2, 100)
+    const spitze = g.reduce((a, x) => (x.wert > a.wert ? x : a), g[0])
+    expect(spitze.prozent).toBe(100)
+  })
+
+  it('bleibt ohne Daten leer', () => {
+    expect(glaetten([])).toEqual([])
   })
 })
 
@@ -309,31 +332,6 @@ describe('uebungsAnteile', () => {
 
   it('nennt unbekannte Uebungen beim Namen', () => {
     expect(uebungsAnteile([satz({ exercise_id: 'x' })], namen)[0].name).toBe('Unbekannt')
-  })
-})
-
-describe('schwerpunkt', () => {
-  it('zaehlt, wie viele Uebungen die Haelfte des Volumens tragen', () => {
-    const anteile = [
-      { id: 'a', name: 'a', tonnage: 60, saetze: 1, anteil: 0.6 },
-      { id: 'b', name: 'b', tonnage: 40, saetze: 1, anteil: 0.4 },
-    ]
-    expect(schwerpunkt(anteile)).toBe(1)
-  })
-
-  it('braucht bei gleichmaessiger Verteilung mehr Uebungen', () => {
-    const anteile = Array.from({ length: 10 }, (_, i) => ({
-      id: String(i),
-      name: String(i),
-      tonnage: 10,
-      saetze: 1,
-      anteil: 0.1,
-    }))
-    expect(schwerpunkt(anteile)).toBe(5)
-  })
-
-  it('bleibt ohne Uebungen null', () => {
-    expect(schwerpunkt([])).toBeNull()
   })
 })
 
