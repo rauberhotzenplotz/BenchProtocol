@@ -6,7 +6,6 @@ import { PlanPicker } from '../plans/PlanPicker'
 import { formatGewicht } from '../../lib/zahlen'
 import { cssVars } from '../../lib/style'
 import { Liniendiagramm, Balkenreihe, VerteilungsKurve } from './Diagramme'
-import { MuskelHeatmap } from './MuskelHeatmap'
 import { WiederholungsSpektrum } from './WiederholungsSpektrum'
 import { TonnageJeEinheit, DauerJeEinheit, DauerJeUebung } from './EinheitenKarten'
 import {
@@ -205,10 +204,6 @@ export function StatistikPage() {
         <Kachel wert={ganz(gute.reduce((a, x) => a + (x.reps ?? 0), 0))} label="Wiederholungen" />
         <Kachel wert={stunden(gesamtMinuten)} label="Trainingszeit" />
         <Kachel wert={ganz(s.laengste)} einheit="Wo" label="Längste Serie" hinweis="Aufeinanderfolgende Wochen mit mindestens einer Einheit" />
-      </div>
-
-      <div className="st-uebernommen" style={cssVars({ '--i': 2 })}>
-        <MuskelHeatmap days={days} allSets={saetze} />
       </div>
 
       <Karte

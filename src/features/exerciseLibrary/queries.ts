@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { MUTATION_KEYS } from '../../lib/offline/keys'
@@ -111,9 +111,8 @@ export function useLibrarySearch(suchtext: string, muskelgruppe: string | null =
 export type KatalogEintrag = Pick<
   ExerciseLibraryEntry,
   | 'id' | 'name' | 'name_en' | 'name_de_raw' | 'scheme' | 'rest' | 'bench_slot' | 'muscle_group' | 'equipment' | 'difficulty' | 'popularity'
-  // Seit die Muskelbelastung aus dem Katalog gerechnet wird, gehoeren
-  // die drei Muskelspalten dazu (siehe muskelHitze.ts). Sie kosten kaum
-  // Platz: Der Katalog ist mit dem Wechsel auf deutsche Namen von 3245 auf
+  // Die drei Muskelspalten fahren mit (Muskelangaben in Bibliothek und
+  // Übungsauswahl). Sie kosten kaum Platz: Der Katalog ist mit dem Wechsel auf deutsche Namen von 3245 auf
   // gut 700 Eintraege geschrumpft.
   | 'primary_muscle' | 'secondary_muscle' | 'tertiary_muscle'
 >
@@ -215,45 +214,6 @@ export function useLibraryKatalog() {
   }, [daten])
 
   return abfrage
-}
-
-/** Die Muskelangaben des Katalogs, nachschlagbar über die id — also über
-    das, was in exercises.library_id steht.
-
-    Grundlage der Muskelbelastung: Welche Muskeln eine Übung
-    beansprucht, steht seit dem Katalogimport ohnehin fest (Haupt-,
-    Sekundär- und Tertiärmuskel) und muss von niemandem gepflegt werden.
-    Vorher wertete die Heatmap allein die von Hand gesetzte Muskelgruppe
-    aus — eine Übung ohne Zuordnung tauchte gar nicht auf, und eine mit
-    Zuordnung färbte immer nur eine einzige Fläche.
-
-    Läuft über denselben Katalog, den AppShell ohnehin vorhält; der
-    Modul-Zwischenspeicher macht den Zugriff billig. */
-export function useKatalogMuskeln(): ReadonlyMap<string, KatalogMuskeln> {
-  const { data } = useLibraryKatalog()
-  return useMemo(() => {
-    const m = new Map<string, KatalogMuskeln>()
-    for (const e of data ?? []) {
-      if (!e.primary_muscle && !e.muscle_group) continue
-      m.set(e.id, {
-        muscle_group: e.muscle_group,
-        primary_muscle: e.primary_muscle,
-        secondary_muscle: e.secondary_muscle,
-        tertiary_muscle: e.tertiary_muscle,
-      })
-    }
-    return m
-  }, [data])
-}
-
-/** Was die Auswertungen von einem Katalogeintrag brauchen. Bewusst hier
-    beschrieben und nicht aus dem Statistik-Tab importiert — die Bibliothek soll
-    nichts über die Auswertung wissen. */
-export interface KatalogMuskeln {
-  muscle_group: string | null
-  primary_muscle: string | null
-  secondary_muscle: string | null
-  tertiary_muscle: string | null
 }
 
 /** Dieselbe Auswahl wie die serverseitige Suche, nur lokal auf dem
